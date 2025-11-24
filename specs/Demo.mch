@@ -1,0 +1,10 @@
+MACHINE
+  Demo
+VARIABLES
+  s0
+INVARIANT
+  s0 ⊆ NAT ∧
+  s0 ∩ (ℤ - ℕ) ∈ FIN(ℤ)
+INITIALISATION
+  s0 :∈ POW(NAT)
+END

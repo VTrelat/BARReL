@@ -1,0 +1,12 @@
+MACHINE Counter
+VARIABLES x
+INVARIANT
+  x ∈ NAT & x ≤ 10
+INITIALISATION
+  x := 0
+OPERATIONS
+  inc =
+  PRE x < 10 THEN
+    x := x + 1
+  END
+END
