@@ -25,7 +25,7 @@ elab_rules : command
   for step in steps do
     match step with
     | `(discharger_command| next $tac:tacticSeq) =>
-      if goals.size = 0 then
+      if i = goals.size then
         throwErrorAt step s!"No more goals to be discharged."
 
       let g := goals[i]!
