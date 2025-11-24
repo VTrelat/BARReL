@@ -222,6 +222,14 @@ def BType.toTerm : B.BType → B.Term
 -/
 abbrev TypeContext := AList λ _ : 𝒱 => BType
 
+def TypeContext.foldlM [Monad m] (Γ : TypeContext)
+  (init : α) (f : α → 𝒱 → BType → m α) : m α :=
+    Γ.entries.foldlM (init := init) fun acc ⟨v, τ⟩ ↦ f acc v τ
+
+def TypeContext.foldrM [Monad m] (Γ : TypeContext)
+  (init : α) (f : 𝒱 → BType → α → m α) : m α :=
+    Γ.entries.foldrM (init := init) fun ⟨v, τ⟩ acc  ↦ f v τ acc
+
 protected def TypeContext.repr (Γ : TypeContext) (n : Nat) : Std.Format :=
   let _ : Lean.ToFormat (𝒱 × BType) := ⟨λ (v, τ) => repr v ++ " : " ++ τ.pretty 0⟩
   match Γ.entries, n with

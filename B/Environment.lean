@@ -54,23 +54,7 @@ structure Env where
 instance : Inhabited Env := ⟨{}⟩
 instance : EmptyCollection Env where
   emptyCollection :=
-  { context := (∅ : TypeContext).insert "n" .int |>.insert "b" .bool
-    |>.insert "NATURAL" (.set .int)
-    |>.insert "NATURAL1" (.set .int)
-    |>.insert "NAT" (.set .int)
-    |>.insert "NAT1" (.set .int)
-    |>.insert "INT" (.set .int)
-    |>.insert "INTEGER" (.set .int)
-    |>.insert "BOOL" (.set .bool),
-    defs := (∅ : TermContext)
-      |>.insert "NATURAL" (.collect ["n"] .ℤ (.le (.int 0) (.var "n")))
-      |>.insert "NATURAL1" (.collect ["n"] .ℤ (.le (.int 1) (.var "n")))
-      |>.insert "NAT" (.collect ["n"] .ℤ (.and (.le (.int 0) (.var "n")) (.le (.var "n") (.int MAXINT))))
-      |>.insert "NAT1" (.collect ["n"] .ℤ (.and (.le (.int 1) (.var "n")) (.le (.var "n") (.int MAXINT))))
-      |>.insert "INT" (.collect ["n"] .ℤ (.and (.le (.int MININT) (.var "n")) (.le (.var "n") (.int MAXINT))))
-      |>.insert "INTEGER" (.collect ["n"] .ℤ (.bool true))
-      |>.insert "BOOL" (.collect ["b"] .𝔹 (.bool true)) -- TODO: add missing predefined sets
-  }
+    { context := (∅ : TypeContext), defs := (∅ : TermContext) }
 
 def EnvToStringAux : AssocList DefinitionType (List Term) → String
   | .nil => ""
