@@ -20,6 +20,8 @@ elab_rules : command
   ]
   let mut i := 0
 
+  let ns ← getCurrNamespace
+
   for step in steps do
     match step with
     | `(discharger_command| next $tac:tacticSeq) =>
@@ -29,7 +31,7 @@ elab_rules : command
       let g := goals[i]!
 
       let decl : Declaration := .thmDecl {
-        name := .mkStr1 s!"thm{i}"
+        name := ns.str s!"thm{i}"
         levelParams := []
         type := g
         value := ← liftTermElabM do
@@ -54,6 +56,8 @@ elab_rules : command
 
 
 
+namespace X
+whatsnew in
 pog_discharger "hello.pog"
 next
   apply True.intro
