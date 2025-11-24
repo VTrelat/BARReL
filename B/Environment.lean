@@ -13,15 +13,16 @@ instance : ToString SimpleGoal where
   toString sg := s!"simple goal: {sg.hyps} ⊢ {sg.goal}"
 
 structure ProofObligation where
+  name : String
   defs : List Term
   hyps : List Term
   goals : List SimpleGoal
 
 instance : ToString ProofObligation where
-  toString po := s!"PO:\ndefs:\n{po.defs.printLines}\nhyps:\n{po.hyps.printLines}\n⊢\n{po.goals.printLines}"
+  toString po := s!"PO {po.name}:\ndefs:\n{po.defs.printLines}\nhyps:\n{po.hyps.printLines}\n⊢\n{po.goals.printLines}"
 
 instance : EmptyCollection ProofObligation where
-  emptyCollection := { defs := [], hyps := [], goals := [] }
+  emptyCollection := { name := "", defs := [], hyps := [], goals := [] }
 
 abbrev TermContext := AList (λ _ : 𝒱 => Term)
 

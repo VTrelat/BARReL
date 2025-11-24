@@ -608,6 +608,8 @@ def decodeType : Xml.Content → Decoder B.BType
 def removeEmptyDeep (c : Array Xml.Content) : Array Xml.Content :=
   c.attach.filterMap (λ
     | ⟨.Element ⟨n,a,c⟩, _⟩ => some <| .Element ⟨n,a,removeEmptyDeep c⟩
+    | ⟨.Character c, _⟩ =>
+      if c.trim = "" then none else some <| .Character c
     | _ => none
   )
 termination_by c
@@ -653,7 +655,8 @@ def decodeProofObligationElement (c : Array Xml.Content) : Decoder B.ProofObliga
   let mut lh : Array B.Term := #[]
   for e in c do
     match e with
-    | .Element ⟨"Tag", _, _⟩ => continue
+    | .Element ⟨"Tag", _, c⟩ =>
+      po := { po with name := toString c[0]!}
     | .Element ⟨"Definition", a, _⟩ =>
       if a.get! "name" != "B definitions" then
         let d := (← get).env.hypotheses.find? ((a.get! "name").toDefinitionType |>.get!) |>.get!
