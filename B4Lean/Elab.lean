@@ -18,8 +18,8 @@ def mch2pog (mchPath : FilePath) : IO FilePath := do
   pure <| bxml.withExtension "pog"
 
 -- #eval do
---   let fp ← mch2pog <| "specs" / "Counter.mch"
---   dbg_trace fp
---   let pog ← readPOG fp |>.propagateError
+--   -- let fp ← mch2pog <| "specs" / "Nat.mch"
+--   -- dbg_trace fp
+--   let pog ← readPOG ("specs" / "Nat.pog") |>.propagateError
 --   let ⟨_, st⟩ ← POGtoB pog |>.run ∅ |>.propagateError
 --   return st

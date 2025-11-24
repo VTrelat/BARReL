@@ -1,6 +1,10 @@
 import Lean.Elab.Command
 import Lean.Elab.BuiltinTerm
 import Mathlib.Util.WhatsNew
+import B4Lean.Encoder
+
+import POGReader.POGReader
+import B4Lean.Elab
 
 open Lean Parser Elab Term Command
 
@@ -12,15 +16,13 @@ syntax (name := pog_discharger) "pog_discharger " str withPosition((colEq discha
 
 elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
-  -- TODO: Plug POG reader and generate array of `Expr`
+  -- let pogPath ← mch2pog (System.FilePath.mk path.getString)
+  let pog ← readPOG (System.FilePath.mk path.getString) |>.propagateError
+  let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
 
-  let mut goals : Array Expr := #[
-    .const `F [],
-    ← liftTermElabM do
-      let e ← elabTerm (← `(term| "" = "")) .none (catchExPostpone := false)
-      synthesizeSyntheticMVarsNoPostponing
-      instantiateMVars e
-  ]
+  let goals ← liftTermElabM <| Meta.liftMetaM pogState.env.mkGoal
+  let goals := goals.toArray
+
   let mut i := 0
 
   let ns ← getCurrNamespace
@@ -31,10 +33,10 @@ elab_rules : command
       if i = goals.size then
         throwErrorAt step s!"No more goals to be discharged."
 
-      let g := goals[i]!
+      let ⟨n, g⟩ := goals[i]!
 
       let decl : Declaration := .thmDecl {
-        name := ns.str s!"thm{i}"
+        name := ns.str s!"{n}_{i}"
         levelParams := []
         type := g
         value := ← liftTermElabM do
@@ -56,11 +58,7 @@ elab_rules : command
   pure .unit
 
 
-
-
-namespace X
-whatsnew in
-pog_discharger "hello.pog"
+pog_discharger "specs/Nat.pog"
 next
   apply True.intro
 next
