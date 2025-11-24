@@ -2,7 +2,6 @@ import Batteries
 import Mathlib.Data.List.Indexes
 import Mathlib.Data.List.AList
 import Mathlib.Data.Finmap
-import B4Lean.CustomPrelude
 
 def Nat.toPaddedString (n : Nat) (pad : Nat) : String :=
   let s := n.repr
@@ -427,50 +426,6 @@ def AssocList.append [BEq α] (l₁ l₂ : AssocList α β) : AssocList α β :=
 
 instance [BEq α] : Append (AssocList α β) where
   append := AssocList.append
-
-theorem AssocList.find?_insert_self {α β : Type} [DecidableEq α] (xs : AssocList α β) (k : α) (v : β) :
-  (xs.insert k v).find? k = some v := by
-  induction xs with
-  | nil => rw [insert, find?, BEq.rfl]
-  | cons key val xs ih =>
-    rw [insert]
-    split_ifs with h <;> rw [beq_iff_eq] at h
-    · subst k
-      rw [find?, BEq.rfl]
-    · rw [find?]
-      split using h'
-      · rw [beq_iff_eq] at h'
-        subst k
-        contradiction
-      · exact ih
-
-theorem AssocList.find?_insert_ne {α β : Type} [DecidableEq α] (xs : AssocList α β) (k₁ k₂ : α) (v : β) (h : k₁ ≠ k₂) :
-  (xs.insert k₁ v).find? k₂ = xs.find? k₂ := by
-  induction xs with
-  | nil =>
-    rw [insert, find?, find?]
-    split using h'
-    · rw [beq_iff_eq] at h'
-      contradiction
-    · rfl
-  | cons key val xs ih =>
-    rw [insert, find?]
-    split_ifs with h' <;> rw [beq_iff_eq] at h'
-    · subst k₁
-      split using h''
-      · rw [beq_iff_eq] at h''
-        subst k₂
-        contradiction
-      · rw [find?]
-        split using h''
-        · rw [beq_iff_eq] at h''
-          subst key
-          contradiction
-        · rfl
-    · rw [find?]
-      split using h'' | h'' <;> simp only [beq_iff_eq, beq_eq_false_iff_ne, ne_eq] at h''
-      · rfl
-      · exact ih
 
 end Batteries
 
