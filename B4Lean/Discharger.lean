@@ -15,8 +15,11 @@ elab_rules : command
   -- TODO: Plug POG reader and generate array of `Expr`
 
   let mut goals : Array Expr := #[
-    .const ``True [],
-    .const ``True []
+    .const `F [],
+    ← liftTermElabM do
+      let e ← elabTerm (← `(term| "" = "")) .none (catchExPostpone := false)
+      synthesizeSyntheticMVarsNoPostponing
+      instantiateMVars e
   ]
   let mut i := 0
 
@@ -37,8 +40,7 @@ elab_rules : command
         value := ← liftTermElabM do
           let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
           synthesizeSyntheticMVarsNoPostponing
-          let e ← instantiateMVars e
-          pure e
+          instantiateMVars e
       }
       liftCoreM <| addDecl decl false
 
@@ -62,4 +64,4 @@ pog_discharger "hello.pog"
 next
   apply True.intro
 next
-  apply True.intro
+  rfl
