@@ -12,7 +12,7 @@ declare_syntax_cat discharger_command
 
 syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
 
-syntax (name := pog_discharger) "pog_discharger " str withPosition((colEq discharger_command)*) : command
+syntax (name := pog_discharger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
 
 elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
@@ -61,3 +61,6 @@ pog_discharger "specs/Nat.pog"
 next
   intro x
   admit
+
+set_option pp.rawOnError true
+#print Initialisation_0

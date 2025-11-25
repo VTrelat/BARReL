@@ -42,7 +42,8 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
     -- let xs' := xs.map vs.get!
     -- mkCollect xs' D P vs
     let m? ← mkMVarEx <$> mkFreshMVarId
-    mkApp (.const ``setOf [0])
+    let m?₂ ← mkMVarEx <$> mkFreshMVarId
+    mkApp2 (.const ``setOf [0]) m?₂
       <$> withLocalDeclD `x m? fun xvec ↦ do
         let rec f (vs : HashMap String Expr) : List 𝒱 → MetaM Expr
           | [] => do
@@ -91,11 +92,14 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
 def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : MetaM Expr := do
   let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
 
+  dbg_trace "Encoding {goal}"
+
   let rec f : HashMap String Expr → List (Σ (_ : 𝒱), BType) → MetaM Expr
     | map, [] => do Meta.mkForallFVars map.values.toArray (←goal.toExpr map)
     | map, ⟨x, τ⟩ :: xs =>
-      Meta.withLocalDecl (Name.mkStr1 x) .default τ.toExpr fun v ↦
+      Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦
         f (map.insert x v) xs
+
   f ∅ Γ.entries
 
 open Term Elab
