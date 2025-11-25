@@ -22,6 +22,41 @@ private def newLMVar : MetaM Level := do
   trace[b4lea.pog] "New level metavariable {lmvar}"
   return lmvar
 
+private partial def getSetElemType (ty : Expr) : MetaM Expr := do
+  let rec loop (t : Expr) (didWhnf : Bool) : MetaM Expr := do
+    match t with
+    | .app (.const ``Set _) α => pure α
+    | .forallE n dom body bi =>
+        Meta.withLocalDecl n bi dom fun x => do
+          let body' := body.instantiate1 x
+          if (← Meta.isProp body') then
+            return dom
+          else if didWhnf then
+            throwError "Expected a set type, got {t}"
+          else
+            loop (← Meta.whnf t) true
+    | _ =>
+        let t' ← Meta.whnf t
+        if didWhnf || t' == t then
+          throwError "Expected a set type, got {t}"
+        else
+          loop t' true
+  loop ty false
+
+private partial def flattenProdType (ty : Expr) : MetaM (List Expr) := do
+  let ty ← Meta.whnf ty
+  match ty with
+  | .app (.app (.const ``Prod _) α) β =>
+      return (← flattenProdType α) ++ (← flattenProdType β)
+  | _ => return [ty]
+
+private partial def mkProdTuple : List Expr → MetaM Expr
+  | [] => throwError "mkProdTuple: empty tuple"
+  | [x] => pure x
+  | x :: xs => do
+      let tail ← mkProdTuple xs
+      mkAppM ``Prod.mk #[x, tail]
+
 partial def Term.toExpr : Term → TermElabM Expr
   | .var v =>
     match v with
@@ -43,18 +78,17 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .imp x y => mkForall `_ .default <$> x.toExpr <*> y.toExpr
   | .not x => mkNot <$> (x.toExpr)
   | .eq x y => do
-    let lmvar ← mkLevelMVar <$> mkFreshLMVarId
-    let mvar ← mkMVarEx <$> mkFreshMVarId
-    mkApp3 (Expr.const ``Eq [lmvar]) mvar <$> (x.toExpr) <*> (y.toExpr)
+    let x' ← x.toExpr
+    let y' ← y.toExpr
+    liftMetaM <| mkEq x' y'
   | .mem x S => do
-    let mτ₁? ← newMVar (.some <| .sort 1)
-    mkApp5
-      (.const ``Membership.mem [0, 0])
-      mτ₁?
-      (mkApp (.const ``Set [0]) mτ₁?)
-      (mkApp (.const ``Set.instMembership [0]) mτ₁?)
-      <$> (S.toExpr)
-      <*> (x.toExpr)
+    let S' ← S.toExpr
+    let x' ← x.toExpr
+    let elemTy ← liftMetaM <| getSetElemType (← Meta.inferType S')
+    let xTy ← liftMetaM <| Meta.inferType x'
+    unless (← liftMetaM <| Meta.isDefEq xTy elemTy) do
+      throwError "Type mismatch in membership: {x} has type {xTy}, expected {elemTy}"
+    return mkApp S' x'
   | .ℤ => return mkApp (.const ``Set.univ [0]) Int.mkType
   | .𝔹 => return mkApp (.const ``Set.univ [0]) (.sort 0)
   | .collect xs D P => do
