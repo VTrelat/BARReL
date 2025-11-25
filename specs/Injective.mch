@@ -1,5 +1,5 @@
 MACHINE
-HO2
+Injective
 
 SETS X; Y
 

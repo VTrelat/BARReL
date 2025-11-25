@@ -1,0 +1,12 @@
+MACHINE Nat
+
+CONSTANTS
+  x
+
+PROPERTIES
+  x : NAT
+
+INVARIANT
+  x >= 0
+
+END
