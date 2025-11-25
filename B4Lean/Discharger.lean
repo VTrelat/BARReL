@@ -34,15 +34,18 @@ elab_rules : command
         throwErrorAt step s!"No more goals to be discharged."
 
       let ⟨n, g⟩ := goals[i]!
+      let e ← liftTermElabM do
+        let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
+        synthesizeSyntheticMVarsNoPostponing
+        instantiateMVars e
+
+      let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
 
       let decl : Declaration := .thmDecl {
         name := ns.str s!"{n}_{i}"
-        levelParams := []
+        levelParams := levelParams.toList
         type := g
-        value := ← liftTermElabM do
-          let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
-          synthesizeSyntheticMVarsNoPostponing
-          instantiateMVars e
+        value := e
       }
       liftCoreM <| addDecl decl false
 
@@ -61,9 +64,9 @@ set_option trace.b4lean.pog true
 
 pog_discharger "specs/Nat.pog"
 next
-  rintro x -- ⟨_, rfl, _, _, _⟩
-  admit
+  rintro x ⟨_, rfl, _, _, _⟩
+  assumption
 
 set_option pp.rawOnError true in
-set_option pp.all true in
+-- set_option pp.all true in
 #print Initialisation_0
