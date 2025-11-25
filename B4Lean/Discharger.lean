@@ -78,7 +78,8 @@ next
 
 pog_discharger "specs/Nat.pog"
 next
-  grind
+  rintro x ⟨_, rfl, _, _, _⟩
+  assumption
 
 pog_discharger "specs/Eval.pog"
 

@@ -57,26 +57,30 @@ private partial def mkProdTuple : List Expr → MetaM Expr
       let tail ← mkProdTuple xs
       mkAppM ``Prod.mk #[x, tail]
 
+private def lookupVar (x : 𝒱) : TermElabM Expr := do
+  let some e := (← getLCtx).findFromUserName? (.mkStr1 x)
+    | throwError "No variable {x} found in context"
+  return e.toExpr
+
 partial def Term.toExpr : Term → TermElabM Expr
   | .var v =>
     match v with
-    | _ => do
-      let some e := (← getLCtx).findFromUserName? (.mkStr1 v)
-        | throwError "No variable {v} found in context"
-      return e.toExpr
+    | _ => lookupVar v
   | .int n => return mkIntLit n
   | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
   | .bool b =>
     return .const (if b then ``True else ``False) []
-  | .maplet x y =>
-    mkApp2 (.const ``Prod.mk [0, 0]) <$> (x.toExpr) <*> (y.toExpr)
-  | .add x y => mkIntAdd <$> (x.toExpr) <*> (y.toExpr)
-  | .sub x y => mkIntSub <$> (x.toExpr) <*> (y.toExpr)
-  | .mul x y => mkIntMul <$> (x.toExpr) <*> (y.toExpr)
-  | .and x y => mkAnd <$> (x.toExpr) <*> (y.toExpr)
-  | .or x y => mkOr <$> (x.toExpr) <*> (y.toExpr)
+  | .maplet x y => do
+    let x ← x.toExpr
+    let y ← y.toExpr
+    mkAppM ``Prod.mk #[x, y]
+  | .add x y => mkIntAdd <$> x.toExpr <*> y.toExpr
+  | .sub x y => mkIntSub <$> x.toExpr <*> y.toExpr
+  | .mul x y => mkIntMul <$> x.toExpr <*> y.toExpr
+  | .and x y => mkAnd <$> x.toExpr <*> y.toExpr
+  | .or x y => mkOr <$> x.toExpr <*> y.toExpr
   | .imp x y => mkForall `_ .default <$> x.toExpr <*> y.toExpr
-  | .not x => mkNot <$> (x.toExpr)
+  | .not x => mkNot <$> x.toExpr
   | .eq x y => do
     let x' ← x.toExpr
     let y' ← y.toExpr
@@ -84,123 +88,107 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .mem x S => do
     let S' ← S.toExpr
     let x' ← x.toExpr
-    let elemTy ← liftMetaM <| getSetElemType (← Meta.inferType S')
-    let xTy ← liftMetaM <| Meta.inferType x'
-    unless (← liftMetaM <| Meta.isDefEq xTy elemTy) do
-      throwError "Type mismatch in membership: {x} has type {xTy}, expected {elemTy}"
-    return mkApp S' x'
+    mkAppM ``Membership.mem #[S', x']
   | .ℤ => return mkApp (.const ``Set.univ [0]) Int.mkType
   | .𝔹 => return mkApp (.const ``Set.univ [0]) (.sort 0)
   | .collect xs D P => do
-    let m? ← newMVar (.some <| .sort 1)
-    let x ← mkFreshUserName `x
-    mkApp2 (.const ``setOf [0]) m?
-      <$> withLocalDeclD x m? fun xvec ↦ do
-        trace[b4lean.pog] "Collect: generating new variable `{xvec}` for `setOf`"
+    let x ← mkFreshBinderName
 
-        let rec f : List 𝒱 → TermElabM Expr
-          | [] => do
-            -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
-            let ⟨mτ?, xs'⟩ ← do
-              let mτ₁? ← newMVar (.some <| .sort 1)
-              let some e := (← getLCtx).findFromUserName? (.mkStr1 xs.getLast!)
-                | throwError "No variable {xs.getLast!} found in context"
-              xs.reverse.tail!.foldrM (init := (mτ₁?, e.toExpr)) fun xᵢ (mτ₂?, acc) ↦ do
-                let mτ₁? : Expr ← newMVar (.some <| .sort 1)
-                let some e := (← getLCtx).findFromUserName? (.mkStr1 xᵢ)
-                  | throwError "No variable {xs.getLast!} found in context"
-                return (
-                  mkApp2 (.const ``Prod [0, 0]) mτ₁? mτ₂?,
-                  mkApp4 (.const ``Prod.mk [0, 0]) mτ₁? mτ₂? e.toExpr acc
-                )
-            -- x̄ ∈ D
-            let memD : Expr :=
-              mkApp5
-                (.const ``Membership.mem [0, 0])
-                mτ?
-                (mkApp (.const ``Set [0]) mτ?)
-                (mkApp (.const ``Set.instMembership [0]) mτ?)
-                (← D.toExpr) xvec
-            -- x̄ = xs'
-            let lmvar ← newLMVar
-            let eq : Expr := mkApp3 (.const ``Eq [lmvar]) mτ? xvec xs'
+    let D' ← D.toExpr
+    let DTy ← inferType D'
+    let α ← liftMetaM <| getSetElemType DTy
 
-            -- x̄ = xs' ∧ x̄ ∈ D ∧ P[x̄/vs]
-            return mkAndN [eq, memD, ← P.toExpr]
-          | x :: xs => do
-            let mτ? ← newMVar (.some <| .sort 1)
+    let lam ← withLocalDeclD x α fun xvec ↦ do
 
-            mkApp2 (Expr.const ``Exists [1]) mτ?
-              <$> withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
-                (liftMetaM ∘ mkLambdaFVars #[y] =<< f xs)
+      let rec f : List 𝒱 → TermElabM Expr
+        | [] => do
+          -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
+          let xs' ← do
+            xs.dropLast.foldrM (init := ← lookupVar xs.getLast!) fun xᵢ acc ↦ do
+              mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
+          -- x̄ = xs'
+          let eq : Expr ← mkEq xvec xs'
+          -- x̄ ∈ D
+          let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
+          -- x̄ = xs' ∧ x̄ ∈ D ∧ P[x̄/vs]
+          return mkAndN [eq, memD, ← P.toExpr]
+        | x :: xs => do
+          -- TODO: to avoid generating this metavariable, we can flatten the
+          -- type of `D` (which we know will be a tuple) into its individual
+          -- `|xs|` components
+          let lmτ? ← newLMVar
+          let mτ? ← newMVar (.some <| .sort lmτ?)
+          let lam ← withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
+            (liftMetaM ∘ mkLambdaFVars #[y] =<< f xs)
+          mkAppM ``Exists #[lam]
 
-        trace[b4lean.pog] "Enclosing lambda for `setOf` (bound var: {xvec})"
-        liftMetaM ∘ mkLambdaFVars #[xvec] =<< f xs
+      liftMetaM ∘ mkLambdaFVars #[xvec] =<< f xs
 
-  | .pow S => panic! "not implemented"
-  | .cprod S T => panic! "not implemented"
-  | .union S T => panic! "not implemented"
-  | .inter S T => panic! "not implemented"
-  | .card S => panic! "not implemented"
-  | .app f x => panic! "not implemented"
-  | .lambda vs D P => panic! "not implemented"
-  | .pfun A B => panic! "not implemented"
-  | .min S => panic! "not implemented"
-  | .max S => panic! "not implemented"
-  | .all vs D P => panic! "not implemented"
+    mkAppM ``setOf #[lam]
+  | .pow S => panic! "not implemented (pow)"
+  | .cprod S T => panic! "not implemented (cprod)"
+  | .union S T => panic! "not implemented (union)"
+  | .inter S T => panic! "not implemented (inter)"
+  | .card S => panic! "not implemented (card)"
+  | .app f x => panic! "not implemented (app)"
+  | .lambda vs D P => panic! "not implemented (lambda)"
+  | .pfun A B => panic! "not implemented (pfun)"
+  | .min S => panic! "not implemented (min)"
+  | .max S => panic! "not implemented (max)"
+  | .all vs D P => panic! "not implemented (all)"
 
-def BType.toTerm' : BType → TermElabM Lean.Term
-  | .int => `(Int)
-  | .bool => `(Prop)
-  | .set α => do `(Set $(← α.toTerm'))
-  | .prod α β => do `($(← α.toTerm') × $(← β.toTerm'))
+-- def BType.toTerm' : BType → TermElabM Lean.Term
+--   | .int => `(Int)
+--   | .bool => `(Prop)
+--   | .set α => do `(Set $(← α.toTerm'))
+--   | .prod α β => do `($(← α.toTerm') × $(← β.toTerm'))
 
-partial def Term.toTerm : Term → TermElabM Lean.Term
-  | .var v => pure ⟨mkIdent (.mkStr1 v)⟩
-  | .int n =>
-    `(($(if n < 0 then
-      Syntax.mkApp (mkIdent `«term-_») #[⟨mkNode numLitKind #[mkAtom (-n).repr]⟩]
-    else
-      ⟨mkNode numLitKind #[mkAtom n.repr]⟩) : ℤ))
-  | .bool b => return if b then mkIdent ``True else mkIdent ``False
-  | .maplet x y => do `(($(← x.toTerm), $(← y.toTerm)))
-  | .add x y => do `($(← x.toTerm) + $(← y.toTerm))
-  | .sub x y => do `($(← x.toTerm) - $(← y.toTerm))
-  | .mul x y => do `($(← x.toTerm) * $(← y.toTerm))
-  | .le x y => do `($(← x.toTerm) ≤ $(← y.toTerm))
-  | .and x y => do `($(← x.toTerm) ∧ $(← y.toTerm))
-  | .or x y => do `($(← x.toTerm) ∨ $(← y.toTerm))
-  | .imp x y => do `($(← x.toTerm) → $(← y.toTerm))
-  | .not x => do `(¬ $(← x.toTerm))
-  | .eq x y => do `($(← x.toTerm) = $(← y.toTerm))
-  | .ℤ => do `(@Set.univ Int)
-  | .𝔹 => do `(@Set.univ Bool)
-  | .mem x S => do `($(← x.toTerm) ∈ $(← S.toTerm))
-  | .collect vs D P => do
-    let vs : List Name := vs.map Name.mkStr1
-    let vs' : List Lean.Term := vs.map (⟨mkIdent ·⟩)
-    let rec f (x : Ident) : List Name → TermElabM Lean.Term := fun
-      | [] => do
-        let vs'' : Lean.Term ← vs'.dropLast.foldrM (init := vs'.getLast!) λ v acc ↦ `(($v, $acc))
-        `($x = $vs'' ∧ $x ∈ $(← D.toTerm) ∧ $(← P.toTerm))
-      | n :: ns => do
-        let n : TSyntax `Lean.Parser.Term.funBinder := mkIdent n
-        `(Exists λ $n ↦ $(← f x ns))
+-- partial def Term.toTerm : Term → TermElabM Lean.Term
+--   | .var v => pure ⟨mkIdent (.mkStr1 v)⟩
+--   | .int n =>
+--     `(($(if n < 0 then
+--       Syntax.mkApp (mkIdent `«term-_») #[⟨mkNode numLitKind #[mkAtom (-n).repr]⟩]
+--     else
+--       ⟨mkNode numLitKind #[mkAtom n.repr]⟩) : ℤ))
+--   | .bool b => return if b then mkIdent ``True else mkIdent ``False
+--   | .maplet x y => do `(($(← x.toTerm), $(← y.toTerm)))
+--   | .add x y => do `($(← x.toTerm) + $(← y.toTerm))
+--   | .sub x y => do `($(← x.toTerm) - $(← y.toTerm))
+--   | .mul x y => do `($(← x.toTerm) * $(← y.toTerm))
+--   | .le x y => do `($(← x.toTerm) ≤ $(← y.toTerm))
+--   | .and x y => do `($(← x.toTerm) ∧ $(← y.toTerm))
+--   | .or x y => do `($(← x.toTerm) ∨ $(← y.toTerm))
+--   | .imp x y => do `($(← x.toTerm) → $(← y.toTerm))
+--   | .not x => do `(¬ $(← x.toTerm))
+--   | .eq x y => do `($(← x.toTerm) = $(← y.toTerm))
+--   | .ℤ => do `(@Set.univ Int)
+--   | .𝔹 => do `(@Set.univ Bool)
+--   | .mem x S => do `($(← x.toTerm) ∈ $(← S.toTerm))
+--   | .collect vs D P => do
+--     let vs : List Name := vs.map Name.mkStr1
+--     let vs' : List Lean.Term := vs.map (⟨mkIdent ·⟩)
+--     let rec f (x : Ident) : List Name → TermElabM Lean.Term := fun
+--       | [] => do
+--         let vs'' : Lean.Term ← vs'.dropLast.foldrM (init := vs'.getLast!) λ v acc ↦ `(($v, $acc))
+--         `($x = $vs'' ∧ $x ∈ $(← D.toTerm) ∧ $(← P.toTerm))
+--       | n :: ns => do
+--         let n : TSyntax `Lean.Parser.Term.funBinder := mkIdent n
+--         `(Exists λ $n ↦ $(← f x ns))
 
-    let y ← mkFreshBinderName
-    -- `(term| {x | ∃ vs…. x = (vs…) ∧ x ∈ $(← D.toTerm) ∧ $(← P.toTerm)})
-    `({ $(mkIdent y):ident | $(← f (mkIdent y) vs) })
-  | .pow S => panic! "a"
-  | .cprod S T => panic! "b"
-  | .union S T => panic! "c"
-  | .inter S T => panic! "d"
-  | .card S => panic! "e"
-  | .app f x => panic! "f"
-  | .lambda vs D P => panic! "g"
-  | .pfun A B => panic! "h"
-  | .min S => panic! "i"
-  | .max S => panic! "j"
-  | .all vs D P => panic! "k"
+--     let y ← mkFreshBinderName
+--     -- `(term| {x | ∃ vs…. x = (vs…) ∧ x ∈ $(← D.toTerm) ∧ $(← P.toTerm)})
+--     `({ $(mkIdent y):ident | $(← f (mkIdent y) vs) })
+--   | .pow S => panic! "a"
+--   | .cprod S T => panic! "b"
+--   | .union S T => panic! "c"
+--   | .inter S T => panic! "d"
+--   | .card S => panic! "e"
+--   | .app f x => panic! "f"
+--   | .lambda vs D P => panic! "g"
+--   | .pfun A B => panic! "h"
+--   | .min S => panic! "i"
+--   | .max S => panic! "j"
+--   | .all vs D P => panic! "k"
 
 def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := do
   let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
@@ -213,24 +201,36 @@ def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := d
   --     let g ← liftMetaM <| mkForallFVars vars g
   --     synthesizeSyntheticMVarsNoPostponing
   --     let g ← Term.ensureHasType (.some <| .sort 0) g
+  --     Meta.check g
   --     let g ← instantiateMVars g
   --     Meta.liftMetaM g.ensureHasNoMVars
-  --     -- Meta.check g
   --     dbg_trace g
   --     return g
   --   | ⟨x, τ⟩ :: xs, vars =>
   --     Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦ f xs (vars.push v)
 
-  let rec f : List (Σ (_ : 𝒱), BType) → TermElabM Lean.Term := fun
-    | [] => goal.toTerm
-    | ⟨x, τ⟩ :: xs => do `(term| ∀ $(⟨mkIdent (.mkStr1 x)⟩) : $(← τ.toTerm'), $(← f xs))
-  let t ← f Γ.entries
-  let g ← instantiateMVars =<< elabTermEnsuringType t (.some (.sort 0)) (catchExPostpone := false)
+  let vars : List (Name × (Array Expr → TermElabM Expr)) :=
+    Γ.entries.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
+  Meta.withLocalDeclsD vars.toArray λ vars ↦ do
+    let g ←
+      goal.toExpr
+        >>= liftMetaM ∘ mkForallFVars vars
+        >>= Term.ensureHasType (.some <| .sort 0)
+    Meta.check g
+    let g ← instantiateMVars g
+    Meta.liftMetaM g.ensureHasNoMVars
+    return g
+
+  -- let rec f : List (Σ (_ : 𝒱), BType) → TermElabM Lean.Term := fun
+  --   | [] => goal.toTerm
+  --   | ⟨x, τ⟩ :: xs => do `(term| ∀ $(⟨mkIdent (.mkStr1 x)⟩) : $(← τ.toTerm'), $(← f xs))
+  -- let t ← f Γ.entries
+  -- let g ← instantiateMVars =<< elabTermEnsuringType t (.some (.sort 0)) (catchExPostpone := false)
 
   -- dbg_trace g
 
-  Meta.check g
-  return g
+  -- Meta.check g
+  -- return g
 
 open Term Elab
 
