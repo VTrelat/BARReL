@@ -258,7 +258,7 @@ def decodeTerm : Xml.Element → Decoder B.Term
         `x<i>` is used for naming fresh variables. We need to account for potential name clashes
         from the POG file.
       -/
-      if s.get! 0 == 'x' then
+      if String.Pos.Raw.get! s 0 == 'x' then
         if let some n := s.drop 1 |>.toNat? then
           modify λ st => { st with env.freshvarsc := max n st.env.freshvarsc }
       let typref := (a.get! "typref").toNat!

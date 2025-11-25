@@ -57,9 +57,7 @@ elab_rules : command
 
   pure .unit
 
-
 pog_discharger "specs/Nat.pog"
 next
-  apply True.intro
-next
-  rfl
+  intro x
+  admit
