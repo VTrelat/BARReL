@@ -4,31 +4,37 @@ namespace B
 open Std Lean
 
 def BType.toExpr : BType → Expr
-  | .int => Expr.const ``Int []
-  | .bool => Expr.const ``Bool []
-  | .set α => Expr.app (Expr.const ``Set []) (α.toExpr)
-  | .prod α β => Expr.app (Expr.app (Expr.const ``Prod []) α.toExpr) β.toExpr
+  | .int => .const ``Int []
+  | .bool => .sort .zero
+  | .set α => mkApp (.const ``Set []) (α.toExpr)
+  | .prod α β => mkApp2 (.const ``Prod []) α.toExpr β.toExpr
 
-def Term.toExpr (vs : HashMap String Expr): Term → Expr
-  | .int n =>
-    if n >= 0 then
-      Expr.lit (Literal.natVal n.toNat)
-    else
-      panic! "not implemented"
-      -- Expr.app (.const ?? []) (Literal.natVal (-n).toNat)
-  | .le x y => panic! "not implemented"
-  | .var v => vs.get! v
-  | .bool b => panic! "not implemented"
-  | .maplet x y => panic! "not implemented"
-  | .add x y => panic! "not implemented"
-  | .sub x y => panic! "not implemented"
-  | .mul x y => panic! "not implemented"
-  | .and x y => panic! "not implemented"
-  | .not x => panic! "not implemented"
-  | .eq x y => panic! "not implemented"
-  | .ℤ => panic! "not implemented"
-  | .𝔹 => panic! "not implemented"
-  | .mem x S => panic! "not implemented"
+def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
+  | .var v => return vs.get! v
+  | .int n => return mkIntLit n
+  | .le x y => mkIntLE <$> x.toExpr vs <*> y.toExpr vs
+  | .bool b =>
+    return .const (if b then ``True else ``False) []
+  | .maplet x y =>
+    mkApp2 (Expr.const ``Prod.mk [0, 0]) <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .add x y => mkIntAdd <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .sub x y => mkIntSub <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .mul x y => mkIntMul <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .and x y => mkAnd <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .not x => mkNot <$> (x.toExpr vs)
+  | .eq x y => do
+    let mvar ← mkMVarEx <$> mkFreshMVarId
+    mkApp3 (Expr.const ``Eq [0]) mvar <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .mem x S => do
+    let mvar ← mkMVarEx <$> mkFreshMVarId
+    mkApp5
+      (.const ``Membership.mem [0, 0])
+      mvar
+      (mkApp (.const ``Set []) mvar)
+      (.const ``Set.instMembership [0])
+      <$> (S.toExpr vs) <*> (x.toExpr vs)
+  | .ℤ => return mkApp (.const ``Set.univ [0]) Int.mkType
+  | .𝔹 => return mkApp (.const ``Set.univ [0]) (.sort 0)
   | .collect vs D P => panic! "not implemented"
   | .pow S => panic! "not implemented"
   | .cprod S T => panic! "not implemented"
@@ -46,7 +52,7 @@ def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : MetaM Expr := do
   let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
 
   let rec f : HashMap String Expr → List (Sigma (fun _:𝒱 ↦ BType)) → MetaM Expr
-    | map, [] => Meta.mkForallFVars map.values.toArray (goal.toExpr map)
+    | map, [] => do Meta.mkForallFVars map.values.toArray (←goal.toExpr map)
     | map, ⟨x, τ⟩ :: xs =>
       Meta.withLocalDecl (Name.mkStr1 x) .default τ.toExpr fun v ↦
         f (map.insert x v) xs
