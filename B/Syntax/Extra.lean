@@ -4,14 +4,14 @@ import Extra.Prettifier
 namespace B
 
 -- Disjunction
-@[match_pattern]
-def Term.or (x y : Term) := ¬ᴮ ((¬ᴮ x) ∧ᴮ (¬ᴮ y))
-infixl:40 " ∨ᴮ " => Term.or
+-- @[match_pattern]
+-- def Term.or (x y : Term) := ¬ᴮ ((¬ᴮ x) ∧ᴮ (¬ᴮ y))
+-- infixl:40 " ∨ᴮ " => Term.or
 
 -- Implication
-@[match_pattern]
-def Term.imp (x y : Term) := (¬ᴮ x) ∨ᴮ y
-infixr:20 " ⇒ᴮ " => Term.imp
+-- @[match_pattern]
+-- def Term.imp (x y : Term) := (¬ᴮ x) ∨ᴮ y
+-- infixr:20 " ⇒ᴮ " => Term.imp
 -- Equivalence
 @[match_pattern]
 def Term.iff (x y : Term) := (x ⇒ᴮ y) ∧ᴮ (y ⇒ᴮ x)
@@ -100,6 +100,8 @@ def subst (x : 𝒱) (e t : Term) : Term :=
   | .eq p q => .eq (subst x e p) (subst x e q)
   | .not p => .not (subst x e p)
   | .and p q => .and (subst x e p) (subst x e q)
+  | .or p q => .or (subst x e p) (subst x e q)
+  | .imp p q => .imp (subst x e p) (subst x e q)
   | .mul a b => .mul (subst x e a) (subst x e b)
   | .add a b => .add (subst x e a) (subst x e b)
   | .sub a b => .sub (subst x e a) (subst x e b)

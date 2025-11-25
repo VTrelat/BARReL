@@ -61,6 +61,3 @@ pog_discharger "specs/Nat.pog"
 next
   intro x
   admit
-
-set_option pp.rawOnError true
-#print Initialisation_0

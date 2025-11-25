@@ -16,6 +16,8 @@ inductive Term where
   | le (x y : Term)
   -- logic
   | and (x y : Term)
+  | or (x y : Term)
+  | imp (x y : Term)
   | not (x : Term)
   | eq (x y : Term)
   -- sets
@@ -57,12 +59,14 @@ infixl:85 " ∩ᴮ " => Term.inter
 prefix:20 "@ᴮ" => Term.app
 infixl:90 " ⇸ᴮ " => Term.pfun
 notation:90 "|" S "|ᴮ" => Term.card S
+infixr:20 " ⇒ᴮ " => Term.imp
+infixl:40 " ∨ᴮ " => Term.or
 
 def fv : Term → List 𝒱
   | .var v => [v]
   | .int _ => []
   | .bool _ => []
-  | .maplet x y | .add x y | .sub x y | .mul x y | .and x y | .le x y | .eq x y => fv x ++ fv y
+  | .maplet x y | .add x y | .sub x y | .mul x y | .and x y | .le x y | .eq x y | .or x y | .imp x y => fv x ++ fv y
   | .not x => fv x
   | .ℤ => []
   | .𝔹 => []

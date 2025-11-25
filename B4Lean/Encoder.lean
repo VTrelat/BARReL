@@ -24,6 +24,8 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
   | .sub x y => mkIntSub <$> (x.toExpr vs) <*> (y.toExpr vs)
   | .mul x y => mkIntMul <$> (x.toExpr vs) <*> (y.toExpr vs)
   | .and x y => mkAnd <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .or x y => mkOr <$> (x.toExpr vs) <*> (y.toExpr vs)
+  | .imp x y => panic! "not implemented"
   | .not x => mkNot <$> (x.toExpr vs)
   | .eq x y => do
     let mvar ← mkMVarEx <$> mkFreshMVarId
@@ -34,7 +36,7 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
       (.const ``Membership.mem [0, 0])
       mτ?
       (mkApp (.const ``Set [0]) mτ?)
-      (.const ``Set.instMembership [0])
+      (mkApp (.const ``Set.instMembership [0]) mτ?)
       <$> (S.toExpr vs) <*> (x.toExpr vs)
   | .ℤ => return mkApp (.const ``Set.univ [0]) Int.mkType
   | .𝔹 => return mkApp (.const ``Set.univ [0]) (.sort 0)
@@ -61,7 +63,7 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
                 (.const ``Membership.mem [0, 0])
                 mτ?
                 (mkApp (.const ``Set [0]) mτ?)
-                (.const ``Set.instMembership [0])
+                (mkApp (.const ``Set.instMembership [0]) mτ?)
                 (←D.toExpr vs) xvec
             -- x̄ = xs'
             let eq : Expr := mkApp3 (Expr.const ``Eq [0]) mτ? xvec xs'
