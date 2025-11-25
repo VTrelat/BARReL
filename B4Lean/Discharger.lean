@@ -20,7 +20,7 @@ elab_rules : command
   let pog ← readPOG (System.FilePath.mk path.getString) |>.propagateError
   let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
 
-  let goals ← liftTermElabM <| Meta.liftMetaM pogState.env.mkGoal
+  let goals ← liftTermElabM pogState.env.mkGoal
   let goals := goals.toArray
 
   let mut i := 0
@@ -57,7 +57,13 @@ elab_rules : command
 
   pure .unit
 
+set_option trace.b4lean.pog true
+
 pog_discharger "specs/Nat.pog"
 next
-  intro x
+  rintro x -- ⟨_, rfl, _, _, _⟩
   admit
+
+set_option pp.rawOnError true in
+set_option pp.all true in
+#print Initialisation_0
