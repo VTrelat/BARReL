@@ -25,7 +25,7 @@ partial def Term.toExpr (vs : HashMap String Expr) : Term → MetaM Expr
   | .mul x y => mkIntMul <$> (x.toExpr vs) <*> (y.toExpr vs)
   | .and x y => mkAnd <$> (x.toExpr vs) <*> (y.toExpr vs)
   | .or x y => mkOr <$> (x.toExpr vs) <*> (y.toExpr vs)
-  | .imp x y => panic! "not implemented"
+  | .imp x y => mkForall `_ .default <$> x.toExpr vs <*> y.toExpr vs
   | .not x => mkNot <$> (x.toExpr vs)
   | .eq x y => do
     let mvar ← mkMVarEx <$> mkFreshMVarId
@@ -102,7 +102,7 @@ def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : MetaM Expr := do
       Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦
         f (map.insert x v) xs
 
-  f ∅ Γ.entries
+  instantiateMVars =<< f ∅ Γ.entries
 
 open Term Elab
 
