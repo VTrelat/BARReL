@@ -149,26 +149,88 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .max S => panic! "not implemented"
   | .all vs D P => panic! "not implemented"
 
+def BType.toTerm' : BType → TermElabM Lean.Term
+  | .int => `(Int)
+  | .bool => `(Prop)
+  | .set α => do `(Set $(← α.toTerm'))
+  | .prod α β => do `($(← α.toTerm') × $(← β.toTerm'))
+
+partial def Term.toTerm : Term → TermElabM Lean.Term
+  | .var v => pure ⟨mkIdent (.mkStr1 v)⟩
+  | .int n =>
+    `(($(if n < 0 then
+      Syntax.mkApp (mkIdent `«term-_») #[⟨mkNode numLitKind #[mkAtom (-n).repr]⟩]
+    else
+      ⟨mkNode numLitKind #[mkAtom n.repr]⟩) : ℤ))
+  | .bool b => return if b then mkIdent ``True else mkIdent ``False
+  | .maplet x y => do `(($(← x.toTerm), $(← y.toTerm)))
+  | .add x y => do `($(← x.toTerm) + $(← y.toTerm))
+  | .sub x y => do `($(← x.toTerm) - $(← y.toTerm))
+  | .mul x y => do `($(← x.toTerm) * $(← y.toTerm))
+  | .le x y => do `($(← x.toTerm) ≤ $(← y.toTerm))
+  | .and x y => do `($(← x.toTerm) ∧ $(← y.toTerm))
+  | .or x y => do `($(← x.toTerm) ∨ $(← y.toTerm))
+  | .imp x y => do `($(← x.toTerm) → $(← y.toTerm))
+  | .not x => do `(¬ $(← x.toTerm))
+  | .eq x y => do `($(← x.toTerm) = $(← y.toTerm))
+  | .ℤ => do `(@Set.univ Int)
+  | .𝔹 => do `(@Set.univ Bool)
+  | .mem x S => do `($(← x.toTerm) ∈ $(← S.toTerm))
+  | .collect vs D P => do
+    let vs : List Name := vs.map Name.mkStr1
+    let vs' : List Lean.Term := vs.map (⟨mkIdent ·⟩)
+    let rec f (x : Ident) : List Name → TermElabM Lean.Term := fun
+      | [] => do
+        let vs'' : Lean.Term ← vs'.dropLast.foldrM (init := vs'.getLast!) λ v acc ↦ `(($v, $acc))
+        `($x = $vs'' ∧ $x ∈ $(← D.toTerm) ∧ $(← P.toTerm))
+      | n :: ns => do
+        let n : TSyntax `Lean.Parser.Term.funBinder := mkIdent n
+        `(Exists λ $n ↦ $(← f x ns))
+
+    let y ← mkFreshBinderName
+    -- `(term| {x | ∃ vs…. x = (vs…) ∧ x ∈ $(← D.toTerm) ∧ $(← P.toTerm)})
+    `({ $(mkIdent y):ident | $(← f (mkIdent y) vs) })
+  | .pow S => panic! "a"
+  | .cprod S T => panic! "b"
+  | .union S T => panic! "c"
+  | .inter S T => panic! "d"
+  | .card S => panic! "e"
+  | .app f x => panic! "f"
+  | .lambda vs D P => panic! "g"
+  | .pfun A B => panic! "h"
+  | .min S => panic! "i"
+  | .max S => panic! "j"
+  | .all vs D P => panic! "k"
+
 def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := do
   let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
 
-  dbg_trace "Encoding {goal}"
+  -- dbg_trace "Encoding {goal}"
 
-  let rec f : List (Σ (_ : 𝒱), BType) → Array Expr → TermElabM Expr
-    | [], vars => do
-      let g ← goal.toExpr
-      let g ← liftMetaM <| mkForallFVars vars g
-      synthesizeSyntheticMVarsNoPostponing
-      let g ← instantiateMVars g
-      let g ← Term.ensureHasType (.some <| .sort 0) g
-      -- Meta.check g
-      dbg_trace g
-      return g
-    | ⟨x, τ⟩ :: xs, vars =>
-      Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦ f xs (vars.push v)
+  -- let rec f : List (Σ (_ : 𝒱), BType) → Array Expr → TermElabM Expr
+  --   | [], vars => do
+  --     let g ← goal.toExpr
+  --     let g ← liftMetaM <| mkForallFVars vars g
+  --     synthesizeSyntheticMVarsNoPostponing
+  --     let g ← Term.ensureHasType (.some <| .sort 0) g
+  --     let g ← instantiateMVars g
+  --     Meta.liftMetaM g.ensureHasNoMVars
+  --     -- Meta.check g
+  --     dbg_trace g
+  --     return g
+  --   | ⟨x, τ⟩ :: xs, vars =>
+  --     Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦ f xs (vars.push v)
 
-  f Γ.entries #[]
+  let rec f : List (Σ (_ : 𝒱), BType) → TermElabM Lean.Term := fun
+    | [] => goal.toTerm
+    | ⟨x, τ⟩ :: xs => do `(term| ∀ $(⟨mkIdent (.mkStr1 x)⟩) : $(← τ.toTerm'), $(← f xs))
+  let t ← f Γ.entries
+  let g ← instantiateMVars =<< elabTermEnsuringType t (.some (.sort 0)) (catchExPostpone := false)
 
+  -- dbg_trace g
+
+  Meta.check g
+  return g
 
 open Term Elab
 

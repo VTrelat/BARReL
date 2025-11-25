@@ -17,7 +17,8 @@ syntax (name := pog_discharger) "pog_discharger " str ppSpace withPosition((colE
 elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
   -- let pogPath ← mch2pog (System.FilePath.mk path.getString)
-  let pog ← readPOG (System.FilePath.mk path.getString) |>.propagateError
+  let path := System.FilePath.mk path.getString
+  let pog ← readPOG path |>.propagateError
   let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
 
   let goals ← liftTermElabM pogState.env.mkGoal
@@ -26,6 +27,7 @@ elab_rules : command
   let mut i := 0
 
   let ns ← getCurrNamespace
+  let .some name := path.fileStem | throwError "what?"
 
   for step in steps do
     match step with
@@ -35,14 +37,14 @@ elab_rules : command
 
       let ⟨n, g⟩ := goals[i]!
       let e ← liftTermElabM do
-        let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
+        let e ← elabTerm (← `(term| by skip; · $tac)) (.some g) (catchExPostpone := false)
         synthesizeSyntheticMVarsNoPostponing
         instantiateMVars e
 
       let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
 
       let decl : Declaration := .thmDecl {
-        name := ns.str s!"{n}_{i}"
+        name := ns |>.str name |>.str s!"{n}_{i}"
         levelParams := levelParams.toList
         type := g
         value := e
@@ -62,11 +64,26 @@ elab_rules : command
 
 set_option trace.b4lean.pog true
 
+pog_discharger "specs/Counter.pog"
+next
+  grind
+next
+  grind
+next
+  rintro x ⟨_, rfl, _, _, _⟩ _ _
+  exists x + 1
+  grind
+next
+  grind
+
 pog_discharger "specs/Nat.pog"
 next
-  rintro x ⟨_, rfl, _, _, _⟩
-  assumption
+  grind
 
-set_option pp.rawOnError true in
--- set_option pp.all true in
-#print Initialisation_0
+pog_discharger "specs/Eval.pog"
+
+#check Counter.Initialisation_0
+#check Counter.Initialisation_1
+#check Counter.Operation_inc_2
+#check Counter.Operation_inc_3
+#check Nat.Initialisation_0
