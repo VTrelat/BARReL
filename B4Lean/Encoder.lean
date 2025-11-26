@@ -6,6 +6,32 @@ open Std Lean Meta Elab Term
 
 namespace B
 
+def varIsReserved : String → Prop
+  | "NAT" | "NAT1" | "NATURAL" | "NATURAL1"
+  | "INT"
+  | "FLOAT"
+  | "REAL"
+    => True
+  | _ => False
+
+instance : DecidablePred varIsReserved := by
+  intro v
+  unfold varIsReserved
+  split <;>
+  first
+  | exact instDecidableTrue
+  | exact instDecidableFalse
+
+open Lean Elab Builtins
+
+def reservedVarToExpr : String → TermElabM Lean.Expr
+  | "NAT" => return mkConst ``NAT
+  | "NAT1" => return mkConst ``NAT1
+  | "NATURAL" => return mkConst ``NATURAL
+  | "NATURAL1" => return mkConst ``NATURAL1
+  | "INT" => return mkConst ``INT
+  | v => throwError "Variable {v} is not reserved."
+
 def BType.toExpr : BType → Expr
   | .int => Int.mkType
   | .bool => .sort .zero
@@ -44,12 +70,11 @@ private partial def getSetElemType (ty : Expr) : MetaM Expr := do
           loop t' true
   loop ty false
 
-private partial def flattenProdType (ty : Expr) : MetaM (List Expr) := do
-  let ty ← Meta.whnf ty
-  match ty with
-  | .app (.app (.const ``Prod _) α) β =>
-      return (← flattenProdType α) ++ (← flattenProdType β)
-  | _ => return [ty]
+private partial def flattenProdType : Expr → Nat → MetaM (List Expr)
+  | .app (.app (.const ``Prod _) α) β, n + 1 => do
+      return (←flattenProdType α n).concat β
+  | ty, _ + 1 => throwError "Expected a product type, got {ty}"
+  | ty, 0 => return [ty]
 
 private partial def mkProdTuple : List Expr → MetaM Expr
   | [] => throwError "mkProdTuple: empty tuple"
@@ -67,7 +92,7 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .var v =>
     -- match v with
     -- | _ => lookupVar v
-    if Builtins.varIsReserved v then
+    if varIsReserved v then
       reservedVarToExpr v
     else
       lookupVar v
@@ -94,8 +119,8 @@ partial def Term.toExpr : Term → TermElabM Expr
     let S' ← S.toExpr
     let x' ← x.toExpr
     mkAppM ``Membership.mem #[S', x']
-  | .ℤ => return mkApp (.const ``Set.univ [0]) Int.mkType
-  | .𝔹 => return mkApp (.const ``Set.univ [0]) (.sort 0)
+  | .ℤ => return mkApp (mkConst ``Set.univ [0]) Int.mkType
+  | .𝔹 => return mkApp (mkConst ``Set.univ [0]) (.sort 0)
   | .collect xs D P => do
     let x ← mkFreshBinderName
 
@@ -105,7 +130,7 @@ partial def Term.toExpr : Term → TermElabM Expr
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
-      let rec f : List 𝒱 → TermElabM Expr
+      let rec collect_aux : List 𝒱 → TermElabM Expr
         | [] => do
           -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
@@ -124,12 +149,50 @@ partial def Term.toExpr : Term → TermElabM Expr
           let lmτ? ← newLMVar
           let mτ? ← newMVar (.some <| .sort lmτ?)
           let lam ← withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
-            (liftMetaM ∘ mkLambdaFVars #[y] =<< f xs)
+            (liftMetaM ∘ mkLambdaFVars #[y] =<< collect_aux xs)
           mkAppM ``Exists #[lam]
 
-      liftMetaM ∘ mkLambdaFVars #[xvec] =<< f xs
+      liftMetaM ∘ mkLambdaFVars #[xvec] =<< collect_aux xs
 
     mkAppM ``setOf #[lam]
+  | .interval lo hi => do
+    let lo' ← lo.toExpr
+    let hi' ← hi.toExpr
+    mkAppM ``Builtins.interval #[lo', hi']
+  | .all xs D P => do
+    let x ← mkFreshBinderName
+
+    let D' ← D.toExpr
+    let DTy ← inferType D'
+    let α ← liftMetaM <| getSetElemType DTy
+
+    let lam ← withLocalDeclD x α fun xvec ↦ do
+
+      let rec all_aux : List 𝒱 → TermElabM Expr
+        | [] => do
+          -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
+          let xs' ← do
+            xs.dropLast.foldrM (init := ← lookupVar xs.getLast!) fun xᵢ acc ↦ do
+              mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
+          -- x̄ = xs'
+          let eq : Expr ← mkEq xvec xs'
+          -- x̄ ∈ D
+          let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
+          -- x̄ = xs' → x̄ ∈ D → P[x̄/vs]
+          return mkForall `_ .default eq <| mkForall `_ .default memD <| (← P.toExpr)
+        | x :: xs => do
+          -- TODO: to avoid generating this metavariable, we can flatten the
+          -- type of `D` (which we know will be a tuple) into its individual
+          -- `|xs|` components
+          let lmτ? ← newLMVar
+          let mτ? ← newMVar (.some <| .sort lmτ?)
+          let lam ← withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
+            (liftMetaM ∘ mkForallFVars #[y] =<< all_aux xs)
+          return lam
+
+      liftMetaM ∘ mkForallFVars #[xvec] =<< all_aux xs
+
+    return lam
   | .pow S => panic! "not implemented (pow)"
   | .cprod S T => panic! "not implemented (cprod)"
   | .union S T => panic! "not implemented (union)"
@@ -138,9 +201,9 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .app f x => panic! "not implemented (app)"
   | .lambda vs D P => panic! "not implemented (lambda)"
   | .pfun A B => panic! "not implemented (pfun)"
+  | .tfun A B => panic! "not implemented (pfun)"
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
-  | .all vs D P => panic! "not implemented (all)"
   | .exists vs D P => panic! "not implemented (exists)"
 
 -- def BType.toTerm' : BType → TermElabM Lean.Term
@@ -199,21 +262,7 @@ partial def Term.toExpr : Term → TermElabM Expr
 def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := do
   let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
 
-  -- dbg_trace "Encoding {goal}"
-
-  -- let rec f : List (Σ (_ : 𝒱), BType) → Array Expr → TermElabM Expr
-  --   | [], vars => do
-  --     let g ← goal.toExpr
-  --     let g ← liftMetaM <| mkForallFVars vars g
-  --     synthesizeSyntheticMVarsNoPostponing
-  --     let g ← Term.ensureHasType (.some <| .sort 0) g
-  --     Meta.check g
-  --     let g ← instantiateMVars g
-  --     Meta.liftMetaM g.ensureHasNoMVars
-  --     dbg_trace g
-  --     return g
-  --   | ⟨x, τ⟩ :: xs, vars =>
-  --     Meta.withLocalDeclD (Name.mkStr1 x) τ.toExpr fun v ↦ f xs (vars.push v)
+  trace[b4lean.pog] m!"Encoding: {goal}"
 
   let vars : List (Name × (Array Expr → TermElabM Expr)) :=
     Γ.entries.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
@@ -222,21 +271,11 @@ def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := d
       goal.toExpr
         >>= liftMetaM ∘ mkForallFVars vars
         >>= Term.ensureHasType (.some <| .sort 0)
+    trace[b4lean.pog] m!"Pre-check goal: {indentExpr g}"
     Meta.check g
     let g ← instantiateMVars g
     Meta.liftMetaM g.ensureHasNoMVars
     return g
-
-  -- let rec f : List (Σ (_ : 𝒱), BType) → TermElabM Lean.Term := fun
-  --   | [] => goal.toTerm
-  --   | ⟨x, τ⟩ :: xs => do `(term| ∀ $(⟨mkIdent (.mkStr1 x)⟩) : $(← τ.toTerm'), $(← f xs))
-  -- let t ← f Γ.entries
-  -- let g ← instantiateMVars =<< elabTermEnsuringType t (.some (.sort 0)) (catchExPostpone := false)
-
-  -- dbg_trace g
-
-  -- Meta.check g
-  -- return g
 
 open Term Elab
 

@@ -32,16 +32,17 @@ inductive Term where
   | union (S T : Term)
   | inter (S T : Term)
   | card (S : Term)
+  | interval (lo hi : Term)
   -- functions
   | app (f x : Term)
   | lambda (vs : List 𝒱) (D P : Term)
   | pfun (A B : Term)
-  -- | tfun (A B : Term)
+  | tfun (A B : Term)
   | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
   | max (S : Term)
   -- quantifiers
   | all (vs : List 𝒱) (D P : Term)
-  | exists (vs : List 𝒱) (D P : Term)
+  | «exists» (vs : List 𝒱) (D P : Term)
   deriving DecidableEq, Inhabited
 
 infixl:65 " ↦ᴮ " => Term.maplet
@@ -62,6 +63,7 @@ infixl:90 " ⇸ᴮ " => Term.pfun
 notation:90 "|" S "|ᴮ" => Term.card S
 infixr:20 " ⇒ᴮ " => Term.imp
 infixl:40 " ∨ᴮ " => Term.or
+infix:50 " ..ᴮ " => Term.interval
 
 abbrev MAXINT : Int := 2147483647
 abbrev MININT : Int := -2147483647

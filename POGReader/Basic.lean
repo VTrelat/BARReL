@@ -67,6 +67,7 @@ def B.Term.getType : Term → Decoder B.BType
   | .ℤ => return .set .int
   | .𝔹 => return .set .bool
   | .collect _ D _ => return ← D.getType
+  | .interval _ _ => return .set .int
   | .pow S => return .set (← S.getType)
   | .cprod S T => do
     match ← S.getType, ← T.getType with
@@ -84,4 +85,5 @@ def B.Term.getType : Term → Decoder B.BType
     | .set δ => return .set (.prod δ (← P.getType))
     | τ => throw s!"B.Term.getType:lambda: Expected a set type, got {τ}"
   | .pfun A B => return .set (.prod (← A.getType) (← B.getType))
+  | .tfun A B => return .set (.prod (← A.getType) (← B.getType))
   | .min S | .max S => return ← S.getType

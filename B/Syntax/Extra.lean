@@ -61,6 +61,7 @@ partial def Term.pretty (b : Bool) : Term -> Nat -> Std.Format
   | .mem x S => «infixl» (Term.pretty b) 120 "∈ᴮ" x S
   | .brel x y => «infix» (Term.pretty b) 125 "↔" x y
   | .pfun A B => «infixr» (Term.pretty b) 125 "⇸ᴮ" A B
+  | .tfun A B => «infixr» (Term.pretty b) 125 "→ᴮ" A B
   | .neq x y => «infix» (Term.pretty b) 160 "≠ᴮ" x y
   | .le x y => «infixl» (Term.pretty b) 160 "≤ᴮ" x y
   | .inter x y => «infixl» (Term.pretty b) 160 "∩ᴮ" x y
@@ -80,6 +81,7 @@ partial def Term.pretty (b : Bool) : Term -> Nat -> Std.Format
   | .min S => «prefix» (Term.pretty b) 290 "min " S
   | .max S => «prefix» (Term.pretty b) 290 "max " S
   | .card S => λ _ => "‖" ++ Term.pretty b S 0 ++ "‖"
+  | .interval lo hi => «infix» (Term.pretty b) 50 "..ᴮ" lo hi
 
 
 -- t[x := e]
@@ -91,6 +93,7 @@ def subst (x : 𝒱) (e t : Term) : Term :=
   | .int _
   | .bool _ => t
   | .pfun A B => .pfun (subst x e A) (subst x e B)
+  | .tfun A B => .tfun (subst x e A) (subst x e B)
   | .app f a => .app (subst x e f) (subst x e a)
   | .inter A B => .inter (subst x e A) (subst x e B)
   | .union A B => .union (subst x e A) (subst x e B)
@@ -118,6 +121,7 @@ def subst (x : 𝒱) (e t : Term) : Term :=
     if x ∈ vs then .all vs (subst x e D) P else .all vs (subst x e D) (subst x e P)
   | .exists vs D P =>
     if x ∈ vs then .exists vs (subst x e D) P else .exists vs (subst x e D) (subst x e P)
+  | .interval lo hi => .interval (subst x e lo) (subst x e hi)
 
 notation t:max "[" x " := " e:min "]" => subst x e t
 

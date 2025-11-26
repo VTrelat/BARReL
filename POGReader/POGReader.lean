@@ -250,10 +250,11 @@ def decodeTerm : Xml.Element → Decoder B.Term
     | "MININT" => return .MININT
     | "BOOL" => return .𝔹
     | "INTEGER" => return .ℤ
-    | "NATURAL" => .Collect .ℤ (pure ∘ ((.int 0) ≤ᴮ ·))
-    -- | "NAT" => .Collect .ℤ (pure ∘ (λ v => (.int 0 ≤ᴮ v) ∧ᴮ (v ≤ᴮ .MAXINT)))
+    | "NATURAL" => return .var "NATURAL"
+    | "NATURAL1" => return .var "NATURAL1"
     | "NAT" => return .var "NAT"
-    | "INT" => .Collect .ℤ (pure ∘ (λ v => (.MININT ≤ᴮ v) ∧ᴮ (v ≤ᴮ .MAXINT)))
+    | "NAT1" => return .var "NAT1"
+    | "INT" => return .var "INT"
     | s =>
       /-
         `x<i>` is used for naming fresh variables. We need to account for potential name clashes

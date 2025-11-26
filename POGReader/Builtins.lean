@@ -60,9 +60,9 @@ def B.Term.tot_on (D : Term) (σ : BType) (f : Term) : Decoder Term := do
 def B.Term.tot (τ σ : BType) (f : Term) : Decoder Term := do
   .eq τ.toTerm <$> (B.Term.dom τ σ f)
 
-def B.Term.tfun (A B : Term) : Decoder Term :=
-  .Collect (A ⇸ᴮ B) fun f => .All A fun x => .Exists B fun y => return (x ↦ᴮ y) ∈ᴮ f
-infixl:90 " →ᴮ " => B.Term.tfun
+-- def B.Term.tfun (A B : Term) : Decoder Term :=
+--   .Collect (A ⇸ᴮ B) fun f => .All A fun x => .Exists B fun y => return (x ↦ᴮ y) ∈ᴮ f
+-- infixl:90 " →ᴮ " => B.Term.tfun
 
 def B.Term.inj_on (D f : Term) : Decoder Term :=
   .All D <| fun x => .All D <| fun y => return ((@ᴮ f) x =ᴮ (@ᴮ f) y) ⇒ᴮ (x =ᴮ y)
@@ -81,16 +81,14 @@ def B.Term.surjpfun (A B : Term) : Decoder Term :=
 infixl:90 " ⤀ᴮ " => B.Term.surjpfun
 
 def B.Term.injtfun (A B : Term) : Decoder Term := do
-  let tfun ← A →ᴮ B
-  .Collect tfun fun f =>
+  .Collect (A.tfun B) fun f =>
     .All A fun x =>
       .All A fun y =>
           return (@ᴮ f) x =ᴮ (@ᴮ f) y ⇒ᴮ x =ᴮ y
 infixl:90 " ↣ᴮ " => B.Term.injtfun
 
 def B.Term.surjtfun (A B : Term) : Decoder Term := do
-  let tfun ← A →ᴮ B
-  .Collect tfun fun f => .All B fun y => .Exists A fun x => return x ↦ᴮ y ∈ᴮ f
+  .Collect (A.tfun B) fun f => .All B fun y => .Exists A fun x => return x ↦ᴮ y ∈ᴮ f
 infixl:90 " ↠ᴮ " => B.Term.surjtfun
 
 def B.Term.surj_on (D : Term) (σ : BType) (f : Term) : Decoder Term :=
@@ -126,17 +124,15 @@ def B.Term.seq (E : Term) : Decoder Term := do
   let Nat ← Term.Natural
   .Collect (Nat ⇸ᴮ E) fun f => .Exists Nat fun n => do
     let ℐ ← .int 1 ..ᴮ n
-    let tfun ← ℐ →ᴮ E
-    return (f ∈ᴮ tfun)
+    return (f ∈ᴮ (ℐ.tfun E))
 
 def B.Term.seq1 (E : Term) : Decoder Term := do
   let Nat ← Term.Natural
   .Collect (Nat ⇸ᴮ E) fun f => .Exists Nat fun n => do
     let ℐ ← .int 1 ..ᴮ n
-    let tfun ← ℐ →ᴮ E
     let x := s!"x{← incrementFreshVarC}"
     let y := s!"y{← incrementFreshVarC}"
-    return (f ∈ᴮ tfun ∧ᴮ .exists [x, y] (Nat ⨯ᴮ E) ((.app f (.var x)) =ᴮ .var y))
+    return (f ∈ᴮ (ℐ.tfun E) ∧ᴮ .exists [x, y] (Nat ⨯ᴮ E) ((.app f (.var x)) =ᴮ .var y))
 
 def B.Term.iseq (E : Term) : Decoder Term := do
   let Nat ← Term.Natural
