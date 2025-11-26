@@ -18,7 +18,7 @@ private def Lean.Xml.Content.kind : Content → String
 ----------------------
 
 namespace B.POG
-  variable (vars : IO.Ref (Array (String × Syntax.Typ)))
+  variable (vars : IO.Ref (Std.HashMap String Syntax.Typ))
 
   private partial def parseType : Lean.Xml.Element → IO Syntax.Typ
     | ⟨"Id", attrs, _⟩ => do
@@ -131,7 +131,7 @@ namespace B.POG
 
       let typref := attrs.get! "typref" |>.toNat!
       let name := attrs.get! "value" ++ attrs.getD "suffix" ""
-      vars.modifyGet λ vars ↦ (name, vars.push (name, types.get! typref))
+      vars.modifyGet λ vars ↦ (name, vars.insert name (types.get! typref))
     | _ => unreachable!
 
   private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO Syntax.Term
@@ -142,7 +142,7 @@ namespace B.POG
 
       let typref := (attrs.get! "typref").toNat!
       let .some ty := types.get? typref | throwError s!"Type ref {typref} not found"
-      return .num (attrs.get! "typref").toInt! ty
+      return .num (attrs.get! "value").toInt! ty
     | ⟨"Boolean_Literal", attrs, nodes⟩ => panic! "TODO"
     | ⟨"STRING_Literal", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Real_Literal", attrs, nodes⟩ => panic! "TODO"
@@ -381,16 +381,30 @@ namespace B.POG
           | node => throwError s!"Unexpected node kind {node.kind}"
         obligations := obligations.push (← parseObligation vars nodes typeInfos)
 
-      return { defines, obligations, vars := ← vars.get /-, typeInfos -/ }
+      let vars ← vars.get
+      -- NOTE: remove all B builtins
+      let vars := vars
+        |>.erase "MAXINT"
+        |>.erase "MININT"
+        |>.erase "BOOL"
+        |>.erase "INTEGER"
+        |>.erase "NATURAL"
+        |>.erase "NATURAL1"
+        |>.erase "NAT"
+        |>.erase "NAT1"
+        |>.erase "INT"
+        |>.erase "REAL"
+
+      return { defines, obligations, vars := vars.toArray /-, typeInfos -/ }
     | ⟨name, _, _⟩ => throwError s!"Unexpected root element '{name}'"
 
   omit vars in
   def parse (path : System.FilePath) : IO Schema.ProofObligations := do
-    let vars ← IO.mkRef #[]
+    let vars ← IO.mkRef ∅
 
     IO.FS.readFile path
       >>= IO.ofExcept ∘ Lean.Xml.parse
       >>= parseProofObligations vars ∘ removeEmptyDeep
 end B.POG
 
-#eval B.POG.parse ("specs" / "Counter.pog")
+-- #eval B.POG.parse ("specs" / "Counter.pog")

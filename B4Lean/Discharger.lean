@@ -3,7 +3,7 @@ import Lean.Elab.BuiltinTerm
 import Mathlib.Util.WhatsNew
 import B4Lean.Encoder
 
-import POGReader.POGReader
+import POGReader_.Basic
 import B4Lean.Elab
 
 open Lean Parser Elab Term Command
@@ -18,11 +18,12 @@ elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
   -- let pogPath ← mch2pog (System.FilePath.mk path.getString)
   let path := System.FilePath.mk path.getString
-  let pog ← readPOG path |>.propagateError
-  let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
+  let goals ← B.POG.parseAndExtractGoals path
+  -- let pog ← readPOG path |>.propagateError
+  -- let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
 
-  let goals ← liftTermElabM pogState.env.mkGoal
-  let goals := goals.toArray
+  -- let goals ← liftTermElabM pogState.env.mkGoal
+  -- let goals := goals.toArray
 
   let mut i := 0
 
@@ -35,7 +36,10 @@ elab_rules : command
       if i = goals.size then
         throwErrorAt step s!"No more goals to be discharged."
 
-      let ⟨n, g⟩ := goals[i]!
+      let g := goals[i]!
+      let g_name := g.name
+
+      let g ← liftTermElabM g.toExpr
       let e ← liftTermElabM do
         let e ← elabTerm (← `(term| by skip; · $tac)) (.some g) (catchExPostpone := false)
         synthesizeSyntheticMVarsNoPostponing
@@ -44,7 +48,7 @@ elab_rules : command
       let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
 
       let decl : Declaration := .thmDecl {
-        name := ns |>.str name |>.str s!"{n}_{i}"
+        name := ns |>.str name |>.str s!"{g_name}_{i}"
         levelParams := levelParams.toList
         type := g
         value := e
@@ -62,9 +66,9 @@ elab_rules : command
 
   pure .unit
 
-set_option trace.b4lean.pog true
+-- set_option trace.b4lean.pog true
 
-open B
+open B Builtins
 
 pog_discharger "specs/Counter.pog"
 next

@@ -1,4 +1,5 @@
-import B.Environment
+-- import B.Environment
+import POGReader_.Basic
 import B4Lean.Meta
 import B4Lean.Builtins
 
@@ -32,10 +33,11 @@ def reservedVarToExpr : String → TermElabM Lean.Expr
   | "INT" => return mkConst ``INT
   | v => throwError "Variable {v} is not reserved."
 
-def BType.toExpr : BType → Expr
+def Syntax.Typ.toExpr : Typ → Expr
   | .int => Int.mkType
   | .bool => .sort .zero
-  | .set α => mkApp (.const ``Set [0]) (α.toExpr)
+  | .real => mkConst ``Real
+  | .pow α => mkApp (.const ``Set [0]) (α.toExpr)
   | .prod α β => mkApp2 (.const ``Prod [0, 0]) α.toExpr β.toExpr
 
 private def newMVar (type? : Option Lean.Expr) : MetaM Expr := do
@@ -88,7 +90,7 @@ private def lookupVar (x : 𝒱) : TermElabM Expr := do
     | throwError "No variable {x} found in context"
   return e.toExpr
 
-partial def Term.toExpr : Term → TermElabM Expr
+partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
   | .var v =>
     -- match v with
     -- | _ => lookupVar v
@@ -96,8 +98,9 @@ partial def Term.toExpr : Term → TermElabM Expr
       reservedVarToExpr v
     else
       lookupVar v
-  | .int n => return mkIntLit n
+  | .num n ty => return mkIntLit n
   | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
+  | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
   | .bool b =>
     return .const (if b then ``True else ``False) []
   | .maplet x y => do
@@ -127,14 +130,15 @@ partial def Term.toExpr : Term → TermElabM Expr
     let D' ← D.toExpr
     let DTy ← inferType D'
     let α ← liftMetaM <| getSetElemType DTy
+    -- α = (α₁ × …) × αₙ
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
-      let rec collect_aux : List 𝒱 → TermElabM Expr
+      let rec collect_aux : List (String × Syntax.Typ) → TermElabM Expr
         | [] => do
           -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
-            xs.dropLast.foldrM (init := ← lookupVar xs.getLast!) fun xᵢ acc ↦ do
+            xs[:xs.size-2].foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
               mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
@@ -142,23 +146,18 @@ partial def Term.toExpr : Term → TermElabM Expr
           let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
           -- x̄ = xs' ∧ x̄ ∈ D ∧ P[x̄/vs]
           return mkAndN [eq, memD, ← P.toExpr]
-        | x :: xs => do
-          -- TODO: to avoid generating this metavariable, we can flatten the
-          -- type of `D` (which we know will be a tuple) into its individual
-          -- `|xs|` components
-          let lmτ? ← newLMVar
-          let mτ? ← newMVar (.some <| .sort lmτ?)
-          let lam ← withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
+        | ⟨x, t⟩ :: xs => do
+          let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
             (liftMetaM ∘ mkLambdaFVars #[y] =<< collect_aux xs)
           mkAppM ``Exists #[lam]
 
-      liftMetaM ∘ mkLambdaFVars #[xvec] =<< collect_aux xs
+      liftMetaM ∘ mkLambdaFVars #[xvec] =<< collect_aux xs.toList
 
     mkAppM ``setOf #[lam]
-  | .interval lo hi => do
-    let lo' ← lo.toExpr
-    let hi' ← hi.toExpr
-    mkAppM ``Builtins.interval #[lo', hi']
+  -- | .interval lo hi => do
+  --   let lo' ← lo.toExpr
+  --   let hi' ← hi.toExpr
+  --   mkAppM ``Builtins.interval #[lo', hi']
   | .all xs D P => do
     let x ← mkFreshBinderName
 
@@ -168,11 +167,11 @@ partial def Term.toExpr : Term → TermElabM Expr
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
-      let rec all_aux : List 𝒱 → TermElabM Expr
+      let rec all_aux : List (String × Syntax.Typ) → TermElabM Expr
         | [] => do
           -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
-            xs.dropLast.foldrM (init := ← lookupVar xs.getLast!) fun xᵢ acc ↦ do
+            xs[:xs.size-2].foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
               mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
@@ -180,19 +179,15 @@ partial def Term.toExpr : Term → TermElabM Expr
           let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
           -- x̄ = xs' → x̄ ∈ D → P[x̄/vs]
           return mkForall `_ .default eq <| mkForall `_ .default memD <| (← P.toExpr)
-        | x :: xs => do
-          -- TODO: to avoid generating this metavariable, we can flatten the
-          -- type of `D` (which we know will be a tuple) into its individual
-          -- `|xs|` components
-          let lmτ? ← newLMVar
-          let mτ? ← newMVar (.some <| .sort lmτ?)
-          let lam ← withLocalDeclD (Name.mkStr1 x) mτ? fun y =>
+        | ⟨x, t⟩ :: xs => do
+          let lam ← withLocalDeclD (Name.mkStr1 x) t.toExpr fun y =>
             (liftMetaM ∘ mkForallFVars #[y] =<< all_aux xs)
           return lam
 
-      liftMetaM ∘ mkForallFVars #[xvec] =<< all_aux xs
+      liftMetaM ∘ mkForallFVars #[xvec] =<< all_aux xs.toList
 
     return lam
+  | .set xs => panic! "not implemented (set)"
   | .pow S => panic! "not implemented (pow)"
   | .cprod S T => panic! "not implemented (cprod)"
   | .union S T => panic! "not implemented (union)"
@@ -201,7 +196,7 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .app f x => panic! "not implemented (app)"
   | .lambda vs D P => panic! "not implemented (lambda)"
   | .pfun A B => panic! "not implemented (pfun)"
-  | .tfun A B => panic! "not implemented (pfun)"
+  -- | .tfun A B => panic! "not implemented (pfun)"
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
   | .exists vs D P => panic! "not implemented (exists)"
@@ -259,17 +254,17 @@ partial def Term.toExpr : Term → TermElabM Expr
 --   | .max S => panic! "j"
 --   | .all vs D P => panic! "k"
 
-def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := do
-  let goal : Term := sg.hyps.foldr (fun t acc => t ⇒ᴮ acc) sg.goal
+def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
+  let goal : Syntax.Term := sg.hyps.foldr (fun t acc => .imp t acc) sg.goal
 
-  trace[b4lean.pog] m!"Encoding: {goal}"
+  trace[b4lean.pog] s!"Encoding: {repr goal}"
 
-  let vars : List (Name × (Array Expr → TermElabM Expr)) :=
-    Γ.entries.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
-  Meta.withLocalDeclsD vars.toArray λ vars ↦ do
+  let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
+    sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
+  Meta.withLocalDeclsD vars λ vars ↦ do
     let g ←
       goal.toExpr
-        >>= liftMetaM ∘ mkForallFVars vars
+        >>= liftMetaM ∘ mkForallFVars vars (usedOnly := true)
         >>= Term.ensureHasType (.some <| .sort 0)
     trace[b4lean.pog] m!"Pre-check goal: {indentExpr g}"
     Meta.check g
@@ -277,12 +272,12 @@ def SimpleGoal.mkGoal (sg : SimpleGoal) (Γ : TypeContext) : TermElabM Expr := d
     Meta.liftMetaM g.ensureHasNoMVars
     return g
 
-open Term Elab
+-- open Term Elab
 
-def ProofObligation.mkGoal (po : ProofObligation) (Γ : TypeContext) : TermElabM (List Expr) :=
-  po.goals.mapM (fun sg => {sg with hyps := po.defs ++ po.hyps ++ sg.hyps}.mkGoal Γ)
+-- def ProofObligation.mkGoal (po : ProofObligation) (Γ : TypeContext) : TermElabM (List Expr) :=
+--   po.goals.mapM (fun sg => {sg with hyps := po.defs ++ po.hyps ++ sg.hyps}.mkGoal Γ)
 
-def Env.mkGoal (E : B.Env) : TermElabM (List (String × Expr)) :=
-  List.flatten <$> E.po.traverse fun po => ((po.name, ·) <$> ·) <$> po.mkGoal E.context
+-- def Env.mkGoal (E : B.Env) : TermElabM (List (String × Expr)) :=
+--   List.flatten <$> E.po.traverse fun po => ((po.name, ·) <$> ·) <$> po.mkGoal E.context
 
 end B

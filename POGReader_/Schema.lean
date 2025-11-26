@@ -32,6 +32,7 @@ namespace B.Syntax
     | ℤ
     | 𝔹
     -- set operations
+    | set (xs : Array Term)
     | mem (x : Term) (S : Term)
     | collect (vs : Array (String × Typ)) (D P : Term)
     | pow (S : Term)
@@ -49,7 +50,7 @@ namespace B.Syntax
     -- quantifiers
     | all (vs : Array (String × Typ)) (D P : Term)
     | exists (vs : Array (String × Typ)) (D P : Term)
-    deriving DecidableEq, Inhabited, Repr
+    deriving Inhabited, Repr
 end B.Syntax
 
 namespace B.POG.Schema
