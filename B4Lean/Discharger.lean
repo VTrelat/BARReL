@@ -64,21 +64,22 @@ elab_rules : command
 
 set_option trace.b4lean.pog true
 
+open B
+
 pog_discharger "specs/Counter.pog"
 next
   grind
 next
   grind
 next
-  rintro x ⟨_, rfl, _, _, _⟩ _ _
-  exists x + 1
+  rintro x ⟨_, _⟩ _ _
   grind
 next
   grind
 
 pog_discharger "specs/Nat.pog"
 next
-  rintro x ⟨_, rfl, _, _, _⟩
+  rintro x ⟨_, _⟩
   assumption
 
 pog_discharger "specs/Eval.pog"

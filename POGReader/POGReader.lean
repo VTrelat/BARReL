@@ -251,7 +251,8 @@ def decodeTerm : Xml.Element → Decoder B.Term
     | "BOOL" => return .𝔹
     | "INTEGER" => return .ℤ
     | "NATURAL" => .Collect .ℤ (pure ∘ ((.int 0) ≤ᴮ ·))
-    | "NAT" => .Collect .ℤ (pure ∘ (λ v => (.int 0 ≤ᴮ v) ∧ᴮ (v ≤ᴮ .MAXINT)))
+    -- | "NAT" => .Collect .ℤ (pure ∘ (λ v => (.int 0 ≤ᴮ v) ∧ᴮ (v ≤ᴮ .MAXINT)))
+    | "NAT" => return .var "NAT"
     | "INT" => .Collect .ℤ (pure ∘ (λ v => (.MININT ≤ᴮ v) ∧ᴮ (v ≤ᴮ .MAXINT)))
     | s =>
       /-

@@ -1,5 +1,6 @@
 import B.Environment
 import B4Lean.Meta
+import B4Lean.Builtins
 
 open Std Lean Meta Elab Term
 
@@ -64,8 +65,12 @@ private def lookupVar (x : 𝒱) : TermElabM Expr := do
 
 partial def Term.toExpr : Term → TermElabM Expr
   | .var v =>
-    match v with
-    | _ => lookupVar v
+    -- match v with
+    -- | _ => lookupVar v
+    if Builtins.varIsReserved v then
+      reservedVarToExpr v
+    else
+      lookupVar v
   | .int n => return mkIntLit n
   | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
   | .bool b =>
@@ -136,6 +141,7 @@ partial def Term.toExpr : Term → TermElabM Expr
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
   | .all vs D P => panic! "not implemented (all)"
+  | .exists vs D P => panic! "not implemented (exists)"
 
 -- def BType.toTerm' : BType → TermElabM Lean.Term
 --   | .int => `(Int)

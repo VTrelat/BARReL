@@ -41,6 +41,7 @@ inductive Term where
   | max (S : Term)
   -- quantifiers
   | all (vs : List 𝒱) (D P : Term)
+  | exists (vs : List 𝒱) (D P : Term)
   deriving DecidableEq, Inhabited
 
 infixl:65 " ↦ᴮ " => Term.maplet
@@ -61,26 +62,6 @@ infixl:90 " ⇸ᴮ " => Term.pfun
 notation:90 "|" S "|ᴮ" => Term.card S
 infixr:20 " ⇒ᴮ " => Term.imp
 infixl:40 " ∨ᴮ " => Term.or
-
-def fv : Term → List 𝒱
-  | .var v => [v]
-  | .int _ => []
-  | .bool _ => []
-  | .maplet x y | .add x y | .sub x y | .mul x y | .and x y | .le x y | .eq x y | .or x y | .imp x y => fv x ++ fv y
-  | .not x => fv x
-  | .ℤ => []
-  | .𝔹 => []
-  | .mem x S => fv x ++ fv S
-  | .collect vs D P | .all vs D P | .lambda vs D P => fv D ++ List.removeAll (fv P) vs
-  | .pow S => fv S
-  | .cprod S T => fv S ++ fv T
-  | .union S T => fv S ++ fv T
-  | .inter S T => fv S ++ fv T
-  | .pfun A B => fv A ++ fv B
-  | .app f x => fv f ++ fv x
-  | .card S => fv S
-  | .min S => fv S
-  | .max S => fv S
 
 abbrev MAXINT : Int := 2147483647
 abbrev MININT : Int := -2147483647

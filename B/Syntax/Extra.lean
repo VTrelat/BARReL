@@ -37,8 +37,8 @@ def Term.exp (x : Term) (n : Int) : Term :=
 infixl:200 "^ᴮ" => Term.exp
 
 -- Existential
-@[match_pattern]
-def Term.exists (v : List 𝒱) (D P : Term) := ¬ᴮ (.all v D (¬ᴮ P))
+-- @[match_pattern]
+-- def Term.exists (v : List 𝒱) (D P : Term) := ¬ᴮ (.all v D (¬ᴮ P))
 
 -- Binary relation
 @[match_pattern]
@@ -116,6 +116,8 @@ def subst (x : 𝒱) (e t : Term) : Term :=
     if x ∈ vs then .lambda vs (subst x e D) P else .lambda vs (subst x e D) (subst x e P)
   | .all vs D P =>
     if x ∈ vs then .all vs (subst x e D) P else .all vs (subst x e D) (subst x e P)
+  | .exists vs D P =>
+    if x ∈ vs then .exists vs (subst x e D) P else .exists vs (subst x e D) (subst x e P)
 
 notation t:max "[" x " := " e:min "]" => subst x e t
 

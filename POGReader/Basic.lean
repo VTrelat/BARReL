@@ -63,7 +63,7 @@ def B.Term.getType : Term → Decoder B.BType
   | .int _ | .add _ _ | .sub _ _ | .mul _ _ | .card _ => return .int
   | .bool _ => return .bool
   | .maplet x y => return .prod (← x.getType) (← y.getType)
-  | .le _ _ | .and _ _ | .or _ _ | .imp _ _ | .not _ | .eq _ _ | .mem _ _ | .all _ _ _ => return .bool
+  | .le _ _ | .and _ _ | .or _ _ | .imp _ _ | .not _ | .eq _ _ | .mem _ _ | .all _ _ _ | .exists _ _ _ => return .bool
   | .ℤ => return .set .int
   | .𝔹 => return .set .bool
   | .collect _ D _ => return ← D.getType
