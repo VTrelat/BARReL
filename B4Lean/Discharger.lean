@@ -68,7 +68,6 @@ elab_rules : command
 
 -- set_option trace.b4lean.pog true
 
-open B Builtins
 open scoped B.Builtins
 
 pog_discharger "specs/Counter.pog"
@@ -87,12 +86,24 @@ next
   rintro x ⟨_, _⟩
   assumption
 
+pog_discharger "specs/Collect.pog"
+next
+  grind
+
 pog_discharger "specs/Forall.pog"
+next
+  grind
+
+pog_discharger "specs/Exists.pog"
+next
+  exists 0, 0
 
 pog_discharger "specs/Eval.pog"
+next
+  grind
 
-#check Counter.Initialisation_0
-#check Counter.Initialisation_1
-#check Counter.Operation_inc_2
-#check Counter.Operation_inc_3
-#check Nat.Initialisation_0
+-- #check Counter.Initialisation_0
+-- #check Counter.Initialisation_1
+-- #check Counter.Operation_inc_2
+-- #check Counter.Operation_inc_3
+-- #check Nat.Initialisation_0

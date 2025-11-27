@@ -202,10 +202,10 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
       liftMetaM ∘ mkLambdaFVars #[xvec] =<< exists_aux xs.toList
 
     mkAppM ``Exists #[lam]
-  -- | .interval lo hi => do
-  --   let lo' ← lo.toExpr
-  --   let hi' ← hi.toExpr
-  --   mkAppM ``Builtins.interval #[lo', hi']
+  | .interval lo hi => do
+    let lo' ← lo.toExpr
+    let hi' ← hi.toExpr
+    mkAppM ``Builtins.interval #[lo', hi']
   | .set xs => panic! "not implemented (set)"
   | .pow S => panic! "not implemented (pow)"
   | .cprod S T => do
@@ -214,17 +214,23 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     mkAppM ``Builtins.cprod #[S, T]
   | .union S T => panic! "not implemented (union)"
   | .inter S T => panic! "not implemented (inter)"
-  | .card S => panic! "not implemented (card)"
+  | .rel A B => do
+    let A ← A.toExpr
+    let B ← B.toExpr
+    mkAppM ``B.Builtins.rels #[A, B]
   | .app f x => panic! "not implemented (app)"
   | .lambda vs D P => panic! "not implemented (lambda)"
-  | .pfun A B => panic! "not implemented (pfun)"
-  | .tfun A B => panic! "not implemented (tfun)"
+  | .fun A B isPartial => do
+    let A ← A.toExpr
+    let B ← B.toExpr
+    mkAppM (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) #[A, B]
   | .injfun A B isPartial => do
     let A ← A.toExpr
     let B ← B.toExpr
     mkAppM (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) #[A, B]
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
+  | .card S => panic! "not implemented (card)"
 
 def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
   let goal : Syntax.Term := sg.hyps.foldr (fun t acc => .imp t acc) sg.goal
