@@ -1,4 +1,4 @@
-import POGReader_.Schema
+import POGReader.Schema
 import Lean.Data.Xml.Parser
 
 private abbrev throwError {α} : String → IO α := throw ∘ IO.Error.userError

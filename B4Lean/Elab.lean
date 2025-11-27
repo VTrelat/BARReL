@@ -1,5 +1,3 @@
-import POGReader.POGReader
-
 open System
 
 def mch2pog (mchPath : FilePath) : IO FilePath := do
@@ -20,6 +18,3 @@ def mch2pog (mchPath : FilePath) : IO FilePath := do
 -- #eval do
 --   let fp ← mch2pog <| "specs" / "Exists.mch"
 --   dbg_trace fp
---   let pog ← readPOG fp |>.propagateError
---   let ⟨_, st⟩ ← POGtoB pog |>.run ∅ |>.propagateError
---   return st

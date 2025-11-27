@@ -1,4 +1,4 @@
-import POGReader_.Parser
+import POGReader.Parser
 
 namespace B.POG
   /--

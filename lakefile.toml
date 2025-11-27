@@ -19,9 +19,6 @@ name = "B"
 [[lean_lib]]
 name = "POGReader"
 
-[[lean_lib]]
-name = "POGReader_"
-
 [[lean_exe]]
 name = "b4lean"
 root = "Main"

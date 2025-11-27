@@ -2,9 +2,8 @@ import Lean.Elab.Command
 import Lean.Elab.BuiltinTerm
 import Mathlib.Util.WhatsNew
 import B4Lean.Encoder
-
-import POGReader_.Basic
-import B4Lean.Elab
+import POGReader.Basic
+-- import B4Lean.Elab
 
 open Lean Parser Elab Term Command
 
@@ -16,14 +15,8 @@ syntax (name := pog_discharger) "pog_discharger " str ppSpace withPosition((colE
 
 elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
-  -- let pogPath ← mch2pog (System.FilePath.mk path.getString)
   let path := System.FilePath.mk path.getString
   let goals ← B.POG.parseAndExtractGoals path
-  -- let pog ← readPOG path |>.propagateError
-  -- let ⟨_, pogState⟩ ← POGtoB pog |>.run ∅ |>.propagateError
-
-  -- let goals ← liftTermElabM pogState.env.mkGoal
-  -- let goals := goals.toArray
 
   let mut i := 0
 

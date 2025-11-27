@@ -2,7 +2,6 @@ import Mathlib.Data.Set.Basic
 import Mathlib.Data.Real.Basic
 
 namespace B.Builtins
-
   /-!
     # Builtin sets
   -/
