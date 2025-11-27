@@ -18,8 +18,7 @@ next
 
 mch_discharger "specs/Nat.mch"
 next
-  rintro x ⟨_, _⟩
-  assumption
+  grind
 
 mch_discharger "specs/Collect.mch"
 next
