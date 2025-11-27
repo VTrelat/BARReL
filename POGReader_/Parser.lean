@@ -74,12 +74,13 @@ namespace B.POG
     | ">=i" | ">=r" | ">=f" => flip .le
     -- Expression binary operators
     | "," => panic! "TODO"
-    | "*" | "**" | "*s" => panic! "TODO"
+    | "*s" => .cprod
+    | "**" | "*" => panic! "TODO"
     | "*i" | "*r" | "*f" => panic! "TODO"
     | "**i" | "**f" | "**r" => panic! "TODO"
     | "+" | "+i" | "+r" | "+f" => .add
-    | "+->" => panic! "TODO"
-    | "+->>" => panic! "TODO"
+    | "+->" => .pfun
+    | "+->>" => .tfun
     | "-" | "-s" => panic! "TODO"
     | "-i" | "-r" | "-f" => panic! "TODO"
     | "-->" => panic! "TODO"
@@ -87,7 +88,7 @@ namespace B.POG
     | "->" => panic! "TODO"
     | ".." => panic! "TODO"
     | "/" | "/i" | "/r" | "/f" => panic! "TODO"
-    | "/\\" => panic! "TODO"
+    | "/\\" => .and
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
     | "<+" => panic! "TODO"
@@ -101,11 +102,11 @@ namespace B.POG
     | ">->>" => panic! "TODO"
     | "><" => panic! "TODO"
     | "||" => panic! "TODO"
-    | "\\/" => panic! "TODO"
+    | "\\/" => .or
     | "\\|/" => panic! "TODO"
     | "^" => panic! "TODO"
     | "mod" => panic! "TODO"
-    | "|->" => panic! "TODO"
+    | "|->" => .maplet
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
     | "[" => panic! "TODO"
@@ -124,18 +125,26 @@ namespace B.POG
     | "<=>" => panic! "TODO"
     | op => panic! s!"Unrecognized op {op}"
 
-  private def parseAndRegisterId (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO String
+  private def parseAndRegisterId (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO (String × Syntax.Typ)
     | ⟨"Id", attrs, _⟩ => do
       unless attrs.contains "value" do throwError s!"<Id> must contain an attribute `value`"
       unless attrs.contains "typref" do throwError s!"<Id> must contain an attribute `typref`"
 
       let typref := attrs.get! "typref" |>.toNat!
       let name := attrs.get! "value" ++ attrs.getD "suffix" ""
-      vars.modifyGet λ vars ↦ (name, vars.insert name (types.get! typref))
+      let ty := types.get! typref
+      vars.modifyGet λ vars ↦ (⟨name, ty⟩, vars.insert name ty)
     | _ => unreachable!
 
+  private def Syntax.Typ.toTerm : Syntax.Typ → Syntax.Term
+    | .bool => .𝔹
+    | .int => .ℤ
+    | .real => .ℝ
+    | .pow t => .pow (toTerm t)
+    | .prod α β => .cprod (toTerm α) (toTerm β)
+
   private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO Syntax.Term
-    | node@⟨"Id", attrs, _⟩ => .var <$> parseAndRegisterId vars types node
+    | node@⟨"Id", attrs, _⟩ => (.var ∘ Prod.fst) <$> parseAndRegisterId vars types node
     | ⟨"Integer_Literal", attrs, _⟩ => do
       unless attrs.contains "value" do throwError s!"<Id> must contain an attribute `value`"
       unless attrs.contains "typref" do throwError s!"<Id> must contain an attribute `typref`"
@@ -155,7 +164,6 @@ namespace B.POG
     | ⟨"EmptySet", attrs, nodes⟩ => panic! "TODO"
     | ⟨"EmptySeq", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Quantified_Exp", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"Quantified_Set", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Struct", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Record", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Record_Update", attrs, nodes⟩ => panic! "TODO"
@@ -172,7 +180,44 @@ namespace B.POG
       makeBinaryTermFromOp (attrs.get! "op")
         <$> parseTerm types e₀
         <*> parseTerm types e₁
-    | ⟨"Quantified_Pred", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Quantified_Pred", attrs, nodes⟩ => do
+      unless attrs.contains "type" do throwError "<Quantified_Pred> must contain the attribute `type`"
+      unless nodes.size = 2 do throwError s!"<Quantified_Pred> expects two children, got {nodes.size}"
+
+      let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Pred> must be <Variables>"
+      let .Element ⟨"Body", _, bodyNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Pred> must be <Body>"
+
+      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+      for vNode in varNodes do
+        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+
+      unless bodyNodes.size = 1 do
+        throwError s!"<Body> in <Quantified_Pred> expects a single child, got {bodyNodes.size}"
+      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+      let body ← parseTerm types body
+
+      match attrs.get! "type" with
+      | "!" => return .all vsWithTy body
+      | "#" => return .exists vsWithTy body
+      | ty => throwError s!"Unknown quantifier `{ty}` in <Quantified_Pred>"
+    | ⟨"Quantified_Set", attrs, nodes⟩ => do
+      unless nodes.size = 2 do throwError s!"<Quantified_Set> expects two children, got {nodes.size}"
+
+      let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Set> must be <Variables>"
+      let .Element ⟨"Body", _, bodyNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Set> must be <Body>"
+
+      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+      for vNode in varNodes do
+        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+
+      unless bodyNodes.size = 1 do
+        throwError s!"<Body> in <Quantified_Set> expects a single child, got {bodyNodes.size}"
+      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+      let body ← parseTerm types body
+
+      return .collect vsWithTy body
     | ⟨tag, _, _⟩ => throwError s!"Unknown tag {tag} for expression"
 
   private def parseDefineType : String → IO (Option Schema.DefineType)
@@ -243,7 +288,7 @@ namespace B.POG
         unless nodes.size >= 1 do throwError s!"<Set> must contain at least one child node"
         let .Element node@⟨"Id", attrs, _⟩ := nodes[0]! | throwError s!"First child node of <Set> must be a <Id>"
 
-        let name ← parseAndRegisterId vars types node
+        let ⟨name, _⟩ ← parseAndRegisterId vars types node
         let values ← do
           let mut values := #[]
 
@@ -253,7 +298,7 @@ namespace B.POG
             let mut i := 0
             while _h : i < nodes.size do
               let .Element node@⟨"Id", attrs, _⟩ := nodes[i] | throwError s!"<Enumerated_Values> may only contain <Id> nodes"
-              let v ← parseAndRegisterId vars types node
+              let ⟨v, _⟩ ← parseAndRegisterId vars types node
               values := values.push v
               i := i + 1
 
@@ -280,7 +325,8 @@ namespace B.POG
         try
           terms := terms.push (← parseTerm vars types nodes[i])
           i := i + 1
-        catch _ =>
+        catch e =>
+          throw e
           break
       return (terms, nodes[i:])
 
@@ -413,4 +459,4 @@ namespace B.POG
       >>= parseProofObligations vars ∘ removeEmptyDeep
 end B.POG
 
--- #eval B.POG.parse ("specs" / "Counter.pog")
+#eval B.POG.parse ("specs" / "Collect.pog")

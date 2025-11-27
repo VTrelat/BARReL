@@ -86,6 +86,8 @@ next
   rintro x ⟨_, _⟩
   assumption
 
+pog_discharger "specs/Forall.pog"
+
 pog_discharger "specs/Eval.pog"
 
 #check Counter.Initialisation_0
