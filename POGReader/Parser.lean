@@ -167,7 +167,7 @@ namespace B.POG
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
     | "[" => panic! "TODO"
-    | "(" => panic! "TODO"
+    | "(" => .app
     | "<'" => panic! "TODO"
     | "prj1" => panic! "TODO"
     | "prj2" => panic! "TODO"

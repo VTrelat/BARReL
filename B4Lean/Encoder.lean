@@ -225,7 +225,10 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     let A ← A.toExpr
     let B ← B.toExpr
     mkAppM ``B.Builtins.rels #[A, B]
-  | .app f x => panic! "not implemented (app)"
+  | .app f x => do
+    let f ← f.toExpr
+    let x ← x.toExpr
+    mkAppM ``B.Builtins.app #[f, x]
   | .lambda vs D P => panic! "not implemented (lambda)"
   | .fun A B isPartial => do
     let A ← A.toExpr

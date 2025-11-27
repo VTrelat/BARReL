@@ -55,6 +55,9 @@ namespace B.Builtins
     # Function and relation operators
   -/
 
+  open Classical in
+  noncomputable abbrev app {α β : Type _} [Inhabited β] (f : Set (α × β)) (x : α) : β :=
+    if h : ∃ y, (x, y) ∈ f then Classical.choose h else default
 
 
 
@@ -90,6 +93,7 @@ namespace B.Builtins
   scoped infixl:170 ".." => interval
 
 
+  scoped notation F:300 "(" x:min ")" => app F x
 
   /-
   TODO: add remaining Unicode characters

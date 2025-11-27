@@ -91,9 +91,9 @@ pog_discharger "specs/Exists.pog"
 next
   exists 0, 0
 
--- pog_discharger "specs/Injective.pog"
--- next
-  -- admit
+pog_discharger "specs/Injective.pog"
+next
+  admit
 
 -- #check Counter.Initialisation_0
 -- #check Counter.Initialisation_1
