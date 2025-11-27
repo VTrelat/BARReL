@@ -34,7 +34,12 @@ namespace B.POG
       let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
       let (sets, hyps₁) := extractSetsAndHyps uses
       let hyps₂ := obligation.hypotheses
-      let hyps₃ := sets.map λ set ↦ .eq (.var set.name) (.set <| set.values.map .var)
+      let hyps₃ := sets.map λ set ↦
+        if set.values.isEmpty then
+          -- TODO: finite?
+          .not (.eq (.var set.name) (.set #[]))
+        else
+          .eq (.var set.name) (.set <| set.values.map .var)
 
       obligation.simpleGoals.map λ goal ↦
         let hyps₄ := goal.refHyps.map λ i ↦ obligation.localHyps[i]!
