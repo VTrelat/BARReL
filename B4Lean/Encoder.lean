@@ -12,6 +12,7 @@ def varIsReserved : String → Prop
   | "INT" | "INTEGER"
   | "FLOAT"
   | "REAL"
+  | "BOOL"
     => True
   | _ => False
 
@@ -32,6 +33,7 @@ def reservedVarToExpr : String → TermElabM Lean.Expr
   | "NATURAL1" => return mkConst ``Builtins.NATURAL₁
   | "INT" => return mkConst ``Builtins.INT
   | "INTEGER" => return mkConst ``Builtins.INTEGER
+  | "BOOL" => return mkConst ``Builtins.BOOL
   | v => throwError "Variable {v} is not reserved."
 
 def Syntax.Typ.toExpr : Typ → Expr
