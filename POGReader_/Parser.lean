@@ -79,20 +79,20 @@ namespace B.POG
     | "*i" | "*r" | "*f" => panic! "TODO"
     | "**i" | "**f" | "**r" => panic! "TODO"
     | "+" | "+i" | "+r" | "+f" => .add
-    | "+->" => .pfun
-    | "+->>" => .tfun
+    | "+->" => .fun (isPartial := true)
+    | "-->" => .fun (isPartial := false)
+    | "+->>" => panic! "TODO"
     | "-" | "-s" => panic! "TODO"
     | "-i" | "-r" | "-f" => panic! "TODO"
-    | "-->" => panic! "TODO"
     | "-->>" => panic! "TODO"
     | "->" => panic! "TODO"
-    | ".." => panic! "TODO"
+    | ".." => .interval
     | "/" | "/i" | "/r" | "/f" => panic! "TODO"
     | "/\\" => .inter
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
     | "<+" => panic! "TODO"
-    | "<->" => panic! "TODO"
+    | "<->" => .rel
     | "<-" => panic! "TODO"
     | "<<|" => panic! "TODO"
     | "<|" => panic! "TODO"

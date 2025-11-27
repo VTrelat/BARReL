@@ -44,6 +44,7 @@ namespace B.Syntax
     | ℤ
     | ℝ
     -- set operations
+    | interval (lo hi : Term)
     | set (xs : Array Term)
     | mem (x : Term) (S : Term)
     | collect (vs : Array (String × Typ)) (P : Term)
@@ -52,11 +53,12 @@ namespace B.Syntax
     | union (S T : Term)
     | inter (S T : Term)
     | card (S : Term)
+    -- relations
+    | rel (A B : Term)
     -- functions
     | app (f x : Term)
     | lambda (vs : Array (String × Typ)) (D P : Term)
-    | pfun (A B : Term)
-    | tfun (A B : Term)
+    | «fun» (A B : Term) (isPartial := true)
     | injfun (A B : Term) (isPartial := true)
     | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
     | max (S : Term)
@@ -72,13 +74,13 @@ namespace B.Syntax
   | .𝔹 => λ _ => "𝔹"
   | .ℤ => λ _ => "ℤ"
   | .ℝ => λ _ => "ℝ"
-  | .imp x y => «infixr» Term.pretty 30 "⇒" x y -- /!\ see manrefb p.198
+  | .imp x y => «infixl» Term.pretty 30 "⇒" x y -- /!\ see manrefb p.198
   | .or x y => «infixl» Term.pretty 40 "∨" x y
   | .and x y => «infixl» Term.pretty 40 "∧" x y
-  | .eq x y => «infix» Term.pretty 40 "=" x y
+  | .eq x y => «infixl» Term.pretty 60 "=" x y
   | .mem x S => «infixl» Term.pretty 120 "∈" x S
-  | .pfun A B => «infixl» Term.pretty 125 "⇸" A B
-  | .tfun A B => «infixl» Term.pretty 125 "→" A B
+  | .rel A B => «infixl» Term.pretty 125 "↔" A B
+  | .fun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⇸" else "⟶") A B
   | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B
   | .le x y => «infixl» Term.pretty 160 "≤" x y
   | .lt x y => «infixl» Term.pretty 160 "<" x y
@@ -90,6 +92,7 @@ namespace B.Syntax
   | .mul x y => «infixl» Term.pretty 190 "*" x y
   | .cprod x y => «infixl» Term.pretty 190 "⨯" x y
   | .not x => «prefix» Term.pretty 250 "¬" x
+  | .interval lo hi => «infixl» Term.pretty 170 ".." lo hi
   | .set xs =>
     let elems := xs.toList.map (fun x ↦ Term.pretty x 0 |> toString) |> String.intercalate ", "
     λ _ => "{ " ++ elems ++ " }"
