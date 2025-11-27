@@ -58,15 +58,15 @@ namespace B.POG
         types := types.push ⟨String.toNat! <| attrs.get! "id", ← parseType e⟩
       return types
 
-  private def makeUnaryTermFromOp : String → (Syntax.Term → Syntax.Term)
-    | "not" => .not
-    | "max" | "imax" | "rmax" => .max
-    | "min" | "imin" | "rmin" => .min
-    | "card" => .card
+  private def makeUnaryTermFromOp : String → IO (Syntax.Term → Syntax.Term)
+    | "not" => return .not
+    | "max" | "imax" | "rmax" => return .max
+    | "min" | "imin" | "rmin" => return .min
+    | "card" => return .card
     | "dom" => panic! "TODO: dom"
     | "ran" => panic! "TODO: ran"
-    | "POW" => .pow
-    | "POW1" => .pow₁
+    | "POW" => return .pow
+    | "POW1" => return .pow₁
     | "FIN" => panic! "TODO: FIN"
     | "FIN1" => panic! "TODO: FIN1"
     | "union" => panic! "TODO: union"
@@ -107,61 +107,61 @@ namespace B.POG
     | "left" => panic! "TODO: left"
     | "right" => panic! "TODO: right"
     | "bin" => panic! "TODO: bin"
-    | op => panic! s!"Unrecognized op {op}"
+    | op => throwError s!"Unrecognized op {op}"
 
-  private def makeBinaryTermFromOp : String → (Syntax.Term → Syntax.Term → Syntax.Term)
+  private def makeBinaryTermFromOp : String → IO (Syntax.Term → Syntax.Term → Syntax.Term)
     -- Comparison binary operators
-    | ":" => .mem
-    | "/:" => (.not <| .mem · ·)
-    | "<:" => .subset
-    | "/<:" => (.not <| .subset · ·)
+    | ":" => return .mem
+    | "/:" => return (.not <| .mem · ·)
+    | "<:" => return .subset
+    | "/<:" => return (.not <| .subset · ·)
     | "<<:" => panic! "TODO"
     | "/<<:" => panic! "TODO"
-    | "=" => .eq
-    | "/=" => (.not <| .eq · ·)
-    | "<i" | "<r" | "<f" => .lt
-    | ">i" | ">r" | ">f" => flip .lt
-    | "<=i" | "<=r" | "<=f" => .le
-    | ">=i" | ">=r" | ">=f" => flip .le
+    | "=" => return .eq
+    | "/=" => return (.not <| .eq · ·)
+    | "<i" | "<r" | "<f" => return .lt
+    | ">i" | ">r" | ">f" => return flip .lt
+    | "<=i" | "<=r" | "<=f" => return .le
+    | ">=i" | ">=r" | ">=f" => return flip .le
     -- Expression binary operators
-    | "*s" => .cprod
+    | "*s" => return .cprod
     | "**" => panic! "TODO"
     | "*" => panic! "TODO"
     | "*i" | "*r" | "*f" => panic! "TODO"
     | "**i" | "**f" | "**r" => panic! "TODO"
-    | "+" | "+i" | "+r" | "+f" => .add
-    | "+->" => .fun (isPartial := true)
-    | "-->" => .fun (isPartial := false)
-    | "+->>" => .surjfun (isPartial := true)
-    | "-->>" => .surjfun (isPartial := false)
+    | "+" | "+i" | "+r" | "+f" => return .add
+    | "+->" => return .fun (isPartial := true)
+    | "-->" => return .fun (isPartial := false)
+    | "+->>" => return .surjfun (isPartial := true)
+    | "-->>" => return .surjfun (isPartial := false)
     | "-" | "-s" => panic! "TODO"
     | "-i" | "-r" | "-f" => panic! "TODO"
     | "->" => panic! "TODO"
-    | ".." => .interval
+    | ".." => return .interval
     | "/" | "/i" | "/r" | "/f" => panic! "TODO"
-    | "/\\" => .inter
+    | "/\\" => return .inter
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
     | "<+" => panic! "TODO"
-    | "<->" => .rel
+    | "<->" => return .rel
     | "<-" => panic! "TODO"
     | "<<|" => panic! "TODO"
     | "<|" => panic! "TODO"
-    | ">+>" => .injfun (isPartial := true)
-    | ">->" => .injfun (isPartial := false)
+    | ">+>" => return .injfun (isPartial := true)
+    | ">->" => return .injfun (isPartial := false)
     | ">+>>" => panic! "TODO"
-    | ">->>" => .bijfun
+    | ">->>" => return .bijfun
     | "><" => panic! "TODO"
     | "||" => panic! "TODO"
-    | "\\/" => .union
+    | "\\/" => return .union
     | "\\|/" => panic! "TODO"
     | "^" => panic! "TODO"
     | "mod" => panic! "TODO"
-    | "," | "|->" => .maplet
+    | "," | "|->" => return .maplet
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
     | "[" => panic! "TODO"
-    | "(" => .app
+    | "(" => return .app
     | "<'" => panic! "TODO"
     | "prj1" => panic! "TODO"
     | "prj2" => panic! "TODO"
@@ -172,9 +172,17 @@ namespace B.POG
     | "subtree" => panic! "TODO"
     | "arity" => panic! "TODO"
     -- Logic binary operators
-    | "=>" => .imp
+    | "=>" => return .imp
     | "<=>" => panic! "TODO"
-    | op => panic! s!"Unrecognized op {op}"
+    | op => throwError s!"Unrecognized unary operator {op}"
+
+  private def makeBoundedQuantifier : String → IO (Array (String × Syntax.Typ) → Syntax.Term → Syntax.Term → Syntax.Term)
+    | "%" => return .lambda
+    | "SIGMA" | "iSIGMA" | "rSIGMA" => panic! "TODO"
+    | "PI" | "iPI" | "rPI" => panic! "TODO"
+    | "INTER" => panic! "TODO"
+    | "UNION" => panic! "TODO"
+    | op => throwError s!"Unrecognized quantifier {op}"
 
   private def parseAndRegisterId (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO (String × Syntax.Typ)
     | ⟨"Id", attrs, _⟩ => do
@@ -213,7 +221,7 @@ namespace B.POG
       unless attrs.contains "op" do throwError s!"<{tag}> must contain the attribute `op`"
 
       let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
-      makeUnaryTermFromOp (attrs.get! "op") <$> parseTerm types e
+      (← makeUnaryTermFromOp (attrs.get! "op")) <$> parseTerm types e
     | ⟨"Ternary_Exp", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Nary_Exp", attrs, nodes⟩ => do
       -- possible op: '{', '['
@@ -246,9 +254,36 @@ namespace B.POG
           return binop t acc
         return and
     | ⟨"Boolean_Exp", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"EmptySet", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"EmptySet", attrs, nodes⟩ => do
+      unless nodes.size = 0 do throwError "<EmptySet> expects no child nodes"
+      unless attrs.contains "typref" do throwError "<EmptySet> requires a `typref` attribute"
+
+      let ty := attrs.get! "typref" |>.toNat!
+      return .set #[] (types.get! ty)
     | ⟨"EmptySeq", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"Quantified_Exp", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Quantified_Exp", attrs, nodes⟩ => do
+      unless nodes.size = 3 do throwError "<Quantified_Exp> expects 3 child node, got {nodes.size}"
+      unless attrs.contains "type" do throwError "<Quantified_Exp> requires a `type` attribute"
+      unless attrs.contains "typref" do throwError "<Quantified_Exp> requires a `typref` attribute"
+
+      let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Exp> must be <Variables>"
+      let .Element ⟨"Pred", _, predNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Exp> must be <Pred>"
+      let .Element ⟨"Body", _, bodyNodes⟩ := nodes[2]! | throwError s!"Third child of <Quantified_Exp> must be <Body>"
+
+      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+      for vNode in varNodes do
+        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+
+      unless predNodes.size = 1 do throwError s!"<Pred> in <Quantified_Exp> expects a single child, got {predNodes.size}"
+      let .Element pred := predNodes[0]! | throwError s!"Unexpected node kind {predNodes[0]!.kind}"
+      let pred ← parseTerm types pred
+
+      unless bodyNodes.size = 1 do throwError s!"<Body> in <Quantified_Exp> expects a single child, got {bodyNodes.size}"
+      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+      let body ← parseTerm types body
+
+      return (← makeBoundedQuantifier (attrs.get! "type")) vsWithTy pred body
     | ⟨"Struct", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Record", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Record_Update", attrs, nodes⟩ => panic! "TODO"
@@ -262,7 +297,7 @@ namespace B.POG
       let .Element e₀ := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
       let .Element e₁ := nodes[1]! | throwError s!"Unexpected node kind {nodes[1]!.kind}"
 
-      makeBinaryTermFromOp (attrs.get! "op")
+      (← makeBinaryTermFromOp (attrs.get! "op"))
         <$> parseTerm types e₀
         <*> parseTerm types e₁
     | ⟨"Quantified_Pred", attrs, nodes⟩ => do
@@ -286,7 +321,7 @@ namespace B.POG
       | "!" => return .all vsWithTy body
       | "#" => return .exists vsWithTy body
       | ty => throwError s!"Unknown quantifier `{ty}` in <Quantified_Pred>"
-    | ⟨"Quantified_Set", attrs, nodes⟩ => do
+    | ⟨"Quantified_Set", _, nodes⟩ => do
       unless nodes.size = 2 do throwError s!"<Quantified_Set> expects two children, got {nodes.size}"
 
       let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Set> must be <Variables>"

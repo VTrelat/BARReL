@@ -32,6 +32,11 @@ namespace B
     trace[b4lean.pog] "New metavariable {mvar}"
     return mvar
 
+  private def assignMVar (β ty : Expr) : MetaM PUnit := do
+    if !(← β.mvarId!.isAssigned) && (← Meta.isDefEq (← β.mvarId!.getType) (← inferType ty)) then
+      trace[b4lean.pog] m!"Assigning metavariable {β} to {ty}"
+      β.mvarId!.assign ty
+
   private def newLMVar : MetaM Level := do
     let lmvar ← Meta.mkFreshLevelMVar
     trace[b4lea.pog] "New level metavariable {lmvar}"
@@ -137,6 +142,51 @@ namespace B
         makeBinder xs P mkForallFVars pure <| mkForall `_ .default
       | .exists xs P => do
         mkAppM ``Exists #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
+      | .lambda xs P F => do
+        -- { z | ∃ x₁ … xₙ, ∃ y, z = ((x₁, …, xₙ), y) ∧ D ∧ y = F }
+        let z ← mkFreshBinderName
+
+        -- α = (α₁ × …) × αₙ
+        let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
+          mkAppM ``Prod #[acc, τᵢ.toExpr]
+        let levelα ← getDecLevel α
+
+        -- β is the return type of the function
+        let lmvar ← newLMVar
+        let β ← newMVar (mkSort <| .succ lmvar)
+
+        let γ := mkApp2 (mkConst ``Prod [levelα, lmvar]) α β
+
+        let lam ← withLocalDeclD z γ fun zvec ↦ do
+          let rec go : List (String × Syntax.Typ) → TermElabM Expr
+            | [] => do
+              let y ← mkFreshBinderName
+
+              let F ← F.toExpr
+
+              assignMVar β (← inferType F)
+              let β ← instantiateMVars β
+
+              let P ← P.toExpr
+
+              let lam ← withLocalDeclD y β fun y ↦ do
+                let xs' ← do
+                  xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+                    mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
+                -- x̄ = (xs', y)
+                let eq : Expr ← mkEq zvec (mkApp4 (mkConst ``Prod.mk [levelα, lmvar]) α β xs' y)
+                -- y = F[x̄/xs']
+                let eqF : Expr ← mkEq y F
+                -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
+                mkLambdaFVars #[y] <| mkAndN [eq, P, eqF]
+              mkAppM ``Exists #[lam]
+            | ⟨x, t⟩ :: xs => do
+              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
+                (liftMetaM ∘ mkLambdaFVars #[y] =<< go xs)
+              mkAppM ``Exists #[lam]
+
+          liftMetaM ∘ mkLambdaFVars #[zvec] =<< go xs.toList
+        mkAppM ``setOf #[lam]
       | .interval lo hi => makeBinary ``Builtins.interval lo hi
       | .subset S T => makeBinary ``HasSubset.Subset S T
       | .set es ty => do
@@ -149,7 +199,6 @@ namespace B
       | .inter S T => makeBinary ``Inter.inter S T
       | .rel A B => makeBinary ``B.Builtins.rels A B
       | .app f x => makeBinary ``B.Builtins.app f x
-      | .lambda vs D P => panic! "not implemented (lambda)"
       | .fun A B isPartial =>
         makeBinary (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do

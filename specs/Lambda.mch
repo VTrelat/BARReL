@@ -1,0 +1,6 @@
+MACHINE Lambda
+
+INVARIANT
+  (% x. (x ∈ NATURAL | x)) ∈ NATURAL --> NATURAL
+
+END

@@ -112,8 +112,8 @@ namespace B.Syntax
       binder Term.pretty 250 "{ " vs " | " (.var "") "" P ""
     | .lambda v D P =>
       let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-      let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
-      binder Term.pretty 0 "λ " vs s!", {vs'} ∈ " D " ⇒ " P ""
+      -- let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
+      binder Term.pretty 0 "λ " vs s!", " D " ⇒ " P ""
     | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
     | .pow S => «prefix» Term.pretty 250 "𝒫 " S
     | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
