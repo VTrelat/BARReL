@@ -48,7 +48,7 @@ def pog2obligations (path : System.FilePath) (steps : TSyntaxArray `discharger_c
 
       let g ← liftTermElabM g.toExpr
       let e ← liftTermElabM do
-        let e ← elabTerm (← `(term| by skip; · $tac)) (.some g) (catchExPostpone := false)
+        let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
         synthesizeSyntheticMVarsNoPostponing
         instantiateMVars e
 

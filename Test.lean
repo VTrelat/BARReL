@@ -34,6 +34,7 @@ next
 
 mch_discharger "specs/Injective.mch"
 next
+  rintro X x Y y F ⟨⟨_, _⟩, ⟨_, _⟩, _⟩ _ _ y_mem_X x_mem_X F_eq
   admit
 
 mch_discharger "specs/HO.mch"
