@@ -127,17 +127,16 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
 
     let τs := xs.map (·.snd.toExpr)
     -- α = (α₁ × …) × αₙ
-    let α ← τs.pop.foldrM (init := τs.back!) fun τᵢ acc ↦ mkAppM ``Prod #[τᵢ, acc]
+    let α ← τs[1:].foldlM (init := τs[0]!) fun acc τᵢ ↦ mkAppM ``Prod #[acc, τᵢ]
 
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
       let rec collect_aux : List (String × Syntax.Typ) → TermElabM Expr
         | [] => do
-          -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
-            xs.pop.foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
-              mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
+            xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+              mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
           -- x̄ = xs' ∧ P[x̄/vs]
@@ -150,25 +149,20 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
       liftMetaM ∘ mkLambdaFVars #[xvec] =<< collect_aux xs.toList
 
     mkAppM ``setOf #[lam]
-  -- | .interval lo hi => do
-  --   let lo' ← lo.toExpr
-  --   let hi' ← hi.toExpr
-  --   mkAppM ``Builtins.interval #[lo', hi']
   | .all xs P => do
     let x ← mkFreshBinderName
 
     let τs := xs.map (·.snd.toExpr)
     -- α = (α₁ × …) × αₙ
-    let α ← τs.pop.foldrM (init := τs.back!) fun τᵢ acc ↦ mkAppM ``Prod #[τᵢ, acc]
+    let α ← τs[1:].foldlM (init := τs[0]!) fun acc τᵢ ↦ mkAppM ``Prod #[acc, τᵢ]
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
       let rec all_aux : List (String × Syntax.Typ) → TermElabM Expr
         | [] => do
-          -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
-            xs[:xs.size-2].foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
-              mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
+            xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+              mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
           -- x̄ = xs' → P[x̄/vs]
@@ -181,6 +175,37 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
       liftMetaM ∘ mkForallFVars #[xvec] =<< all_aux xs.toList
 
     return lam
+  | .exists xs P => do
+    let x ← mkFreshBinderName
+
+    let τs := xs.map (·.snd.toExpr)
+    -- α = (α₁ × …) × αₙ
+    let α ← τs[1:].foldlM (init := τs[0]!) fun acc τᵢ ↦ mkAppM ``Prod #[acc, τᵢ]
+
+
+    let lam ← withLocalDeclD x α fun xvec ↦ do
+
+      let rec exists_aux : List (String × Syntax.Typ) → TermElabM Expr
+        | [] => do
+          let xs' ← do
+            xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+              mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
+          -- x̄ = xs'
+          let eq : Expr ← mkEq xvec xs'
+          -- x̄ = xs' ∧ P[x̄/vs]
+          return mkAnd eq (← P.toExpr)
+        | ⟨x, t⟩ :: xs => do
+          let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
+            (liftMetaM ∘ mkLambdaFVars #[y] =<< exists_aux xs)
+          mkAppM ``Exists #[lam]
+
+      liftMetaM ∘ mkLambdaFVars #[xvec] =<< exists_aux xs.toList
+
+    mkAppM ``Exists #[lam]
+  -- | .interval lo hi => do
+  --   let lo' ← lo.toExpr
+  --   let hi' ← hi.toExpr
+  --   mkAppM ``Builtins.interval #[lo', hi']
   | .set xs => panic! "not implemented (set)"
   | .pow S => panic! "not implemented (pow)"
   | .cprod S T => do
@@ -198,63 +223,8 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     let A ← A.toExpr
     let B ← B.toExpr
     mkAppM (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) #[A, B]
-  -- | .tfun A B => panic! "not implemented (pfun)"
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
-  | .exists vs P => panic! "not implemented (exists)"
-
--- def BType.toTerm' : BType → TermElabM Lean.Term
---   | .int => `(Int)
---   | .bool => `(Prop)
---   | .set α => do `(Set $(← α.toTerm'))
---   | .prod α β => do `($(← α.toTerm') × $(← β.toTerm'))
-
--- partial def Term.toTerm : Term → TermElabM Lean.Term
---   | .var v => pure ⟨mkIdent (.mkStr1 v)⟩
---   | .int n =>
---     `(($(if n < 0 then
---       Syntax.mkApp (mkIdent `«term-_») #[⟨mkNode numLitKind #[mkAtom (-n).repr]⟩]
---     else
---       ⟨mkNode numLitKind #[mkAtom n.repr]⟩) : ℤ))
---   | .bool b => return if b then mkIdent ``True else mkIdent ``False
---   | .maplet x y => do `(($(← x.toTerm), $(← y.toTerm)))
---   | .add x y => do `($(← x.toTerm) + $(← y.toTerm))
---   | .sub x y => do `($(← x.toTerm) - $(← y.toTerm))
---   | .mul x y => do `($(← x.toTerm) * $(← y.toTerm))
---   | .le x y => do `($(← x.toTerm) ≤ $(← y.toTerm))
---   | .and x y => do `($(← x.toTerm) ∧ $(← y.toTerm))
---   | .or x y => do `($(← x.toTerm) ∨ $(← y.toTerm))
---   | .imp x y => do `($(← x.toTerm) → $(← y.toTerm))
---   | .not x => do `(¬ $(← x.toTerm))
---   | .eq x y => do `($(← x.toTerm) = $(← y.toTerm))
---   | .ℤ => do `(@Set.univ Int)
---   | .𝔹 => do `(@Set.univ Bool)
---   | .mem x S => do `($(← x.toTerm) ∈ $(← S.toTerm))
---   | .collect vs D P => do
---     let vs : List Name := vs.map Name.mkStr1
---     let vs' : List Lean.Term := vs.map (⟨mkIdent ·⟩)
---     let rec f (x : Ident) : List Name → TermElabM Lean.Term := fun
---       | [] => do
---         let vs'' : Lean.Term ← vs'.dropLast.foldrM (init := vs'.getLast!) λ v acc ↦ `(($v, $acc))
---         `($x = $vs'' ∧ $x ∈ $(← D.toTerm) ∧ $(← P.toTerm))
---       | n :: ns => do
---         let n : TSyntax `Lean.Parser.Term.funBinder := mkIdent n
---         `(Exists λ $n ↦ $(← f x ns))
-
---     let y ← mkFreshBinderName
---     -- `(term| {x | ∃ vs…. x = (vs…) ∧ x ∈ $(← D.toTerm) ∧ $(← P.toTerm)})
---     `({ $(mkIdent y):ident | $(← f (mkIdent y) vs) })
---   | .pow S => panic! "a"
---   | .cprod S T => panic! "b"
---   | .union S T => panic! "c"
---   | .inter S T => panic! "d"
---   | .card S => panic! "e"
---   | .app f x => panic! "f"
---   | .lambda vs D P => panic! "g"
---   | .pfun A B => panic! "h"
---   | .min S => panic! "i"
---   | .max S => panic! "j"
---   | .all vs D P => panic! "k"
 
 def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
   let goal : Syntax.Term := sg.hyps.foldr (fun t acc => .imp t acc) sg.goal
