@@ -8,20 +8,35 @@ import POGReader.Basic
 open Lean Parser Elab Term Command
 
 declare_syntax_cat discharger_command
-
 syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
-
 syntax (name := pog_discharger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
+
+def mch2pog (mchPath : System.FilePath) : CommandElabM System.FilePath := do
+  let atelierBDir : System.FilePath :=
+    System.FilePath.mk <| (← getOptions).getString `b4lean.atelierb
+
+  let stdout ← IO.Process.run {
+    cmd := (atelierBDir/"bin"/"bxml").toString, args := #["-a", mchPath.toString]
+  }
+  let tmp ← IO.FS.createTempDir
+  let bxml := tmp/"tmp.bxml"
+  IO.FS.writeFile bxml stdout
+  let _ ← IO.Process.run {
+    cmd := (atelierBDir/"bin"/"pog").toString,
+    args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, bxml.toString]
+  }
+  pure <| bxml.withExtension "pog"
 
 elab_rules : command
 | `(command| pog_discharger $path $steps*) => do
   let path := System.FilePath.mk path.getString
+  let .some name := path.fileStem | throwError "what?"
+  let path ← mch2pog path
   let goals ← B.POG.parseAndExtractGoals path
 
   let mut i := 0
 
   let ns ← getCurrNamespace
-  let .some name := path.fileStem | throwError "what?"
 
   for step in steps do
     match step with
@@ -59,11 +74,14 @@ elab_rules : command
 
   pure .unit
 
+/- TESTS -/
+
 -- set_option trace.b4lean.pog true
+set_option b4lean.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open scoped B.Builtins
 
-pog_discharger "specs/Counter.pog"
+pog_discharger "specs/Counter.mch"
 next
   grind
 next
@@ -74,24 +92,24 @@ next
 next
   grind
 
-pog_discharger "specs/Nat.pog"
+pog_discharger "specs/Nat.mch"
 next
   rintro x ⟨_, _⟩
   assumption
 
-pog_discharger "specs/Collect.pog"
+pog_discharger "specs/Collect.mch"
 next
   grind
 
-pog_discharger "specs/Forall.pog"
+pog_discharger "specs/Forall.mch"
 next
   grind
 
-pog_discharger "specs/Exists.pog"
+pog_discharger "specs/Exists.mch"
 next
   exists 0, 0
 
-pog_discharger "specs/Injective.pog"
+pog_discharger "specs/Injective.mch"
 next
   admit
 
