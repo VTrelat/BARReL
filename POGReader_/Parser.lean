@@ -88,7 +88,7 @@ namespace B.POG
     | "->" => panic! "TODO"
     | ".." => panic! "TODO"
     | "/" | "/i" | "/r" | "/f" => panic! "TODO"
-    | "/\\" => .and
+    | "/\\" => .inter
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
     | "<+" => panic! "TODO"
@@ -102,7 +102,7 @@ namespace B.POG
     | ">->>" => panic! "TODO"
     | "><" => panic! "TODO"
     | "||" => panic! "TODO"
-    | "\\/" => .or
+    | "\\/" => .union
     | "\\|/" => panic! "TODO"
     | "^" => panic! "TODO"
     | "mod" => panic! "TODO"
@@ -158,8 +158,26 @@ namespace B.POG
     | ⟨tag@"Unary_Pred", attrs, nodes⟩
     | ⟨tag@"Unary_Exp", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Ternary_Exp", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"Nary_Exp", attrs, nodes⟩
-    | ⟨"Nary_Pred", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Nary_Exp", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Nary_Pred", attrs, nodes⟩ => do
+      let .some op := attrs.get? "op" | throwError s!"<Nary_Pred> must contain the attribute `op`"
+      let (binop, default) : ((B.Syntax.Term → B.Syntax.Term → B.Syntax.Term) × B.Syntax.Term) :=
+        match op with
+        | "&" => (.and, .bool true)
+        | "or" => (.or, .bool false)
+        | _ => panic! s!"Unknown n-ary operator `{op}` in <Nary_Pred>"
+
+      if nodes.size = 0 then return default
+      else if nodes.size = 1 then
+        let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
+        parseTerm types e
+      else
+        let conjuncts ← nodes.mapM fun
+          | .Element e => parseTerm types e
+          | _ => throwError s!"Unexpected node kind in <Nary_Pred>"
+        let and ← conjuncts.pop.foldlM (init := conjuncts.back!) fun acc t ↦
+          return binop t acc
+        return and
     | ⟨"Boolean_Exp", attrs, nodes⟩ => panic! "TODO"
     | ⟨"EmptySet", attrs, nodes⟩ => panic! "TODO"
     | ⟨"EmptySeq", attrs, nodes⟩ => panic! "TODO"
@@ -459,4 +477,4 @@ namespace B.POG
       >>= parseProofObligations vars ∘ removeEmptyDeep
 end B.POG
 
--- #eval B.POG.parse ("specs" / "Collect.pog")
+-- #eval B.POG.parse ("specs" / "Exists.pog")
