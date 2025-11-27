@@ -122,15 +122,16 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     let S' ← S.toExpr
     let x' ← x.toExpr
     mkAppM ``Membership.mem #[S', x']
-  | .ℤ => return mkApp (mkConst ``Set.univ [0]) Int.mkType
   | .𝔹 => return mkApp (mkConst ``Set.univ [0]) (.sort 0)
-  | .collect xs D P => do
+  | .ℤ => return mkApp (mkConst ``Set.univ [0]) Int.mkType
+  | .ℝ => return mkApp (mkConst ``Set.univ [0]) (mkConst ``Real)
+  | .collect xs P => do
     let x ← mkFreshBinderName
 
-    let D' ← D.toExpr
-    let DTy ← inferType D'
-    let α ← liftMetaM <| getSetElemType DTy
+    let τs := xs.map (·.snd.toExpr)
     -- α = (α₁ × …) × αₙ
+    let α ← τs.pop.foldrM (init := τs.back!) fun τᵢ acc ↦ mkAppM ``Prod #[τᵢ, acc]
+
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
@@ -138,14 +139,12 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
         | [] => do
           -- xs' = (x₁, ..., (xₙ₋₁, xₙ))
           let xs' ← do
-            xs[:xs.size-2].foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
+            xs.pop.foldrM (init := ← lookupVar xs.back!.fst) fun ⟨xᵢ, _⟩ acc ↦ do
               mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
-          -- x̄ ∈ D
-          let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
-          -- x̄ = xs' ∧ x̄ ∈ D ∧ P[x̄/vs]
-          return mkAndN [eq, memD, ← P.toExpr]
+          -- x̄ = xs' ∧ P[x̄/vs]
+          return mkAnd eq (← P.toExpr)
         | ⟨x, t⟩ :: xs => do
           let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
             (liftMetaM ∘ mkLambdaFVars #[y] =<< collect_aux xs)
@@ -158,12 +157,12 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
   --   let lo' ← lo.toExpr
   --   let hi' ← hi.toExpr
   --   mkAppM ``Builtins.interval #[lo', hi']
-  | .all xs D P => do
+  | .all xs P => do
     let x ← mkFreshBinderName
 
-    let D' ← D.toExpr
-    let DTy ← inferType D'
-    let α ← liftMetaM <| getSetElemType DTy
+    let τs := xs.map (·.snd.toExpr)
+    -- α = (α₁ × …) × αₙ
+    let α ← τs.pop.foldrM (init := τs.back!) fun τᵢ acc ↦ mkAppM ``Prod #[τᵢ, acc]
 
     let lam ← withLocalDeclD x α fun xvec ↦ do
 
@@ -175,10 +174,8 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
               mkAppM ``Prod.mk #[← lookupVar xᵢ, acc]
           -- x̄ = xs'
           let eq : Expr ← mkEq xvec xs'
-          -- x̄ ∈ D
-          let memD : Expr ← mkAppM ``Membership.mem #[D', xvec]
-          -- x̄ = xs' → x̄ ∈ D → P[x̄/vs]
-          return mkForall `_ .default eq <| mkForall `_ .default memD <| (← P.toExpr)
+          -- x̄ = xs' → P[x̄/vs]
+          return mkForall `_ .default eq (← P.toExpr)
         | ⟨x, t⟩ :: xs => do
           let lam ← withLocalDeclD (Name.mkStr1 x) t.toExpr fun y =>
             (liftMetaM ∘ mkForallFVars #[y] =<< all_aux xs)
@@ -196,10 +193,11 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
   | .app f x => panic! "not implemented (app)"
   | .lambda vs D P => panic! "not implemented (lambda)"
   | .pfun A B => panic! "not implemented (pfun)"
+  | .tfun A B => panic! "not implemented (tfun)"
   -- | .tfun A B => panic! "not implemented (pfun)"
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
-  | .exists vs D P => panic! "not implemented (exists)"
+  | .exists vs P => panic! "not implemented (exists)"
 
 -- def BType.toTerm' : BType → TermElabM Lean.Term
 --   | .int => `(Int)
