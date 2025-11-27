@@ -33,6 +33,8 @@ namespace B.Builtins
   abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
   abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
 
+  abbrev bijFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) := sorry
+
 
 
 
@@ -66,6 +68,7 @@ namespace B.Builtins
   scoped infixl:125 "↣" => injTFun
   scoped infixl:125 "⤀" => surjPFun
   scoped infixl:125 "↠" => surjTFun
+  scoped infixl:125 "⤖" => bijFun
 
 
   scoped infix:190 "×" => cprod
@@ -97,13 +100,6 @@ namespace B.Builtins
   `>=` ≔ `≥`
   `<<:` ≔ `⊂`
   `<:` ≔ `⊆`
-  `<->` ≔ `↔`
-  `>->>` ≔ `⤖`
-  `+->` ≔ `⇸`
-  `>+>` ≔ `⤔`
-  `>->` ≔ `↣`
-  `+>>` ≔ `⤀`
-  `->>` ≔ `↠`
   `{}` ≔ `∅`
   `\` ≔ `∖`
   `**` ≔ `×`
@@ -114,7 +110,6 @@ namespace B.Builtins
   `<<|` ≔ `⩤`
   `<|` ≔ `◁`
   `%` ≔ `λ`
-  `..` ≔ `‥`
   `.` ≔ `·`
   `-` ≔ `−`
   `*` ≔ `∗`
