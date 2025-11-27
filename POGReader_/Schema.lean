@@ -45,10 +45,10 @@ namespace B.Syntax
     | ℝ
     -- set operations
     | interval (lo hi : Term)
-    | set (xs : Array Term)
+    | set (xs : Array Term) (ty : Typ)
     | mem (x : Term) (S : Term)
     | collect (vs : Array (String × Typ)) (P : Term)
-    | pow (S : Term)
+    | pow (S : Term) | pow₁ (S : Term)
     | cprod (S T : Term)
     | union (S T : Term)
     | inter (S T : Term)
@@ -93,7 +93,7 @@ namespace B.Syntax
   | .cprod x y => «infixl» Term.pretty 190 "⨯" x y
   | .not x => «prefix» Term.pretty 250 "¬" x
   | .interval lo hi => «infixl» Term.pretty 170 ".." lo hi
-  | .set xs =>
+  | .set xs _ =>
     let elems := xs.toList.map (fun x ↦ Term.pretty x 0 |> toString) |> String.intercalate ", "
     λ _ => "{ " ++ elems ++ " }"
   | .exists v P =>
@@ -110,9 +110,10 @@ namespace B.Syntax
     let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
     binder Term.pretty 0 "λ " vs s!", {vs'} ∈ " D " ⇒ " P ""
   | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
-  | .pow S => «prefix» Term.pretty 290 "𝒫 " S
-  | .min S => «prefix» Term.pretty 290 "min " S
-  | .max S => «prefix» Term.pretty 290 "max " S
+  | .pow S => «prefix» Term.pretty 250 "𝒫 " S
+  | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
+  | .min S => «prefix» Term.pretty 250 "min " S
+  | .max S => «prefix» Term.pretty 250 "max " S
   | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
 
   instance : ToString Term where

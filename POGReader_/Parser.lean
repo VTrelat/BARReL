@@ -58,6 +58,63 @@ namespace B.POG
         types := types.push ⟨String.toNat! <| attrs.get! "id", ← parseType e⟩
       return types
 
+  private def makeUnaryTermFromOp : String → (Syntax.Term → Syntax.Term)
+    | "not" => .not
+    | "max" => panic! "TODO: max"
+    | "imax" => panic! "TODO: imax"
+    | "rmax" => panic! "TODO: rmax"
+    | "min" => panic! "TODO: min"
+    | "imin" => panic! "TODO: imin"
+    | "rmin" => panic! "TODO: rmin"
+    | "card" => panic! "TODO: card"
+    | "dom" => panic! "TODO: dom"
+    | "ran" => panic! "TODO: ran"
+    | "POW" => .pow
+    | "POW1" => .pow₁
+    | "FIN" => panic! "TODO: FIN"
+    | "FIN1" => panic! "TODO: FIN1"
+    | "union" => panic! "TODO: union"
+    | "inter" => panic! "TODO: inter"
+    | "seq" => panic! "TODO: seq"
+    | "seq1" => panic! "TODO: seq1"
+    | "iseq" => panic! "TODO: iseq"
+    | "iseq1" => panic! "TODO: iseq1"
+    | "-" => panic! "TODO: -"
+    | "-i" => panic! "TODO: -i"
+    | "-r" => panic! "TODO: -r"
+    | "~" => panic! "TODO: ~"
+    | "size" => panic! "TODO: size"
+    | "perm" => panic! "TODO: perm"
+    | "first" => panic! "TODO: first"
+    | "last" => panic! "TODO: last"
+    | "id" => panic! "TODO: id"
+    | "closure" => panic! "TODO: closure"
+    | "closure1" => panic! "TODO: closure1"
+    | "tail" => panic! "TODO: tail"
+    | "front" => panic! "TODO: front"
+    | "rev" => panic! "TODO: rev"
+    | "conc" => panic! "TODO: conc"
+    | "succ" => panic! "TODO: succ"
+    | "pred" => panic! "TODO: pred"
+    | "rel" => panic! "TODO: rel"
+    | "fnc" => panic! "TODO: fnc"
+    | "real" => panic! "TODO: real"
+    | "floor" => panic! "TODO: floor"
+    | "ceiling" => panic! "TODO: ceiling"
+    | "tree" => panic! "TODO: tree"
+    | "btree" => panic! "TODO: btree"
+    | "top" => panic! "TODO: top"
+    | "sons" => panic! "TODO: sons"
+    | "prefix" => panic! "TODO: prefix"
+    | "postfix" => panic! "TODO: postfix"
+    | "infix" => panic! "TODO: infix"
+    | "sizet" => panic! "TODO: sizet"
+    | "mirror" => panic! "TODO: mirror"
+    | "left" => panic! "TODO: left"
+    | "right" => panic! "TODO: right"
+    | "bin" => panic! "TODO: bin"
+    | op => panic! s!"Unrecognized op {op}"
+
   private def makeBinaryTermFromOp : String → (Syntax.Term → Syntax.Term → Syntax.Term)
     -- Comparison binary operators
     | ":" => .mem
@@ -175,7 +232,7 @@ namespace B.POG
         let conjuncts ← nodes.mapM fun
           | .Element e => parseTerm types e
           | _ => throwError s!"Unexpected node kind in <Nary_Pred>"
-        let and ← conjuncts.pop.foldlM (init := conjuncts.back!) fun acc t ↦
+        let and ← conjuncts.pop.foldrM (init := conjuncts.back!) fun t acc ↦
           return binop t acc
         return and
     | ⟨"Boolean_Exp", attrs, nodes⟩ => panic! "TODO"

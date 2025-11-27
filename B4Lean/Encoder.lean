@@ -88,7 +88,7 @@ private partial def mkProdTuple : List Expr → MetaM Expr
       let tail ← mkProdTuple xs
       mkAppM ``Prod.mk #[x, tail]
 
-private def lookupVar (x : 𝒱) : TermElabM Expr := do
+private def lookupVar (x : String) : TermElabM Expr := do
   let some e := (← getLCtx).findFromUserName? (.mkStr1 x)
     | throwError "No variable {x} found in context"
   return e.toExpr
@@ -206,8 +206,15 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     let lo' ← lo.toExpr
     let hi' ← hi.toExpr
     mkAppM ``Builtins.interval #[lo', hi']
-  | .set xs => panic! "not implemented (set)"
-  | .pow S => panic! "not implemented (pow)"
+  | .set es ty => do
+    let emp ← mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
+    es.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
+  | .pow S => do
+    let S ← S.toExpr
+    mkAppM ``Builtins.POW #[S]
+  | .pow₁ S => do
+    let S ← S.toExpr
+    mkAppM ``Builtins.POW₁ #[S]
   | .cprod S T => do
     let S ← S.toExpr
     let T ← T.toExpr

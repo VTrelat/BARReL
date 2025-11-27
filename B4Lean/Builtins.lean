@@ -1,6 +1,5 @@
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Real.Basic
-import B.Syntax.Extra
 
 namespace B.Builtins
 
@@ -8,8 +7,11 @@ namespace B.Builtins
     # Builtin sets
   -/
 
-  abbrev NAT : Set Int := { n | 0 ≤ n ∧ n ≤ B.MAXINT }
-  abbrev NAT₁ : Set Int := { n | 1 ≤ n ∧ n ≤ B.MAXINT }
+  abbrev MAXINT : Int := 2147483647
+  abbrev MININT : Int := -2147483647
+
+  abbrev NAT : Set Int := { n | 0 ≤ n ∧ n ≤ MAXINT }
+  abbrev NAT₁ : Set Int := { n | 1 ≤ n ∧ n ≤ MAXINT }
   abbrev NATURAL : Set Int := { n | 0 ≤ n }
   abbrev NATURAL₁ : Set Int := { n | 1 ≤ n }
 
@@ -21,6 +23,9 @@ namespace B.Builtins
   abbrev FLOAT : Set Float := Set.univ
 
   abbrev REAL : Set Real := Set.univ
+
+  abbrev POW {α : Type _} (A : Set α) : Set (Set α) := 𝒫 A
+  abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ POW A | S ≠ ∅ }
 
   abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
@@ -67,18 +72,20 @@ namespace B.Builtins
   scoped notation "ℤ" => INTEGER
   scoped notation "ℝ" => REAL
   scoped notation "𝔹" => BOOL
+  scoped prefix:250 "𝒫 " => POW
+  scoped prefix:250 "𝒫₁ " => POW₁
 
-  scoped infixl:125 "↔" => rels
-  scoped infixl:125 "⇸" => pfun
-  scoped infixl:125 "⟶" => tfun
-  scoped infixl:125 "⤔" => injPFun
-  scoped infixl:125 "↣" => injTFun
-  scoped infixl:125 "⤀" => surjPFun
-  scoped infixl:125 "↠" => surjTFun
-  scoped infixl:125 "⤖" => bijFun
+  scoped infixl:125 " ↔ " => rels
+  scoped infixl:125 " ⇸ " => pfun
+  scoped infixl:125 " ⟶ " => tfun
+  scoped infixl:125 " ⤔ " => injPFun
+  scoped infixl:125 " ↣ " => injTFun
+  scoped infixl:125 " ⤀ " => surjPFun
+  scoped infixl:125 " ↠ " => surjTFun
+  scoped infixl:125 " ⤖ " => bijFun
 
 
-  scoped infix:190 "×" => cprod
+  scoped infix:190 " × " => cprod
 
 
   scoped infixl:170 ".." => interval
@@ -86,7 +93,7 @@ namespace B.Builtins
 
 
   /-
-  Unicode characters
+  TODO: add remaining Unicode characters
 
   `|>>` ≔ `⩥`
   `|>` ≔ `▷`
@@ -126,7 +133,7 @@ namespace B.Builtins
   `:|` ≔ `:∣`
   `:` ≔ `∈`
   `|` ≔ `∣`
-  `,,` ≔ `↦`
+
   -/
 
 end B.Builtins

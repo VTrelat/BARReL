@@ -37,9 +37,9 @@ namespace B.POG
       let hyps₃ := sets.map λ set ↦
         if set.values.isEmpty then
           -- TODO: finite?
-          .not (.eq (.var set.name) (.set #[]))
+          .not (.eq (.var set.name) (.set #[] (.pow .int)))
         else
-          .eq (.var set.name) (.set <| set.values.map .var)
+          .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
 
       obligation.simpleGoals.map λ goal ↦
         let hyps₄ := goal.refHyps.map λ i ↦ obligation.localHyps[i]!
