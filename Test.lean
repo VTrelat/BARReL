@@ -31,7 +31,7 @@ next
 
 mch_discharger "specs/Exists.mch"
 next
-  exists 0, 0
+  exists 0
 
 mch_discharger "specs/Injective.mch"
 next
@@ -39,7 +39,12 @@ next
 
 mch_discharger "specs/HO.mch"
 next
-  admit
+  intro X Y y₁ y₂ x F x_mem_X y₁_mem_Y y₂_mem_Y y₁_neq_y₂ F_fun _ _
+  by_cases F(x) = y₁
+  · -- G = F(x ↦ y₂)
+    admit
+  · -- G = F(x ↦ y₁)
+    admit
 
 mch_discharger "specs/Enum.mch"
 next

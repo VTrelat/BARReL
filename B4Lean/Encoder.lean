@@ -85,28 +85,34 @@ namespace B
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
       (mkBinder : Array Expr → Expr → MetaM Expr) (mkHyp : Expr → MetaM Expr) (mkConcl : Expr → Expr → Expr) :
         TermElabM Expr := do
-      let x ← mkFreshBinderName
+      if xs.size = 1 then
+        let ⟨x, t⟩ := xs[0]!
 
-      -- α = (α₁ × …) × αₙ
-      let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
-        mkAppM ``Prod #[acc, τᵢ.toExpr]
+        withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
+          liftMetaM ∘ mkBinder #[xvec] =<< P.toExpr
+      else
+        let x ← mkFreshBinderName
 
-      withLocalDeclD x α fun xvec ↦ do
-        let rec go : List (String × Syntax.Typ) → TermElabM Expr
-          | [] => do
-            let xs' ← do
-              xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
-                mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
-            -- x̄ = xs'
-            let eq : Expr ← mkEq xvec xs'
-            -- x̄ = xs' ∧ P[x̄/vs]
-            return mkConcl eq (← P.toExpr)
-          | ⟨x, t⟩ :: xs => do
-            let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
-              (liftMetaM ∘ mkBinder #[y] =<< go xs)
-            mkHyp lam
+        -- α = (α₁ × …) × αₙ
+        let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
+          mkAppM ``Prod #[acc, τᵢ.toExpr]
 
-        liftMetaM ∘ mkBinder #[xvec] =<< go xs.toList
+        withLocalDeclD x α fun xvec ↦ do
+          let rec go : List (String × Syntax.Typ) → TermElabM Expr
+            | [] => do
+              let xs' ← do
+                xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+                  mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
+              -- x̄ = xs'
+              let eq : Expr ← mkEq xvec xs'
+              -- x̄ = xs' ∧ P[x̄/vs]
+              return mkConcl eq (← P.toExpr)
+            | ⟨x, t⟩ :: xs => do
+              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
+                (liftMetaM ∘ mkBinder #[y] =<< go xs)
+              mkHyp lam
+
+          liftMetaM ∘ mkBinder #[xvec] =<< go xs.toList
 
     partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
       mkAppM f #[← t₁.toExpr, ← t₂.toExpr]
@@ -144,7 +150,6 @@ namespace B
         mkAppM ``Exists #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
       | .lambda xs P F => do
         -- { z | ∃ x₁ … xₙ, ∃ y, z = ((x₁, …, xₙ), y) ∧ D ∧ y = F }
-        let z ← mkFreshBinderName
 
         -- α = (α₁ × …) × αₙ
         let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
@@ -157,11 +162,10 @@ namespace B
 
         let γ := mkApp2 (mkConst ``Prod [levelα, lmvar]) α β
 
+        let z ← mkFreshBinderName
         let lam ← withLocalDeclD z γ fun zvec ↦ do
           let rec go : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
-              let y ← mkFreshBinderName
-
               let F ← F.toExpr
 
               assignMVar β (← inferType F)
@@ -169,6 +173,7 @@ namespace B
 
               let P ← P.toExpr
 
+              let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
                 let xs' ← do
                   xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
