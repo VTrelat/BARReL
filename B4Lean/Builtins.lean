@@ -36,7 +36,7 @@ namespace B.Builtins
 
 
 
-  abbrev cprod {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := Set.prod A B
+  abbrev cprod {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := A ×ˢ B
 
   /-!
     # Function and relation operators
