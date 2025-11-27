@@ -195,8 +195,11 @@ namespace B
       | .interval lo hi => makeBinary ``Builtins.interval lo hi
       | .subset S T => makeBinary ``HasSubset.Subset S T
       | .set es ty => do
-        let emp ← mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
-        es.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
+        if es.isEmpty then
+          mkAppOptM ``EmptyCollection.emptyCollection #[ty.toExpr, .none]
+        else
+          let emp ← mkAppOptM ``Singleton.singleton #[.none, ty.toExpr, .none, ← es.back!.toExpr]
+          es.pop.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
       | .pow S => makeUnary ``Set.powerset S
       | .pow₁ S => makeUnary ``Builtins.POW₁ S
       | .cprod S T => makeBinary ``SProd.sprod S T
