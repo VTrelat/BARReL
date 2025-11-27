@@ -333,7 +333,13 @@ namespace B.POG
         let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
         obligation := { obligation with hypotheses := obligation.hypotheses.push (← parseTerm vars types e) }
       | "Local_Hyp" =>
-        panic! "TODO"
+        unless nodes.size = 1 do throwError s!"Expected a single node in <Local_Hyp>, got {nodes.size}"
+        unless attrs.contains "num" do throwError s!"<Local_Hyp> node must contain a `num` attribute"
+        let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
+        let i := attrs.get! "num" |>.toNat!
+        let term ← parseTerm vars types e
+        if obligation.localHyps.contains i then throwError "Local hypothesis {i} already registered"
+        obligation := { obligation with localHyps := obligation.localHyps.insert i term }
       | "Simple_Goal" =>
         let nodes ← nodes.mapM λ
           | .Element e => pure e
