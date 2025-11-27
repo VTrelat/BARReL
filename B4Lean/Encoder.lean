@@ -142,19 +142,23 @@ namespace B
         let lo' ← lo.toExpr
         let hi' ← hi.toExpr
         mkAppM ``Builtins.interval #[lo', hi']
+      | .subset S T => do
+        let S' ← S.toExpr
+        let T' ← T.toExpr
+        mkAppM ``HasSubset.Subset #[S', T']
       | .set es ty => do
         let emp ← mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
         es.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
       | .pow S => do
         let S ← S.toExpr
-        mkAppM ``Builtins.POW #[S]
+        mkAppM ``Set.powerset #[S]
       | .pow₁ S => do
         let S ← S.toExpr
         mkAppM ``Builtins.POW₁ #[S]
       | .cprod S T => do
         let S ← S.toExpr
         let T ← T.toExpr
-        mkAppM ``Builtins.cprod #[S, T]
+        mkAppM ``SProd.sprod #[S, T]
       | .union S T => panic! "not implemented (union)"
       | .inter S T => panic! "not implemented (inter)"
       | .rel A B => do
