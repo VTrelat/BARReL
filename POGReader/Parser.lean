@@ -508,19 +508,8 @@ namespace B.POG
           | node => throwError s!"Unexpected node kind {node.kind}"
         obligations := obligations.push (← parseObligation vars nodes typeInfos)
 
-      let vars ← vars.get
       -- NOTE: remove all B builtins
-      let vars := vars
-        |>.erase "MAXINT"
-        |>.erase "MININT"
-        |>.erase "BOOL"
-        |>.erase "INTEGER"
-        |>.erase "NATURAL"
-        |>.erase "NATURAL1"
-        |>.erase "NAT"
-        |>.erase "NAT1"
-        |>.erase "INT"
-        |>.erase "REAL"
+      let vars := B.Syntax.reservedIdentifiers.fold (init := ← vars.get) Std.HashMap.erase
 
       return { defines, obligations, vars := vars.toArray /-, typeInfos -/ }
     | ⟨name, _, _⟩ => throwError s!"Unexpected root element '{name}'"

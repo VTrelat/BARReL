@@ -1,4 +1,5 @@
 import Extra.Prettifier
+import Std.Data.HashSet
 
 namespace B.Syntax
   inductive Typ : Type _
@@ -117,4 +118,6 @@ namespace B.Syntax
   instance : ToString Term where
     toString t := toString (Term.pretty t 0)
 
+  def reservedIdentifiers : Std.HashSet String :=
+    {"NAT", "NAT1", "NATURAL", "NATURAL1", "INT", "INTEGER", "FLOAT", "REAL", "BOOL"}
 end B.Syntax
