@@ -181,7 +181,10 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
     return lam
   | .set xs => panic! "not implemented (set)"
   | .pow S => panic! "not implemented (pow)"
-  | .cprod S T => panic! "not implemented (cprod)"
+  | .cprod S T => do
+    let S ← S.toExpr
+    let T ← T.toExpr
+    mkAppM ``Builtins.cprod #[S, T]
   | .union S T => panic! "not implemented (union)"
   | .inter S T => panic! "not implemented (inter)"
   | .card S => panic! "not implemented (card)"

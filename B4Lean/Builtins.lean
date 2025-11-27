@@ -33,6 +33,11 @@ namespace B.Builtins
   abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
   abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
 
+
+
+
+  abbrev cprod {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := Set.prod A B
+
   /-!
     # Function and relation operators
   -/
@@ -61,6 +66,9 @@ namespace B.Builtins
   scoped infixl:125 "↣" => injTFun
   scoped infixl:125 "⤀" => surjPFun
   scoped infixl:125 "↠" => surjTFun
+
+
+  scoped infix:190 "×" => cprod
 
 
   scoped infixl:170 ".." => interval
