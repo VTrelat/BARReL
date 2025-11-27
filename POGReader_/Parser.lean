@@ -96,8 +96,8 @@ namespace B.POG
     | "<-" => panic! "TODO"
     | "<<|" => panic! "TODO"
     | "<|" => panic! "TODO"
-    | ">+>" => panic! "TODO"
-    | ">->" => panic! "TODO"
+    | ">+>" => .injfun (isPartial := true)
+    | ">->" => .injfun (isPartial := false)
     | ">+>>" => panic! "TODO"
     | ">->>" => panic! "TODO"
     | "><" => panic! "TODO"
@@ -459,4 +459,4 @@ namespace B.POG
       >>= parseProofObligations vars ∘ removeEmptyDeep
 end B.POG
 
-#eval B.POG.parse ("specs" / "Collect.pog")
+-- #eval B.POG.parse ("specs" / "Collect.pog")

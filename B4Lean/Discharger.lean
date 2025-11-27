@@ -69,6 +69,7 @@ elab_rules : command
 -- set_option trace.b4lean.pog true
 
 open B Builtins
+open scoped B.Builtins
 
 pog_discharger "specs/Counter.pog"
 next

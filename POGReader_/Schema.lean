@@ -57,7 +57,7 @@ namespace B.Syntax
     | lambda (vs : Array (String × Typ)) (D P : Term)
     | pfun (A B : Term)
     | tfun (A B : Term)
-    -- | tfun (A B : Term)
+    | injfun (A B : Term) (isPartial := true)
     | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
     | max (S : Term)
     -- quantifiers
@@ -77,8 +77,9 @@ namespace B.Syntax
   | .and x y => «infixl» Term.pretty 40 "∧" x y
   | .eq x y => «infix» Term.pretty 40 "=" x y
   | .mem x S => «infixl» Term.pretty 120 "∈" x S
-  | .pfun A B => «infixr» Term.pretty 125 "⇸" A B
-  | .tfun A B => «infixr» Term.pretty 125 "→" A B
+  | .pfun A B => «infixl» Term.pretty 125 "⇸" A B
+  | .tfun A B => «infixl» Term.pretty 125 "→" A B
+  | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B
   | .le x y => «infixl» Term.pretty 160 "≤" x y
   | .lt x y => «infixl» Term.pretty 160 "<" x y
   | .inter x y => «infixl» Term.pretty 160 "∩" x y

@@ -4,22 +4,119 @@ import B.Syntax.Extra
 
 namespace B.Builtins
 
-abbrev NAT : Set ℤ := { n | 0 ≤ n ∧ n ≤ B.MAXINT }
-abbrev NAT1 : Set ℤ := { n | 1 ≤ n ∧ n ≤ B.MAXINT }
-abbrev NATURAL : Set ℤ := { n | 0 ≤ n }
-abbrev NATURAL1 : Set ℤ := { n | 1 ≤ n }
+  /-!
+    # Builtin sets
+  -/
 
-abbrev INT : Set ℤ := { n | MININT ≤ n ∧ n ≤ MAXINT }
+  abbrev NAT : Set Int := { n | 0 ≤ n ∧ n ≤ B.MAXINT }
+  abbrev NAT₁ : Set Int := { n | 1 ≤ n ∧ n ≤ B.MAXINT }
+  abbrev NATURAL : Set Int := { n | 0 ≤ n }
+  abbrev NATURAL₁ : Set Int := { n | 1 ≤ n }
 
-abbrev FLOAT : Set Float := Set.univ
+  abbrev INT : Set Int := { n | MININT ≤ n ∧ n ≤ MAXINT }
+  abbrev INTEGER : Set Int := Set.univ
 
-abbrev REAL : Set ℝ := Set.univ
+  abbrev BOOL : Set Prop := Set.univ
 
-def interval (lo hi : ℤ) : Set ℤ := { n | lo ≤ n ∧ n ≤ hi }
+  abbrev FLOAT : Set Float := Set.univ
 
-infix:50 ".." => interval
+  abbrev REAL : Set Real := Set.univ
+
+  abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := { ⟨a, b⟩ : α × β | a ∈ A ∧ b ∈ B }
+
+  abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev tfun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+
+  abbrev injPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev injTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+
+  abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+
+  /-!
+    # Function and relation operators
+  -/
 
 
-end Builtins
 
-end B
+
+  /-!
+    # Sets operators
+  -/
+
+  def interval (lo hi : Int) : Set Int := { n | lo ≤ n ∧ n ≤ hi }
+
+  ----- Notations
+
+  scoped notation "ℕ" => NATURAL
+  scoped notation "ℕ₁" => NATURAL₁
+  scoped notation "ℤ" => INTEGER
+  scoped notation "ℝ" => REAL
+  scoped notation "𝔹" => BOOL
+
+  scoped infixl:125 "↔" => rels
+  scoped infixl:125 "⇸" => pfun
+  scoped infixl:125 "⟶" => tfun
+  scoped infixl:125 "⤔" => injPFun
+  scoped infixl:125 "↣" => injTFun
+  scoped infixl:125 "⤀" => surjPFun
+  scoped infixl:125 "↠" => surjTFun
+
+
+  scoped infixl:170 ".." => interval
+
+
+
+  /-
+  Unicode characters
+
+  `|>>` ≔ `⩥`
+  `|>` ≔ `▷`
+  `\/` ≔ `∪`
+  `/\` ≔ `∩`
+  `|->` ≔ `↦`
+  `-->` ≔ `→`
+  `/<<:` ≔ `⊄`
+  `/<:` ≔ `⊈`
+  `/:` ≔ `∉`
+  `<=>` ≔ `⇔`
+  `=>` ≔ `⇒`
+  `&` ≔ `∧`
+  `!` ≔ `∀`
+  `#` ≔ `∃`
+  `/=` ≔ `≠`
+  `<=` ≔ `≤`
+  `>=` ≔ `≥`
+  `<<:` ≔ `⊂`
+  `<:` ≔ `⊆`
+  `<->` ≔ `↔`
+  `>->>` ≔ `⤖`
+  `+->` ≔ `⇸`
+  `>+>` ≔ `⤔`
+  `>->` ≔ `↣`
+  `+>>` ≔ `⤀`
+  `->>` ≔ `↠`
+  `{}` ≔ `∅`
+  `\` ≔ `∖`
+  `**` ≔ `×`
+  `<+` ≔ `` (missing)
+  `><` ≔ `⊗`
+  `||` ≔ `∥`
+  `~` ≔ `∼`
+  `<<|` ≔ `⩤`
+  `<|` ≔ `◁`
+  `%` ≔ `λ`
+  `..` ≔ `‥`
+  `.` ≔ `·`
+  `-` ≔ `−`
+  `*` ≔ `∗`
+  `/` ≔ `÷`
+  `:=` ≔ `≔`
+  `::` ≔ `:∈`
+  `:|` ≔ `:∣`
+  `:` ≔ `∈`
+  `|` ≔ `∣`
+  `,,` ≔ `↦`
+  -/
+
+end B.Builtins

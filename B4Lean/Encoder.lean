@@ -9,7 +9,7 @@ namespace B
 
 def varIsReserved : String → Prop
   | "NAT" | "NAT1" | "NATURAL" | "NATURAL1"
-  | "INT"
+  | "INT" | "INTEGER"
   | "FLOAT"
   | "REAL"
     => True
@@ -23,14 +23,15 @@ instance : DecidablePred varIsReserved := by
   | exact instDecidableTrue
   | exact instDecidableFalse
 
-open Lean Elab Builtins
+open Lean Elab
 
 def reservedVarToExpr : String → TermElabM Lean.Expr
-  | "NAT" => return mkConst ``NAT
-  | "NAT1" => return mkConst ``NAT1
-  | "NATURAL" => return mkConst ``NATURAL
-  | "NATURAL1" => return mkConst ``NATURAL1
-  | "INT" => return mkConst ``INT
+  | "NAT" => return mkConst ``Builtins.NAT
+  | "NAT1" => return mkConst ``Builtins.NAT₁
+  | "NATURAL" => return mkConst ``Builtins.NATURAL
+  | "NATURAL1" => return mkConst ``Builtins.NATURAL₁
+  | "INT" => return mkConst ``Builtins.INT
+  | "INTEGER" => return mkConst ``Builtins.INTEGER
   | v => throwError "Variable {v} is not reserved."
 
 def Syntax.Typ.toExpr : Typ → Expr
@@ -91,13 +92,7 @@ private def lookupVar (x : 𝒱) : TermElabM Expr := do
   return e.toExpr
 
 partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
-  | .var v =>
-    -- match v with
-    -- | _ => lookupVar v
-    if varIsReserved v then
-      reservedVarToExpr v
-    else
-      lookupVar v
+  | .var v => if varIsReserved v then reservedVarToExpr v else lookupVar v
   | .num n ty => return mkIntLit n
   | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
   | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
@@ -194,6 +189,10 @@ partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
   | .lambda vs D P => panic! "not implemented (lambda)"
   | .pfun A B => panic! "not implemented (pfun)"
   | .tfun A B => panic! "not implemented (tfun)"
+  | .injfun A B isPartial => do
+    let A ← A.toExpr
+    let B ← B.toExpr
+    mkAppM (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) #[A, B]
   -- | .tfun A B => panic! "not implemented (pfun)"
   | .min S => panic! "not implemented (min)"
   | .max S => panic! "not implemented (max)"
