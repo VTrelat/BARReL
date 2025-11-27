@@ -21,7 +21,7 @@ namespace B.Syntax
   inductive Term : Type _ where
     -- basic terms
     | var (v : String)
-    | num (n : Int) (t : Typ)
+    | int (n : Int)
     | bool (b : Bool)
     -- pairs
     | maplet (x y : Term)
@@ -60,6 +60,8 @@ namespace B.Syntax
     | lambda (vs : Array (String × Typ)) (D P : Term)
     | «fun» (A B : Term) (isPartial := true)
     | injfun (A B : Term) (isPartial := true)
+    | surjfun (A B : Term) (isPartial := true)
+    | bijfun (A B : Term) (isPartial := true)
     | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
     | max (S : Term)
     -- quantifiers
@@ -68,54 +70,56 @@ namespace B.Syntax
     deriving Inhabited, Repr
 
   partial def Term.pretty : Term -> Nat -> Std.Format
-  | .var v => λ _ => v
-  | .num n _ => λ _ => toString n
-  | .bool x => λ _ => toString x
-  | .𝔹 => λ _ => "𝔹"
-  | .ℤ => λ _ => "ℤ"
-  | .ℝ => λ _ => "ℝ"
-  | .imp x y => «infixl» Term.pretty 30 "⇒" x y -- /!\ see manrefb p.198
-  | .or x y => «infixl» Term.pretty 40 "∨" x y
-  | .and x y => «infixl» Term.pretty 40 "∧" x y
-  | .eq x y => «infixl» Term.pretty 60 "=" x y
-  | .mem x S => «infixl» Term.pretty 120 "∈" x S
-  | .subset S T => «infixl» Term.pretty 110 "⊆" S T
-  | .rel A B => «infixl» Term.pretty 125 "↔" A B
-  | .fun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⇸" else "⟶") A B
-  | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B
-  | .le x y => «infixl» Term.pretty 160 "≤" x y
-  | .lt x y => «infixl» Term.pretty 160 "<" x y
-  | .inter x y => «infixl» Term.pretty 160 "∩" x y
-  | .union x y => «infixl» Term.pretty 160 "∪" x y
-  | .maplet x y => «infixl» Term.pretty 160 "↦" x y
-  | .add x y => «infixl» Term.pretty 180 "+" x y
-  | .sub x y => «infixl» Term.pretty 180 "-" x y
-  | .mul x y => «infixl» Term.pretty 190 "*" x y
-  | .cprod x y => «infixl» Term.pretty 190 "⨯" x y
-  | .not x => «prefix» Term.pretty 250 "¬" x
-  | .interval lo hi => «infixl» Term.pretty 170 ".." lo hi
-  | .set xs _ =>
-    let elems := xs.toList.map (fun x ↦ Term.pretty x 0 |> toString) |> String.intercalate ", "
-    λ _ => "{ " ++ elems ++ " }"
-  | .exists v P =>
-    let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-    binder Term.pretty 250 "∃ " vs ". " (.var "") "" P ""
-  | .all v P =>
-    let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-    binder Term.pretty 250 "∀ " vs ". " (.var "") "" P ""
-  | .collect v P =>
-    let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-    binder Term.pretty 250 "{ " vs " | " (.var "") "" P ""
-  | .lambda v D P =>
-    let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-    let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
-    binder Term.pretty 0 "λ " vs s!", {vs'} ∈ " D " ⇒ " P ""
-  | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
-  | .pow S => «prefix» Term.pretty 250 "𝒫 " S
-  | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
-  | .min S => «prefix» Term.pretty 250 "min " S
-  | .max S => «prefix» Term.pretty 250 "max " S
-  | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
+    | .var v => λ _ => v
+    | .int n => λ _ => toString n
+    | .bool x => λ _ => toString x
+    | .𝔹 => λ _ => "𝔹"
+    | .ℤ => λ _ => "ℤ"
+    | .ℝ => λ _ => "ℝ"
+    | .imp x y => «infixl» Term.pretty 30 "⇒" x y -- /!\ see manrefb p.198
+    | .or x y => «infixl» Term.pretty 40 "∨" x y
+    | .and x y => «infixl» Term.pretty 40 "∧" x y
+    | .eq x y => «infixl» Term.pretty 60 "=" x y
+    | .mem x S => «infixl» Term.pretty 120 "∈" x S
+    | .subset S T => «infixl» Term.pretty 110 "⊆" S T
+    | .rel A B => «infixl» Term.pretty 125 "↔" A B
+    | .fun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⇸" else "⟶") A B
+    | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B
+    | .surjfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤀" else "↠") A B
+    | .bijfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤗" else "⤖") A B
+    | .le x y => «infixl» Term.pretty 160 "≤" x y
+    | .lt x y => «infixl» Term.pretty 160 "<" x y
+    | .inter x y => «infixl» Term.pretty 160 "∩" x y
+    | .union x y => «infixl» Term.pretty 160 "∪" x y
+    | .maplet x y => «infixl» Term.pretty 160 "↦" x y
+    | .add x y => «infixl» Term.pretty 180 "+" x y
+    | .sub x y => «infixl» Term.pretty 180 "-" x y
+    | .mul x y => «infixl» Term.pretty 190 "*" x y
+    | .cprod x y => «infixl» Term.pretty 190 "⨯" x y
+    | .not x => «prefix» Term.pretty 250 "¬" x
+    | .interval lo hi => «infixl» Term.pretty 170 ".." lo hi
+    | .set xs _ =>
+      let elems := xs.toList.map (fun x ↦ Term.pretty x 0 |> toString) |> String.intercalate ", "
+      λ _ => "{ " ++ elems ++ " }"
+    | .exists v P =>
+      let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
+      binder Term.pretty 250 "∃ " vs ". " (.var "") "" P ""
+    | .all v P =>
+      let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
+      binder Term.pretty 250 "∀ " vs ". " (.var "") "" P ""
+    | .collect v P =>
+      let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
+      binder Term.pretty 250 "{ " vs " | " (.var "") "" P ""
+    | .lambda v D P =>
+      let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
+      let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
+      binder Term.pretty 0 "λ " vs s!", {vs'} ∈ " D " ⇒ " P ""
+    | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
+    | .pow S => «prefix» Term.pretty 250 "𝒫 " S
+    | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
+    | .min S => «prefix» Term.pretty 250 "min " S
+    | .max S => «prefix» Term.pretty 250 "max " S
+    | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
 
   instance : ToString Term where
     toString t := toString (Term.pretty t 0)

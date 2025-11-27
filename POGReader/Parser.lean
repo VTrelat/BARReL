@@ -60,13 +60,9 @@ namespace B.POG
 
   private def makeUnaryTermFromOp : String → (Syntax.Term → Syntax.Term)
     | "not" => .not
-    | "max" => panic! "TODO: max"
-    | "imax" => panic! "TODO: imax"
-    | "rmax" => panic! "TODO: rmax"
-    | "min" => panic! "TODO: min"
-    | "imin" => panic! "TODO: imin"
-    | "rmin" => panic! "TODO: rmin"
-    | "card" => panic! "TODO: card"
+    | "max" | "imax" | "rmax" => .max
+    | "min" | "imin" | "rmin" => .min
+    | "card" => .card
     | "dom" => panic! "TODO: dom"
     | "ran" => panic! "TODO: ran"
     | "POW" => .pow
@@ -79,9 +75,7 @@ namespace B.POG
     | "seq1" => panic! "TODO: seq1"
     | "iseq" => panic! "TODO: iseq"
     | "iseq1" => panic! "TODO: iseq1"
-    | "-" => panic! "TODO: -"
-    | "-i" => panic! "TODO: -i"
-    | "-r" => panic! "TODO: -r"
+    | "-" | "-i" | "-r" => panic! "TODO: -r"
     | "~" => panic! "TODO: ~"
     | "size" => panic! "TODO: size"
     | "perm" => panic! "TODO: perm"
@@ -130,18 +124,18 @@ namespace B.POG
     | "<=i" | "<=r" | "<=f" => .le
     | ">=i" | ">=r" | ">=f" => flip .le
     -- Expression binary operators
-    | "," => panic! "TODO"
     | "*s" => .cprod
-    | "**" | "*" => panic! "TODO"
+    | "**" => panic! "TODO"
+    | "*" => panic! "TODO"
     | "*i" | "*r" | "*f" => panic! "TODO"
     | "**i" | "**f" | "**r" => panic! "TODO"
     | "+" | "+i" | "+r" | "+f" => .add
     | "+->" => .fun (isPartial := true)
     | "-->" => .fun (isPartial := false)
-    | "+->>" => panic! "TODO"
+    | "+->>" => .surjfun (isPartial := true)
+    | "-->>" => .surjfun (isPartial := false)
     | "-" | "-s" => panic! "TODO"
     | "-i" | "-r" | "-f" => panic! "TODO"
-    | "-->>" => panic! "TODO"
     | "->" => panic! "TODO"
     | ".." => .interval
     | "/" | "/i" | "/r" | "/f" => panic! "TODO"
@@ -156,14 +150,14 @@ namespace B.POG
     | ">+>" => .injfun (isPartial := true)
     | ">->" => .injfun (isPartial := false)
     | ">+>>" => panic! "TODO"
-    | ">->>" => panic! "TODO"
+    | ">->>" => .bijfun
     | "><" => panic! "TODO"
     | "||" => panic! "TODO"
     | "\\/" => .union
     | "\\|/" => panic! "TODO"
     | "^" => panic! "TODO"
     | "mod" => panic! "TODO"
-    | "|->" => .maplet
+    | "," | "|->" => .maplet
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
     | "[" => panic! "TODO"
@@ -203,12 +197,8 @@ namespace B.POG
   private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO Syntax.Term
     | node@⟨"Id", attrs, _⟩ => (.var ∘ Prod.fst) <$> parseAndRegisterId vars types node
     | ⟨"Integer_Literal", attrs, _⟩ => do
-      unless attrs.contains "value" do throwError s!"<Id> must contain an attribute `value`"
-      unless attrs.contains "typref" do throwError s!"<Id> must contain an attribute `typref`"
-
-      let typref := (attrs.get! "typref").toNat!
-      let .some ty := types.get? typref | throwError s!"Type ref {typref} not found"
-      return .num (attrs.get! "value").toInt! ty
+      unless attrs.contains "value" do throwError s!"<Integer_Literal> must contain an attribute `value`"
+      return .int (attrs.get! "value").toInt!
     | ⟨"Boolean_Literal", attrs, nodes⟩ => do
       unless attrs.contains "value" do throwError s!"<Boolean_Literal> must contain an attribute `value`"
       match attrs.get! "value" with

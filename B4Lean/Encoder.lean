@@ -103,17 +103,19 @@ namespace B
 
         liftMetaM ∘ mkBinder #[xvec] =<< go xs.toList
 
-    partial def Syntax.Term.toExpr : B.Syntax.Term → TermElabM Expr
+    partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
+      mkAppM f #[← t₁.toExpr, ← t₂.toExpr]
+
+    partial def makeUnary (f : Name) (t : Syntax.Term) : TermElabM Expr := do
+      mkAppM f #[← t.toExpr]
+
+    partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
       | .var v => if h : v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v h else lookupVar v
-      | .num n ty => return mkIntLit n
+      | .int n => return mkIntLit n
       | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
       | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
-      | .bool b =>
-        return .const (if b then ``True else ``False) []
-      | .maplet x y => do
-        let x ← x.toExpr
-        let y ← y.toExpr
-        mkAppM ``Prod.mk #[x, y]
+      | .bool b => return mkConst (if b then ``True else ``False)
+      | .maplet x y => makeBinary ``Prod.mk x y
       | .add x y => mkIntAdd <$> x.toExpr <*> y.toExpr
       | .sub x y => mkIntSub <$> x.toExpr <*> y.toExpr
       | .mul x y => mkIntMul <$> x.toExpr <*> y.toExpr
@@ -125,59 +127,37 @@ namespace B
         let x' ← x.toExpr
         let y' ← y.toExpr
         liftMetaM <| mkEq x' y'
-      | .mem x S => do
-        let S' ← S.toExpr
-        let x' ← x.toExpr
-        mkAppM ``Membership.mem #[S', x']
-      | .𝔹 => return mkApp (mkConst ``Set.univ [0]) (.sort 0)
-      | .ℤ => return mkApp (mkConst ``Set.univ [0]) Int.mkType
-      | .ℝ => return mkApp (mkConst ``Set.univ [0]) (mkConst ``Real)
+      | .mem x S => makeBinary ``Membership.mem S x
+      | .𝔹 => mkAppOptM ``Set.univ #[mkSort 0]
+      | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
+      | .ℝ => mkAppOptM ``Set.univ #[mkConst ``Real]
       | .collect xs P => do
         mkAppM ``setOf #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
       | .all xs P => do
         makeBinder xs P mkForallFVars pure <| mkForall `_ .default
       | .exists xs P => do
         mkAppM ``Exists #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
-      | .interval lo hi => do
-        let lo' ← lo.toExpr
-        let hi' ← hi.toExpr
-        mkAppM ``Builtins.interval #[lo', hi']
-      | .subset S T => do
-        let S' ← S.toExpr
-        let T' ← T.toExpr
-        mkAppM ``HasSubset.Subset #[S', T']
+      | .interval lo hi => makeBinary ``Builtins.interval lo hi
+      | .subset S T => makeBinary ``HasSubset.Subset S T
       | .set es ty => do
         let emp ← mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
         es.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
-      | .pow S => do
-        let S ← S.toExpr
-        mkAppM ``Set.powerset #[S]
-      | .pow₁ S => do
-        let S ← S.toExpr
-        mkAppM ``Builtins.POW₁ #[S]
-      | .cprod S T => do
-        let S ← S.toExpr
-        let T ← T.toExpr
-        mkAppM ``SProd.sprod #[S, T]
-      | .union S T => panic! "not implemented (union)"
-      | .inter S T => panic! "not implemented (inter)"
-      | .rel A B => do
-        let A ← A.toExpr
-        let B ← B.toExpr
-        mkAppM ``B.Builtins.rels #[A, B]
-      | .app f x => do
-        let f ← f.toExpr
-        let x ← x.toExpr
-        mkAppM ``B.Builtins.app #[f, x]
+      | .pow S => makeUnary ``Set.powerset S
+      | .pow₁ S => makeUnary ``Builtins.POW₁ S
+      | .cprod S T => makeBinary ``SProd.sprod S T
+      | .union S T => makeBinary ``Union.union S T
+      | .inter S T => makeBinary ``Inter.inter S T
+      | .rel A B => makeBinary ``B.Builtins.rels A B
+      | .app f x => makeBinary ``B.Builtins.app f x
       | .lambda vs D P => panic! "not implemented (lambda)"
-      | .fun A B isPartial => do
-        let A ← A.toExpr
-        let B ← B.toExpr
-        mkAppM (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) #[A, B]
+      | .fun A B isPartial =>
+        makeBinary (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do
-        let A ← A.toExpr
-        let B ← B.toExpr
-        mkAppM (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) #[A, B]
+        makeBinary (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) A B
+      | .surjfun A B isPartial => do
+        makeBinary (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
+      | .bijfun A B isPartial => do
+        makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => panic! "not implemented (min)"
       | .max S => panic! "not implemented (max)"
       | .card S => panic! "not implemented (card)"

@@ -45,7 +45,10 @@ namespace B.Builtins
   abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     surjPFun A B ∩ tfun A B
 
-  abbrev bijFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev bijPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    injPFun A B ∩ surjPFun A B
+
+  abbrev bijTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     injTFun A B ∩ surjTFun A B
 
 
@@ -81,7 +84,8 @@ namespace B.Builtins
   scoped infixl:125 " ↣ " => injTFun
   scoped infixl:125 " ⤀ " => surjPFun
   scoped infixl:125 " ↠ " => surjTFun
-  scoped infixl:125 " ⤖ " => bijFun
+  scoped infixl:125 " ⤗ " => bijPFun
+  scoped infixl:125 " ⤖ " => bijTFun
 
 
 
