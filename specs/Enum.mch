@@ -1,0 +1,7 @@
+MACHINE
+  Enum
+
+INVARIANT
+  {1, 2, 3, 4} ⊆ NAT
+
+END

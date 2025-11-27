@@ -119,8 +119,8 @@ namespace B.POG
     -- Comparison binary operators
     | ":" => .mem
     | "/:" => (.not <| .mem · ·)
-    | "<:" => panic! "TODO"
-    | "/<:" => panic! "TODO"
+    | "<:" => .subset
+    | "/<:" => (.not <| .subset · ·)
     | "<<:" => panic! "TODO"
     | "/<<:" => panic! "TODO"
     | "=" => .eq
@@ -209,13 +209,33 @@ namespace B.POG
       let typref := (attrs.get! "typref").toNat!
       let .some ty := types.get? typref | throwError s!"Type ref {typref} not found"
       return .num (attrs.get! "value").toInt! ty
-    | ⟨"Boolean_Literal", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Boolean_Literal", attrs, nodes⟩ => do
+      unless attrs.contains "value" do throwError s!"<Boolean_Literal> must contain an attribute `value`"
+      match attrs.get! "value" with
+      | "TRUE" => return .bool true
+      | "FALSE" => return .bool false
+      | v => throwError s!"Unknown boolean literal value {v}"
     | ⟨"STRING_Literal", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Real_Literal", attrs, nodes⟩ => panic! "TODO"
     | ⟨tag@"Unary_Pred", attrs, nodes⟩
-    | ⟨tag@"Unary_Exp", attrs, nodes⟩ => panic! "TODO"
+    | ⟨tag@"Unary_Exp", attrs, nodes⟩ => do
+      unless nodes.size = 1 do throwError s!"<{tag}> expects a single child, got {nodes.size}"
+      unless attrs.contains "op" do throwError s!"<{tag}> must contain the attribute `op`"
+
+      let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
+      makeUnaryTermFromOp (attrs.get! "op") <$> parseTerm types e
     | ⟨"Ternary_Exp", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"Nary_Exp", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Nary_Exp", attrs, nodes⟩ => do
+      -- possible op: '{', '['
+      let .some op := attrs.get? "op" | throwError s!"<Nary_Exp> must contain the attribute `op`"
+      let .some ty := attrs.get? "typref" | throwError s!"<Nary_Exp> must contain the attribute `typref`"
+      let elems ← nodes.mapM fun
+        | .Element e => parseTerm types e
+        | _ => throwError s!"Unexpected node kind in <Nary_Exp>"
+      match op with
+      | "{" => return .set elems (types.get! ty.toNat!)
+      | "[" => panic! "TODO: sequences"
+      | _ => throwError s!"Unknown n-ary operator `{op}` in <Nary_Exp>"
     | ⟨"Nary_Pred", attrs, nodes⟩ => do
       let .some op := attrs.get? "op" | throwError s!"<Nary_Pred> must contain the attribute `op`"
       let (binop, default) : ((B.Syntax.Term → B.Syntax.Term → B.Syntax.Term) × B.Syntax.Term) :=

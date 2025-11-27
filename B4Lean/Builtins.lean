@@ -23,8 +23,7 @@ namespace B.Builtins
 
   abbrev REAL : Set Real := Set.univ
 
-  abbrev POW {α : Type _} (A : Set α) : Set (Set α) := 𝒫 A
-  abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ POW A | S ≠ ∅ }
+  abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ 𝒫 A | S ≠ ∅ }
 
   abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
@@ -49,7 +48,6 @@ namespace B.Builtins
   abbrev bijFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     injTFun A B ∩ surjTFun A B
 
-  abbrev cprod {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := A ×ˢ B
 
   /-!
     # Function and relation operators
@@ -74,7 +72,6 @@ namespace B.Builtins
   scoped notation "ℤ" => INTEGER
   scoped notation "ℝ" => REAL
   scoped notation "𝔹" => BOOL
-  scoped prefix:250 "𝒫 " => POW
   scoped prefix:250 "𝒫₁ " => POW₁
 
   scoped infixl:125 " ↔ " => rels
@@ -87,7 +84,6 @@ namespace B.Builtins
   scoped infixl:125 " ⤖ " => bijFun
 
 
-  scoped infix:190 " × " => cprod
 
 
   scoped infixl:170 ".." => interval

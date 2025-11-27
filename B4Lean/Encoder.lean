@@ -102,6 +102,10 @@ namespace B
       let S' ← S.toExpr
       let x' ← x.toExpr
       mkAppM ``Membership.mem #[S', x']
+    | .subset S T => do
+      let S' ← S.toExpr
+      let T' ← T.toExpr
+      mkAppM ``HasSubset.Subset #[S', T']
     | .𝔹 => return mkApp (mkConst ``Set.univ [0]) (.sort 0)
     | .ℤ => return mkApp (mkConst ``Set.univ [0]) Int.mkType
     | .ℝ => return mkApp (mkConst ``Set.univ [0]) (mkConst ``Real)
@@ -190,18 +194,21 @@ namespace B
       let hi' ← hi.toExpr
       mkAppM ``Builtins.interval #[lo', hi']
     | .set es ty => do
-      let emp ← mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
-      es.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
+      if es.isEmpty then
+        mkAppOptM ``EmptyCollection.emptyCollection #[.some ty.toExpr, .none]
+      else
+        let e ← mkAppOptM ``Singleton.singleton #[.none, .some ty.toExpr, .none, ←es.back!.toExpr]
+        es.pop.foldrM (init := e) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
     | .pow S => do
       let S ← S.toExpr
-      mkAppM ``Builtins.POW #[S]
+      mkAppM ``Set.powerset #[S]
     | .pow₁ S => do
       let S ← S.toExpr
       mkAppM ``Builtins.POW₁ #[S]
     | .cprod S T => do
       let S ← S.toExpr
       let T ← T.toExpr
-      mkAppM ``Builtins.cprod #[S, T]
+      mkAppM ``SProd.sprod #[S, T]
     | .union S T => panic! "not implemented (union)"
     | .inter S T => panic! "not implemented (inter)"
     | .rel A B => do

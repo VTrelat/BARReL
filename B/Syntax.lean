@@ -45,6 +45,7 @@ namespace B.Syntax
     -- set operations
     | interval (lo hi : Term)
     | set (xs : Array Term) (ty : Typ)
+    | subset (S T : Term)
     | mem (x : Term) (S : Term)
     | collect (vs : Array (String × Typ)) (P : Term)
     | pow (S : Term) | pow₁ (S : Term)
@@ -78,6 +79,7 @@ namespace B.Syntax
   | .and x y => «infixl» Term.pretty 40 "∧" x y
   | .eq x y => «infixl» Term.pretty 60 "=" x y
   | .mem x S => «infixl» Term.pretty 120 "∈" x S
+  | .subset S T => «infixl» Term.pretty 110 "⊆" S T
   | .rel A B => «infixl» Term.pretty 125 "↔" A B
   | .fun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⇸" else "⟶") A B
   | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B

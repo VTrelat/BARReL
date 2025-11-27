@@ -79,7 +79,7 @@ elab_rules : command
 -- set_option trace.b4lean.pog true
 set_option b4lean.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-open scoped B.Builtins
+open B.Builtins
 
 pog_discharger "specs/Counter.mch"
 next
@@ -112,6 +112,14 @@ next
 pog_discharger "specs/Injective.mch"
 next
   admit
+
+pog_discharger "specs/HO.mch"
+next
+  admit
+
+pog_discharger "specs/Enum.mch"
+next
+  grind
 
 -- #check Counter.Initialisation_0
 -- #check Counter.Initialisation_1
