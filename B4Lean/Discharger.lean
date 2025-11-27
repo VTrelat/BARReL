@@ -7,19 +7,16 @@ import POGReader.Basic
 
 open Lean Parser Elab Term Command
 
-declare_syntax_cat discharger_command
-syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
-syntax (name := pog_discharger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
-
 def mch2pog (mchPath : System.FilePath) : CommandElabM System.FilePath := do
-  let atelierBDir : System.FilePath :=
-    System.FilePath.mk <| (← getOptions).getString `b4lean.atelierb
+  let atelierBDir := System.FilePath.mk <| (← getOptions).getString `b4lean.atelierb
+
+  let .some mchName := mchPath.fileName | throwError "what?"
 
   let stdout ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"bxml").toString, args := #["-a", mchPath.toString]
   }
   let tmp ← IO.FS.createTempDir
-  let bxml := tmp/"tmp.bxml"
+  let bxml := tmp/System.FilePath.withExtension mchName "bxml"
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"pog").toString,
@@ -27,11 +24,13 @@ def mch2pog (mchPath : System.FilePath) : CommandElabM System.FilePath := do
   }
   pure <| bxml.withExtension "pog"
 
-elab_rules : command
-| `(command| pog_discharger $path $steps*) => do
-  let path := System.FilePath.mk path.getString
+declare_syntax_cat discharger_command
+syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
+syntax (name := pogDischarger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
+syntax (name := mchDischarger) "mch_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
+
+def pog2obligations (path : System.FilePath) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   let .some name := path.fileStem | throwError "what?"
-  let path ← mch2pog path
   let goals ← B.POG.parseAndExtractGoals path
 
   let mut i := 0
@@ -72,57 +71,8 @@ elab_rules : command
     let remaining := goals.size - i
     throwError s!"There still {if remaining = 1 then "is" else "are"} {remaining} goal{if remaining = 1 then "" else "s"} to discharge."
 
-  pure .unit
-
-/- TESTS -/
-
--- set_option trace.b4lean.pog true
-set_option b4lean.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
-
-open B.Builtins
-
-pog_discharger "specs/Counter.mch"
-next
-  grind
-next
-  grind
-next
-  rintro x ⟨_, _⟩ _ _
-  grind
-next
-  grind
-
-pog_discharger "specs/Nat.mch"
-next
-  rintro x ⟨_, _⟩
-  assumption
-
-pog_discharger "specs/Collect.mch"
-next
-  grind
-
-pog_discharger "specs/Forall.mch"
-next
-  grind
-
-pog_discharger "specs/Exists.mch"
-next
-  exists 0, 0
-
-pog_discharger "specs/Injective.mch"
-next
-  admit
-
-pog_discharger "specs/HO.mch"
-next
-  admit
-
-pog_discharger "specs/Enum.mch"
-next
-  grind
-
--- #check Counter.Initialisation_0
--- #check Counter.Initialisation_1
--- #check Counter.Operation_inc_2
--- #check Counter.Operation_inc_3
--- #check Nat.Initialisation_0
+elab_rules : command
+| `(command| mch_discharger $path $steps*) => do
+  pog2obligations (← mch2pog <| System.FilePath.mk path.getString) steps
+| `(command| pog_discharger $path $steps*) => do
+  pog2obligations (System.FilePath.mk path.getString) steps
