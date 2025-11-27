@@ -22,21 +22,28 @@ namespace B.Builtins
 
   abbrev REAL : Set Real := Set.univ
 
-  abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := { ⟨a, b⟩ : α × β | a ∈ A ∧ b ∈ B }
+  abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
 
-  abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
-  abbrev tfun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    { f : Set (α × β) | f ∈ rels A B ∧ ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 
-  abbrev injPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
-  abbrev injTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev tfun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    { f : Set (α × β) | f ∈ pfun A B ∧ ∀ x ∈ A, ∃ y ∈ B, (x, y) ∈ f }
 
-  abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
-  abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := sorry
+  abbrev injPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    { f : Set (α × β) | f ∈ pfun A B ∧ ∀ ⦃x₁ x₂ y⦄, (x₁, y) ∈ f → (x₂, y) ∈ f → x₁ = x₂ }
 
-  abbrev bijFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) := sorry
+  abbrev injTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    injPFun A B ∩ tfun A B
 
+  abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    { f : Set (α × β) | f ∈ pfun A B ∧ ∀ y ∈ B, ∃ x ∈ A, (x, y) ∈ f }
+  abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    surjPFun A B ∩ tfun A B
 
-
+  abbrev bijFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+    injTFun A B ∩ surjTFun A B
 
   abbrev cprod {α β : Type _} (A : Set α) (B : Set β) : Set (α × β) := A ×ˢ B
 
