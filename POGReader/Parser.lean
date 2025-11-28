@@ -63,8 +63,8 @@ namespace B.POG
     | "max" | "imax" | "rmax" => return .max
     | "min" | "imin" | "rmin" => return .min
     | "card" => return .card
-    | "dom" => panic! "TODO: dom"
-    | "ran" => panic! "TODO: ran"
+    | "dom" => return .dom
+    | "ran" => return .ran
     | "POW" => return .pow
     | "POW1" => return .pow₁
     | "FIN" => panic! "TODO: FIN"
@@ -127,18 +127,18 @@ namespace B.POG
     | "*s" => return .cprod
     | "**" => panic! "TODO"
     | "*" => panic! "TODO"
-    | "*i" | "*r" | "*f" => panic! "TODO"
-    | "**i" | "**f" | "**r" => panic! "TODO"
+    | "*i" | "*r" | "*f" => return .mul
+    | "**i" | "**f" | "**r" => return .exp
     | "+" | "+i" | "+r" | "+f" => return .add
     | "+->" => return .fun (isPartial := true)
     | "-->" => return .fun (isPartial := false)
     | "+->>" => return .surjfun (isPartial := true)
     | "-->>" => return .surjfun (isPartial := false)
     | "-" | "-s" => panic! "TODO"
-    | "-i" | "-r" | "-f" => panic! "TODO"
+    | "-i" | "-r" | "-f" => return .sub
     | "->" => panic! "TODO"
     | ".." => return .interval
-    | "/" | "/i" | "/r" | "/f" => panic! "TODO"
+    | "/" | "/i" | "/r" | "/f" => return .div
     | "/\\" => return .inter
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
@@ -156,7 +156,7 @@ namespace B.POG
     | "\\/" => return .union
     | "\\|/" => panic! "TODO"
     | "^" => panic! "TODO"
-    | "mod" => panic! "TODO"
+    | "mod" => return .mod
     | "," | "|->" => return .maplet
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
@@ -253,7 +253,10 @@ namespace B.POG
         let and ← conjuncts.pop.foldrM (init := conjuncts.back!) fun t acc ↦
           return binop t acc
         return and
-    | ⟨"Boolean_Exp", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Boolean_Exp", attrs, nodes⟩ => do
+      unless nodes.size = 1 do throwError s!"<Boolean_Exp> expects a single child, got {nodes.size}"
+      let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
+      parseTerm types e
     | ⟨"EmptySet", attrs, nodes⟩ => do
       unless nodes.size = 0 do throwError "<EmptySet> expects no child nodes"
       unless attrs.contains "typref" do throwError "<EmptySet> requires a `typref` attribute"

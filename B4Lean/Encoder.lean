@@ -130,6 +130,9 @@ namespace B
       | .add x y => mkIntAdd <$> x.toExpr <*> y.toExpr
       | .sub x y => mkIntSub <$> x.toExpr <*> y.toExpr
       | .mul x y => mkIntMul <$> x.toExpr <*> y.toExpr
+      | .div x y => mkIntDiv <$> x.toExpr <*> y.toExpr
+      | .mod x y => mkIntMod <$> x.toExpr <*> y.toExpr
+      | .exp x y => do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
       | .and x y => mkAnd <$> x.toExpr <*> y.toExpr
       | .or x y => mkOr <$> x.toExpr <*> y.toExpr
       | .imp x y => mkForall `_ .default <$> x.toExpr <*> y.toExpr
@@ -207,6 +210,8 @@ namespace B
       | .inter S T => makeBinary ``Inter.inter S T
       | .rel A B => makeBinary ``B.Builtins.rels A B
       | .app f x => makeBinary ``B.Builtins.app f x
+      | .dom f => makeUnary ``B.Builtins.dom f
+      | .ran f => makeUnary ``B.Builtins.ran f
       | .fun A B isPartial =>
         makeBinary (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do
@@ -215,8 +220,8 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
       | .bijfun A B isPartial => do
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
-      | .min S => panic! "not implemented (min)"
-      | .max S => panic! "not implemented (max)"
+      | .min S => makeUnary ``B.Builtins.min S
+      | .max S => makeUnary ``B.Builtins.max S
       | .card S => panic! "not implemented (card)"
   end
 

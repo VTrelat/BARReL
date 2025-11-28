@@ -29,6 +29,9 @@ namespace B.Syntax
     | add (x y : Term)
     | sub (x y : Term)
     | mul (x y : Term)
+    | div (x y : Term)
+    | mod (x y : Term)
+    | exp (x y : Term)
     | le (x y : Term)
     | lt (x y : Term)
     -- logic
@@ -56,6 +59,8 @@ namespace B.Syntax
     -- relations
     | rel (A B : Term)
     -- functions
+    | dom (f : Term)
+    | ran (f : Term)
     | app (f x : Term)
     | lambda (vs : Array (String × Typ)) (D P : Term)
     | «fun» (A B : Term) (isPartial := true)
@@ -95,6 +100,9 @@ namespace B.Syntax
     | .add x y => «infixl» Term.pretty 180 "+" x y
     | .sub x y => «infixl» Term.pretty 180 "-" x y
     | .mul x y => «infixl» Term.pretty 190 "*" x y
+    | .exp x y => «infixr» Term.pretty 200 "^" x y
+    | .div x y => «infixl» Term.pretty 190 "/" x y
+    | .mod x y => «infixl» Term.pretty 190 "mod" x y
     | .cprod x y => «infixl» Term.pretty 190 "⨯" x y
     | .not x => «prefix» Term.pretty 250 "¬" x
     | .interval lo hi => «infixl» Term.pretty 170 ".." lo hi
@@ -119,6 +127,8 @@ namespace B.Syntax
     | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
     | .min S => «prefix» Term.pretty 250 "min " S
     | .max S => «prefix» Term.pretty 250 "max " S
+    | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
+    | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
 
   instance : ToString Term where

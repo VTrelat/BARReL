@@ -2,6 +2,8 @@ import Mathlib.Data.Set.Basic
 import Mathlib.Data.Real.Basic
 
 namespace B.Builtins
+open Classical
+
   /-!
     # Builtin sets
   -/
@@ -56,7 +58,11 @@ namespace B.Builtins
     # Function and relation operators
   -/
 
-  open Classical in
+  abbrev dom {α β : Type _} (R : Set (α × β)) : Set α :=
+    { x | ∃ y, (x, y) ∈ R }
+  abbrev ran {α β : Type _} (R : Set (α × β)) : Set β :=
+    { y | ∃ x, (x, y) ∈ R }
+
   noncomputable abbrev app {α β : Type _} [Inhabited β] (f : Set (α × β)) (x : α) : β :=
     if h : ∃ y, (x, y) ∈ f then Classical.choose h else default
 
@@ -67,6 +73,24 @@ namespace B.Builtins
   -/
 
   def interval (lo hi : Int) : Set Int := { n | lo ≤ n ∧ n ≤ hi }
+
+
+  /-!
+    # Arithmetic operators
+  -/
+
+  noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+    -- NOTE: can't use `WithTop` because it is not type-correct
+    if h : S.Nonempty ∧ ∃ m ∈ S, ∀ x ∈ S, m ≤ x then
+      Classical.choose h.2
+    else panic! "min: set is empty or not lower bounded"
+
+  noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+    -- NOTE: can't use `WithBot` because it is not type-correct
+    if h : S.Nonempty ∧ ∃ M ∈ S, ∀ x ∈ S, x ≤ M then
+      Classical.choose h.2
+    else panic! "max: set is empty or not upper bounded"
+
 
   ----- Notations
 
