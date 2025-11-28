@@ -26,6 +26,7 @@ namespace B.Syntax
     -- pairs
     | maplet (x y : Term)
     -- arithmetic
+    | uminus (x : Term)
     | add (x y : Term)
     | sub (x y : Term)
     | mul (x y : Term)
@@ -38,6 +39,7 @@ namespace B.Syntax
     | and (x y : Term)
     | or (x y : Term)
     | imp (x y : Term)
+    | iff (x y : Term)
     | not (x : Term)
     | eq (x y : Term)
     -- sets
@@ -46,6 +48,7 @@ namespace B.Syntax
     | ℤ
     | ℝ
     -- set operations
+    | setminus (S T : Term)
     | fin (S : Term)
     | fin₁ (S : Term)
     | interval (lo hi : Term)
@@ -60,6 +63,9 @@ namespace B.Syntax
     | card (S : Term)
     -- relations
     | rel (A B : Term)
+    | inv (R : Term)
+    | id (A : Term)
+    | image (R X : Term)
     -- functions
     | dom (f : Term)
     | ran (f : Term)
@@ -83,13 +89,16 @@ namespace B.Syntax
     | .𝔹 => λ _ => "𝔹"
     | .ℤ => λ _ => "ℤ"
     | .ℝ => λ _ => "ℝ"
-    | .imp x y => «infixl» Term.pretty 30 "⇒" x y -- /!\ see manrefb p.198
+    | .uminus x => «prefix» Term.pretty 210 "−" x
+    | .imp x y => «infixl» Term.pretty 30 "⇒" x y
+    | .iff x y => «infixl» Term.pretty 30 "⇔" x y
     | .or x y => «infixl» Term.pretty 40 "∨" x y
     | .and x y => «infixl» Term.pretty 40 "∧" x y
     | .eq x y => «infixl» Term.pretty 60 "=" x y
     | .mem x S => «infixl» Term.pretty 120 "∈" x S
     | .subset S T => «infixl» Term.pretty 110 "⊆" S T
     | .rel A B => «infixl» Term.pretty 125 "↔" A B
+    | .inv R => «postfix» Term.pretty 230 "⁻¹" R
     | .fun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⇸" else "⟶") A B
     | .injfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤔" else "↣") A B
     | .surjfun A B isPartial => «infixl» Term.pretty 125 (if isPartial then "⤀" else "↠") A B
@@ -101,6 +110,7 @@ namespace B.Syntax
     | .maplet x y => «infixl» Term.pretty 160 "↦" x y
     | .add x y => «infixl» Term.pretty 180 "+" x y
     | .sub x y => «infixl» Term.pretty 180 "-" x y
+    | .setminus x y => «infixl» Term.pretty 180 "∖" x y
     | .mul x y => «infixl» Term.pretty 190 "*" x y
     | .exp x y => «infixr» Term.pretty 200 "^" x y
     | .div x y => «infixl» Term.pretty 190 "/" x y
@@ -132,6 +142,8 @@ namespace B.Syntax
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)
     | .fin₁ S => fun _ ↦ Term.pretty (.var "fin₁") 300 ++ .paren (Term.pretty S 0)
+    | .id A => λ _ => Term.pretty (.var "id") 300 ++ .paren (Term.pretty A 0)
+    | .image R X => fun _ ↦ Term.pretty R 300 ++ .sbracket (Term.pretty X 0)
     | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
 
   instance : ToString Term where

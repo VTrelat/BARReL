@@ -1,4 +1,5 @@
 import Mathlib.Data.Set.Basic
+import Mathlib.Data.Rel
 import Mathlib.Data.Finite.Defs
 import Mathlib.Data.Real.Basic
 
@@ -28,30 +29,30 @@ open Classical
 
   abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ 𝒫 A | S.Nonempty }
 
-  abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
 
-  abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     { f : Set (α × β) | f ∈ rels A B ∧ ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 
-  abbrev tfun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev tfun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     { f : Set (α × β) | f ∈ pfun A B ∧ ∀ x ∈ A, ∃ y ∈ B, (x, y) ∈ f }
 
-  abbrev injPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev injPFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     { f : Set (α × β) | f ∈ pfun A B ∧ ∀ ⦃x₁ x₂ y⦄, (x₁, y) ∈ f → (x₂, y) ∈ f → x₁ = x₂ }
 
-  abbrev injTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev injTFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     injPFun A B ∩ tfun A B
 
-  abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev surjPFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     { f : Set (α × β) | f ∈ pfun A B ∧ ∀ y ∈ B, ∃ x ∈ A, (x, y) ∈ f }
-  abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev surjTFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     surjPFun A B ∩ tfun A B
 
-  abbrev bijPFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev bijPFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     injPFun A B ∩ surjPFun A B
 
-  abbrev bijTFun {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
+  abbrev bijTFun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
     injTFun A B ∩ surjTFun A B
 
 
@@ -59,14 +60,19 @@ open Classical
     # Function and relation operators
   -/
 
-  abbrev dom {α β : Type _} (R : Set (α × β)) : Set α :=
+  abbrev id {α : Type _} (A : Set α) : SetRel α α :=
+    { (x, x) | x ∈ A }
+
+  abbrev dom {α β : Type _} (R : SetRel α β) : Set α :=
     { x | ∃ y, (x, y) ∈ R }
-  abbrev ran {α β : Type _} (R : Set (α × β)) : Set β :=
+  abbrev ran {α β : Type _} (R : SetRel α β) : Set β :=
     { y | ∃ x, (x, y) ∈ R }
 
-  noncomputable abbrev app {α β : Type _} [Inhabited β] (f : Set (α × β)) (x : α) : β :=
-    if h : ∃ y, (x, y) ∈ f then Classical.choose h else default
+  def appWF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop :=
+    x ∈ dom f
 
+  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : appWF f x): β :=
+    Classical.choose wf
 
 
   /-!
@@ -119,8 +125,9 @@ open Classical
 
   scoped infixl:170 ".." => interval
 
-
-  scoped notation F:300 "(" x:min ")" => app F x
+  scoped postfix:230 "⁻¹" => SetRel.inv
+  scoped notation F:300 "(" x:min ")" wf => app F x wf
+  scoped notation R:300 "[" X:min "]" => SetRel.image R X
 
   /-
   TODO: add remaining Unicode characters

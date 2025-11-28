@@ -75,13 +75,13 @@ namespace B.POG
     | "seq1" => panic! "TODO: seq1"
     | "iseq" => panic! "TODO: iseq"
     | "iseq1" => panic! "TODO: iseq1"
-    | "-" | "-i" | "-r" => panic! "TODO: -r"
-    | "~" => panic! "TODO: ~"
+    | "-" | "-i" | "-r" => return .uminus
+    | "~" => return .inv
     | "size" => panic! "TODO: size"
     | "perm" => panic! "TODO: perm"
     | "first" => panic! "TODO: first"
     | "last" => panic! "TODO: last"
-    | "id" => panic! "TODO: id"
+    | "id" => return .id
     | "closure" => panic! "TODO: closure"
     | "closure1" => panic! "TODO: closure1"
     | "tail" => panic! "TODO: tail"
@@ -134,7 +134,7 @@ namespace B.POG
     | "-->" => return .fun (isPartial := false)
     | "+->>" => return .surjfun (isPartial := true)
     | "-->>" => return .surjfun (isPartial := false)
-    | "-" | "-s" => panic! "TODO"
+    | "-" | "-s" => return .setminus
     | "-i" | "-r" | "-f" => return .sub
     | "->" => panic! "TODO"
     | ".." => return .interval
@@ -160,7 +160,7 @@ namespace B.POG
     | "," | "|->" => return .maplet
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
-    | "[" => panic! "TODO"
+    | "[" => return .image
     | "(" => return .app
     | "<'" => panic! "TODO"
     | "prj1" => panic! "TODO"
@@ -173,7 +173,7 @@ namespace B.POG
     | "arity" => panic! "TODO"
     -- Logic binary operators
     | "=>" => return .imp
-    | "<=>" => panic! "TODO"
+    | "<=>" => return .iff
     | op => throwError s!"Unrecognized unary operator {op}"
 
   private def makeBoundedQuantifier : String → IO (Array (String × Syntax.Typ) → Syntax.Term → Syntax.Term → Syntax.Term)

@@ -143,6 +143,7 @@ namespace B
     partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
+      | .uminus x => mkIntNeg <$> x.toExpr
       | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
       | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
       | .bool b => return mkConst (if b then ``True else ``False)
@@ -156,6 +157,7 @@ namespace B
       | .and x y => mkAnd <$> x.toExpr <*> y.toExpr
       | .or x y => mkOr <$> x.toExpr <*> y.toExpr
       | .imp x y => mkForall `_ .default <$> x.toExpr <*> y.toExpr
+      | .iff x y => mkIff <$> x.toExpr <*> y.toExpr
       | .not x => mkNot <$> x.toExpr
       | .eq x y => do
         let x' ← x.toExpr
@@ -223,13 +225,16 @@ namespace B
         else
           let emp ← mkAppOptM ``Singleton.singleton #[.none, ty.toExpr, .none, ← es.back!.toExpr]
           es.pop.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
+      | .setminus S T => makeBinary ``SDiff.sdiff S T
       | .pow S => makeUnary ``Set.powerset S
       | .pow₁ S => makeUnary ``Builtins.POW₁ S
       | .cprod S T => makeBinary ``SProd.sprod S T
       | .union S T => makeBinary ``Union.union S T
       | .inter S T => makeBinary ``Inter.inter S T
       | .rel A B => makeBinary ``B.Builtins.rels A B
-      | .app f x => makeBinary ``B.Builtins.app f x
+      | .image R X => makeBinary ``SetRel.image R X
+      | .inv R => makeUnary ``SetRel.inv R
+      | .id A => makeUnary ``B.Builtins.id A
       | .dom f => makeUnary ``B.Builtins.dom f
       | .ran f => makeUnary ``B.Builtins.ran f
       | .fun A B isPartial =>
@@ -248,6 +253,11 @@ namespace B
         let S ← S.toExpr
         let wf ← mkAppM ``B.Builtins.maxWF #[S]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
+      | .app f x => do
+        let f ← f.toExpr
+        let x ← x.toExpr
+        let wf ← mkAppM ``B.Builtins.appWF #[f, x]
+        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
