@@ -14,7 +14,7 @@ BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the 
 ## Prerequisites
 - Lean 4 (see [`lean-toolchain`](lean-toolchain) for version).
 - Mathlib (pulled automatically by Lake).
-- For `mch_discharger`: an Atelier B installation with `bin/bxml` and `bin/pog` available. Point BARReL to it with `set_option b4lean.atelierb "<path-to-atelierb-root>"` (the directory that contains `bin/` and `include/`).
+- For `mch_discharger`: an Atelier B installation with `bin/bxml` and `bin/pog` available. Point BARReL to it with `set_option barrel.atelierb "<path-to-atelierb-root>"` (the directory that contains `bin/` and `include/`).
 
 ## Quick start
 ### Setting up the environment
@@ -57,7 +57,7 @@ In Lean, we can discharge them as follows:
 ```hs
 import B4Lean.Discharger
 
-set_option b4lean.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
+set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 mch_discharger "specs/Counter.mch"
 next -- 0 ∈ NAT
@@ -80,7 +80,7 @@ Two commands are provided to discharge proof obligations from B machines:
 Each command expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:
 
 ```hs
-set_option b4lean.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
+set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins
 

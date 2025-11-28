@@ -563,12 +563,15 @@ namespace B.POG
     | ⟨name, _, _⟩ => throwError s!"Unexpected root element '{name}'"
 
   omit vars in
-  def parse (path : System.FilePath) : IO Schema.ProofObligations := do
+  def parse' (content : String) : IO Schema.ProofObligations := do
     let vars ← IO.mkRef ∅
 
-    IO.FS.readFile path
-      >>= IO.ofExcept ∘ Lean.Xml.parse
+    IO.ofExcept (Lean.Xml.parse content)
       >>= parseProofObligations vars ∘ removeEmptyDeep
+
+  omit vars in
+  def parse (path : System.FilePath) : IO Schema.ProofObligations :=
+    IO.FS.readFile path >>= parse'
 end B.POG
 
 -- #eval B.POG.parse ("specs" / "Exists.pog")

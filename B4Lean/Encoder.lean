@@ -31,12 +31,12 @@ namespace B
   private def newMVar (type? : Option Lean.Expr) : MetaM Expr := do
     -- let mvar ← pure Int.mkType
     let mvar ← Meta.mkFreshExprMVar type?
-    trace[b4lean.pog] "New metavariable {mvar}"
+    trace[barrel.pog] "New metavariable {mvar}"
     return mvar
 
   private def assignMVar (β ty : Expr) : MetaM PUnit := do
     if !(← β.mvarId!.isAssigned) && (← Meta.isDefEq (← β.mvarId!.getType) (← inferType ty)) then
-      trace[b4lean.pog] m!"Assigning metavariable {β} to {ty}"
+      trace[barrel.pog] m!"Assigning metavariable {β} to {ty}"
       β.mvarId!.assign ty
 
   private def newLMVar : MetaM Level := do
@@ -88,7 +88,7 @@ namespace B
   variable (hyps : IO.Ref (Std.HashMap Expr Expr))
 
   private def newHypothesis (h : Expr) (thm : Expr) : TermElabM PUnit := do
-    trace[b4lean.pog] "Generating new WF hypothesis {h} : {thm}"
+    trace[barrel.pog] "Generating new WF hypothesis {h} : {thm}"
 
     let hypsMap ← hyps.get
     if hypsMap.contains h then throwError s!"Hypothesis {repr h} already exists"
@@ -264,7 +264,7 @@ namespace B
   end
 
   def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
-    -- trace[b4lean.pog] s!"Encoding: {goal}"
+    -- trace[barrel.pog] s!"Encoding: {goal}"
 
     let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
       sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
@@ -281,7 +281,7 @@ namespace B
         let wfHyps ← IO.mkRef ∅
         let t ← t.toExpr wfHyps
         if !(← wfHyps.get).isEmpty then
-          trace[b4lean.pog] m!"Inserting some WF hypotheses before {indentExpr t}"
+          trace[barrel.pog] m!"Inserting some WF hypotheses before {indentExpr t}"
         mkWfHyps (← k t) (← wfHyps.get).toList
 
       let rec goHyp : List Syntax.Term → TermElabM Expr
@@ -291,7 +291,7 @@ namespace B
 
       let g ← goHyp sg.hyps.toList
 
-      trace[b4lean.pog] "Generated goal (no quantified variable): {indentExpr g}"
+      trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 
       let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
               >>= Term.ensureHasType (.some <| .sort 0)

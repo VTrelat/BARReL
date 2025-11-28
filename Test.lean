@@ -1,7 +1,7 @@
 import B4Lean.Discharger
 
-set_option trace.b4lean.pog true
-set_option b4lean.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
+set_option trace.barrel.pog true
+set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins
 
@@ -48,14 +48,10 @@ next
     · rw [F_eq]
       admit
 
+-- TODO: fix
 -- mch_discharger "specs/HO.mch"
 -- next
---   intro X Y y₁ y₂ x F x_mem_X y₁_mem_Y y₂_mem_Y y₁_neq_y₂ F_fun _ _
---   by_cases F(x) = y₁
---   · -- G = F(x ↦ y₂)
---     admit
---   · -- G = F(x ↦ y₁)
---     admit
+--   admit
 
 -- mch_discharger "specs/Enum.mch"
 -- next
