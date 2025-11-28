@@ -67,8 +67,8 @@ namespace B.POG
     | "ran" => return .ran
     | "POW" => return .pow
     | "POW1" => return .pow₁
-    | "FIN" => panic! "TODO: FIN"
-    | "FIN1" => panic! "TODO: FIN1"
+    | "FIN" => return .fin
+    | "FIN1" => return .fin₁
     | "union" => panic! "TODO: union"
     | "inter" => panic! "TODO: inter"
     | "seq" => panic! "TODO: seq"

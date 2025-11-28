@@ -1,4 +1,5 @@
 import Mathlib.Data.Set.Basic
+import Mathlib.Data.Finite.Defs
 import Mathlib.Data.Real.Basic
 
 namespace B.Builtins
@@ -25,7 +26,7 @@ open Classical
 
   abbrev REAL : Set Real := Set.univ
 
-  abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ 𝒫 A | S ≠ ∅ }
+  abbrev POW₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ 𝒫 A | S.Nonempty }
 
   abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (Set (α × β)) :=
     { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
@@ -72,21 +73,21 @@ open Classical
     # Sets operators
   -/
 
-  def interval (lo hi : Int) : Set Int := { n | lo ≤ n ∧ n ≤ hi }
+  abbrev interval (lo hi : Int) : Set Int := { n | lo ≤ n ∧ n ≤ hi }
 
+  abbrev FIN {α : Type _} (A : Set α) : Set (Set α) := { S ⊆ A | S.Finite }
+  abbrev FIN₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ FIN A | S.Nonempty }
 
   /-!
     # Arithmetic operators
   -/
 
   noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
-    -- NOTE: can't use `WithTop` because it is not type-correct
     if h : S.Nonempty ∧ ∃ m ∈ S, ∀ x ∈ S, m ≤ x then
       Classical.choose h.2
     else panic! "min: set is empty or not lower bounded"
 
   noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
-    -- NOTE: can't use `WithBot` because it is not type-correct
     if h : S.Nonempty ∧ ∃ M ∈ S, ∀ x ∈ S, x ≤ M then
       Classical.choose h.2
     else panic! "max: set is empty or not upper bounded"

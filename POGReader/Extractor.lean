@@ -37,7 +37,9 @@ namespace B.POG
       let hyps₃ := sets.map λ set ↦
         if set.values.isEmpty then
           -- TODO: finite?
-          .not (.eq (.var set.name) (.set #[] (.pow .int)))
+          .and
+            (.not (.eq (.var set.name) (.set #[] (.pow .int))))
+            (.fin (.var set.name))
         else
           .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
 

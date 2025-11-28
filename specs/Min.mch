@@ -1,0 +1,15 @@
+MACHINE
+  Min
+
+CONSTANTS
+  X
+
+PROPERTIES
+  X ⊆ INT
+
+
+ASSERTIONS
+  min(NAT) = 0 &
+  max(X) ≤ MAXINT
+
+END

@@ -7,7 +7,9 @@ open Std Lean Meta Elab Term
 namespace B
   open Lean Elab
 
-  def reservedVarToExpr : (k : String) → k ∈ B.Syntax.reservedIdentifiers → TermElabM Lean.Expr
+  def reservedVarToExpr : (k : String) → TermElabM Lean.Expr
+    | "MININT", _ => return mkConst ``Builtins.MININT
+    | "MAXINT", _ => return mkConst ``Builtins.MAXINT
     | "NAT", _ => return mkConst ``Builtins.NAT
     | "NAT1", _ => return mkConst ``Builtins.NAT₁
     | "NATURAL", _ => return mkConst ``Builtins.NATURAL
@@ -121,7 +123,7 @@ namespace B
       mkAppM f #[← t.toExpr]
 
     partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
-      | .var v => if h : v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v h else lookupVar v
+      | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
       | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
       | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
@@ -222,6 +224,8 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => makeUnary ``B.Builtins.min S
       | .max S => makeUnary ``B.Builtins.max S
+      | .fin S => makeUnary ``B.Builtins.FIN S
+      | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
   end
 

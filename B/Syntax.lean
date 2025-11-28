@@ -46,6 +46,8 @@ namespace B.Syntax
     | ℤ
     | ℝ
     -- set operations
+    | fin (S : Term)
+    | fin₁ (S : Term)
     | interval (lo hi : Term)
     | set (xs : Array Term) (ty : Typ)
     | subset (S T : Term)
@@ -120,7 +122,6 @@ namespace B.Syntax
       binder Term.pretty 250 "{ " vs " | " (.var "") "" P ""
     | .lambda v D P =>
       let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-      -- let vs' := "(" ++ ((v.map fun ⟨n, _⟩ ↦ n).toList |> String.intercalate ", ") ++ ")"
       binder Term.pretty 0 "λ " vs s!", " D " ⇒ " P ""
     | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
     | .pow S => «prefix» Term.pretty 250 "𝒫 " S
@@ -129,11 +130,13 @@ namespace B.Syntax
     | .max S => «prefix» Term.pretty 250 "max " S
     | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
+    | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)
+    | .fin₁ S => fun _ ↦ Term.pretty (.var "fin₁") 300 ++ .paren (Term.pretty S 0)
     | .card S => λ _ => "‖" ++ Term.pretty S 0 ++ "‖"
 
   instance : ToString Term where
     toString t := toString (Term.pretty t 0)
 
   def reservedIdentifiers : Std.HashSet String :=
-    {"NAT", "NAT1", "NATURAL", "NATURAL1", "INT", "INTEGER", "FLOAT", "REAL", "BOOL"}
+    {"MININT", "MAXINT", "NAT", "NAT1", "NATURAL", "NATURAL1", "INT", "INTEGER", "FLOAT", "REAL", "BOOL"}
 end B.Syntax

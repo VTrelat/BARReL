@@ -1,0 +1,13 @@
+MACHINE
+  Finite
+
+CONSTANTS
+  N
+
+PROPERTIES
+  N ∈ NATURAL
+
+ASSERTIONS
+  (0..N) ∈ FIN(ℤ)
+
+END
