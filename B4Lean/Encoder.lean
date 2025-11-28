@@ -83,6 +83,24 @@ namespace B
       | throwError "No variable {x} found in context"
     return e.toExpr
 
+
+
+  variable (hyps : IO.Ref (Std.HashMap Expr Expr))
+
+  private def newHypothesis (h : Expr) (thm : Expr) : TermElabM PUnit := do
+    trace[b4lean.pog] "Generating new WF theorem {h} : {thm}"
+
+    let hypsMap ← hyps.get
+    if hypsMap.contains h then throwError s!"Hypothesis {repr h} already exists"
+    let thm ← Meta.ensureHasType thm <| mkSort 0
+    hyps.set <| hypsMap.insert h thm
+
+  private def makeWFHypothesis (wf : Expr) (k : Expr → MetaM Expr) : TermElabM Expr := do
+    let h ← mkFVar <$> mkFreshFVarId
+    newHypothesis hyps h wf
+    withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
+      k h
+
   mutual
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
       (mkBinder : Array Expr → Expr → MetaM Expr) (mkHyp : Expr → MetaM Expr) (mkConcl : Expr → Expr → Expr) :
@@ -222,8 +240,14 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
       | .bijfun A B isPartial => do
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
-      | .min S => makeUnary ``B.Builtins.min S
-      | .max S => makeUnary ``B.Builtins.max S
+      | .min S => do
+        let S ← S.toExpr
+        let wf ← mkAppM ``B.Builtins.minWF #[S]
+        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
+      | .max S => do
+        let S ← S.toExpr
+        let wf ← mkAppM ``B.Builtins.maxWF #[S]
+        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
@@ -234,13 +258,26 @@ namespace B
 
     trace[b4lean.pog] s!"Encoding: {goal}"
 
+    let hyps ← IO.mkRef ∅
+
     let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
       sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
     Meta.withLocalDeclsD vars λ vars ↦ do
-      let g ←
-        goal.toExpr
-          >>= liftMetaM ∘ mkForallFVars vars (usedOnly := true)
-          >>= Term.ensureHasType (.some <| .sort 0)
+      let g ← goal.toExpr hyps
+
+      trace[b4lean.pog] "Generated goal (no quantified variable): {indentExpr g}"
+      trace[b4lean.pog] "WF hypotheses: {repr (← hyps.get)}"
+
+      let g ← do
+        let rec go
+          | [] => pure g
+          | ⟨x, t⟩ :: xs => do
+            let lctx := (← getLCtx).mkLocalDecl x.fvarId! `wf t
+            withLCtx lctx (← getLocalInstances) do
+              mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< go xs]
+        go (← hyps.get).toList
+      let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
+              >>= Term.ensureHasType (.some <| .sort 0)
       Meta.check g
       let g ← instantiateMVars g
       Meta.liftMetaM g.ensureHasNoMVars

@@ -1,6 +1,6 @@
 import B4Lean.Discharger
 
--- set_option trace.b4lean.pog true
+set_option trace.b4lean.pog true
 set_option b4lean.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins

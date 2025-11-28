@@ -82,15 +82,17 @@ open Classical
     # Arithmetic operators
   -/
 
-  noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
-    if h : S.Nonempty ∧ ∃ m ∈ S, ∀ x ∈ S, m ≤ x then
-      Classical.choose h.2
-    else panic! "min: set is empty or not lower bounded"
+  def minWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
+    ∃ y ∈ S, ∀ x ∈ S, y ≤ x
 
-  noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
-    if h : S.Nonempty ∧ ∃ M ∈ S, ∀ x ∈ S, x ≤ M then
-      Classical.choose h.2
-    else panic! "max: set is empty or not upper bounded"
+  noncomputable abbrev min {α : Type _} [LinearOrder α] (S : Set α) (wf : minWF S) : α :=
+    Classical.choose wf
+
+  def maxWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
+    ∃ y ∈ S, ∀ x ∈ S, x ≤ y
+
+  noncomputable abbrev max {α : Type _} [LinearOrder α] (S : Set α) (wf : maxWF S) : α :=
+    Classical.choose wf
 
 
   ----- Notations
