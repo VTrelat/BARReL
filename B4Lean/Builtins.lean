@@ -4,7 +4,9 @@ import Mathlib.Data.Finite.Defs
 import Mathlib.Data.Real.Basic
 
 namespace B.Builtins
-open Classical
+  open Classical
+
+  noncomputable opaque undefined.{u} {α : Type u} [Inhabited α] : α
 
   /-!
     # Builtin sets
@@ -71,8 +73,13 @@ open Classical
   def appWF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop :=
     x ∈ dom f
 
-  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : appWF f x): β :=
-    Classical.choose wf
+  noncomputable abbrev app {α β : Type _} [Inhabited β] (f : SetRel α β) (x : α) : β :=
+    if wf : appWF f x then
+      -- This looks funny, but `x ∈ dom f` exactly means that `∃ y, (x, y) ∈ f`
+      -- (from the definition of `dom`)
+      Classical.choose wf
+    else
+      undefined
 
 
   /-!
@@ -91,14 +98,20 @@ open Classical
   def minWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
     ∃ y ∈ S, ∀ x ∈ S, y ≤ x
 
-  noncomputable abbrev min {α : Type _} [LinearOrder α] (S : Set α) (wf : minWF S) : α :=
-    Classical.choose wf
+  noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+    if wf : minWF S then
+      Classical.choose wf
+    else
+      undefined
 
   def maxWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
     ∃ y ∈ S, ∀ x ∈ S, x ≤ y
 
-  noncomputable abbrev max {α : Type _} [LinearOrder α] (S : Set α) (wf : maxWF S) : α :=
-    Classical.choose wf
+  noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+    if wf : maxWF S then
+      Classical.choose wf
+    else
+      undefined
 
 
   ----- Notations
@@ -126,7 +139,7 @@ open Classical
   scoped infixl:170 ".." => interval
 
   scoped postfix:230 "⁻¹" => SetRel.inv
-  scoped notation:290 F:290 "(" x:min ")'" wf:300 => app F x wf
+  scoped notation:290 F:290 "(" x:min ")" => app F x
   scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
 
   /-

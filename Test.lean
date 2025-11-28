@@ -34,39 +34,32 @@ open B.Builtins
 
 mch_discharger "specs/Injective.mch"
 next
-  rintro X y Y x F F_inj - - x_mem_X y_mem_X
-  refine ⟨?_, ?B, ?_⟩
+  rintro X y Y x F F_inj - - x_mem_X y_mem_X F_eq
+  obtain ⟨⟨_, inj⟩, _⟩ := F_inj
+  apply @inj x y (F(x))
   ·
     admit
-  ·
+  · rw [F_eq]
     admit
-  · intro F_eq
-    obtain ⟨⟨_, inj⟩, _⟩ := F_inj
-    apply @inj x y (F(x)'?B)
-    ·
-      admit
-    · rw [F_eq]
-      admit
 
--- TODO: fix
 -- mch_discharger "specs/HO.mch"
 -- next
---   admit
+--   rintro X Y y₁ y₂ x F x_mem_X y₁_mem_Y y₂_mem_Y y₁_neq_y₂ F_fun - -
+--   by_cases (F(x)) = y₁
+--   ·
+--     admit
+--   ·
+--     admit
 
 -- mch_discharger "specs/Enum.mch"
 -- next
 --   grind
 
--- mch_discharger "specs/Min.mch"
--- next admit
--- next
---   and_intros <;> grind
-
--- pog_discharger "/Users/vtrelat/Documents/phd-b2smt/benchmark/"
-
-
--- #check Counter.Initialisation_0
--- #check Counter.Initialisation_1
--- #check Counter.Operation_inc_2
--- #check Counter.Operation_inc_3
--- #check Nat.Initialisation_0
+mch_discharger "specs/Min.mch"
+next
+  unfold B.Builtins.INTEGER B.Builtins.min
+  split_ifs with h
+  · obtain ⟨x, x_mem, x_lt⟩ := h
+    admit
+  · -- NOTE: unprovable, as wanted!!
+    admit

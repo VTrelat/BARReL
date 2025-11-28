@@ -246,18 +246,21 @@ namespace B
       | .bijfun A B isPartial => do
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
-        let S ← S.toExpr
-        let wf ← mkAppM ``B.Builtins.minWF #[S]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
+        makeUnary ``B.Builtins.min S
+        -- let S ← S.toExpr
+        -- let wf ← mkAppM ``B.Builtins.minWF #[S]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
       | .max S => do
-        let S ← S.toExpr
-        let wf ← mkAppM ``B.Builtins.maxWF #[S]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
+        makeUnary ``B.Builtins.max S
+        -- let S ← S.toExpr
+        -- let wf ← mkAppM ``B.Builtins.maxWF #[S]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
       | .app f x => do
-        let f ← f.toExpr
-        let x ← x.toExpr
-        let wf ← mkAppM ``B.Builtins.appWF #[f, x]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
+        makeBinary ``B.Builtins.app f x
+        -- let f ← f.toExpr
+        -- let x ← x.toExpr
+        -- let wf ← mkAppM ``B.Builtins.appWF #[f, x]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
@@ -278,8 +281,9 @@ namespace B
             mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
 
       let aux (t : Syntax.Term) (k : Expr → TermElabM Expr) : TermElabM Expr := do
-        let wfHyps ← IO.mkRef ∅
-        let t ← t.toExpr wfHyps
+        -- TODO: remove additional WF hypotheses generation?
+        let wfHyps : IO.Ref (Std.HashMap Expr Expr) ← IO.mkRef ∅
+        let t ← t.toExpr --wfHyps
         if !(← wfHyps.get).isEmpty then
           trace[barrel.pog] m!"Inserting some WF hypotheses before {indentExpr t}"
         mkWfHyps (← k t) (← wfHyps.get).toList
