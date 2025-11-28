@@ -36,10 +36,7 @@ namespace B.POG
       let hyps₂ := obligation.hypotheses
       let hyps₃ := sets.map λ set ↦
         if set.values.isEmpty then
-          -- TODO: finite?
-          .and
-            (.not (.eq (.var set.name) (.set #[] (.pow .int))))
-            (.fin (.var set.name))
+          .mem (.var set.name) <| .fin₁ .ℤ
         else
           .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
 
