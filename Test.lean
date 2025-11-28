@@ -32,10 +32,16 @@ open B.Builtins
 -- next
 --   exists 0
 
--- mch_discharger "specs/Injective.mch"
--- next
---   rintro X x Y y F ⟨⟨_, _⟩, ⟨_, _⟩, _⟩ _ _ y_mem_X x_mem_X F_eq
---   admit
+mch_discharger "specs/Injective.mch"
+next
+  rintro X y Y x F F_inj - - x_mem_X y_mem_X
+  refine ⟨?_, ?_, ?_⟩
+  ·
+    admit
+  ·
+    admit
+  · intro F_eq
+    admit
 
 -- mch_discharger "specs/HO.mch"
 -- next
@@ -50,9 +56,8 @@ open B.Builtins
 -- next
 --   grind
 
-mch_discharger "specs/Min.mch"
-next admit
-next admit
+-- mch_discharger "specs/Min.mch"
+-- next admit
 -- next
 --   and_intros <;> grind
 

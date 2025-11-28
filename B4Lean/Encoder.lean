@@ -88,7 +88,7 @@ namespace B
   variable (hyps : IO.Ref (Std.HashMap Expr Expr))
 
   private def newHypothesis (h : Expr) (thm : Expr) : TermElabM PUnit := do
-    trace[b4lean.pog] "Generating new WF theorem {h} : {thm}"
+    trace[b4lean.pog] "Generating new WF hypothesis {h} : {thm}"
 
     let hypsMap ← hyps.get
     if hypsMap.contains h then throwError s!"Hypothesis {repr h} already exists"
@@ -264,28 +264,35 @@ namespace B
   end
 
   def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
-    let goal : Syntax.Term := sg.hyps.foldr (fun t acc => .imp t acc) sg.goal
-
-    trace[b4lean.pog] s!"Encoding: {goal}"
-
-    let hyps ← IO.mkRef ∅
+    -- trace[b4lean.pog] s!"Encoding: {goal}"
 
     let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
       sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
+
     Meta.withLocalDeclsD vars λ vars ↦ do
-      let g ← goal.toExpr hyps
+      let rec mkWfHyps (g : Expr) : List (Expr × Expr) → TermElabM Expr
+        | [] => pure g
+        | ⟨x, t⟩ :: xs => do
+          let lctx := (← getLCtx).mkLocalDecl x.fvarId! `wf t
+          withLCtx lctx (← getLocalInstances) do
+            mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
+
+      let aux (t : Syntax.Term) (k : Expr → TermElabM Expr) : TermElabM Expr := do
+        let wfHyps ← IO.mkRef ∅
+        let t ← t.toExpr wfHyps
+        if !(← wfHyps.get).isEmpty then
+          trace[b4lean.pog] m!"Inserting some WF hypotheses before {indentExpr t}"
+        mkWfHyps (← k t) (← wfHyps.get).toList
+
+      let rec goHyp : List Syntax.Term → TermElabM Expr
+        | [] => aux sg.goal pure
+        | t :: ts => do
+          aux t λ t ↦ mkForall `_ .default t <$> goHyp ts
+
+      let g ← goHyp sg.hyps.toList
 
       trace[b4lean.pog] "Generated goal (no quantified variable): {indentExpr g}"
-      trace[b4lean.pog] "WF hypotheses: {repr (← hyps.get)}"
 
-      let g ← do
-        let rec go
-          | [] => pure g
-          | ⟨x, t⟩ :: xs => do
-            let lctx := (← getLCtx).mkLocalDecl x.fvarId! `wf t
-            withLCtx lctx (← getLocalInstances) do
-              mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< go xs]
-        go (← hyps.get).toList
       let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
               >>= Term.ensureHasType (.some <| .sort 0)
       Meta.check g
