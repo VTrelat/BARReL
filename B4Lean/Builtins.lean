@@ -6,6 +6,20 @@ import Mathlib.Data.Real.Basic
 namespace B.Builtins
   open Classical
 
+  /--
+    An opaque inhabitant of every type.
+
+    In an ideal world, it would not be possible to reason on `Inhabited.default`.
+    Unfortunately, it is possible to prove the goal `⊢ @Inhabited.default ℤ = 0`, which we
+    actually don't want here.
+
+    Instead, we introduce an opaque symbol `undefined`.
+    The fact that it is opaque means that it cannot be unfolded at all, nor can
+    any property be derived for it.
+
+    If you are seeing `undefined` in your proof, and your hypotheses are not contradictory,
+    then you must have done something wrong, or your goal is unprovable.
+  -/
   noncomputable opaque undefined.{u} {α : Type u} [Inhabited α] : α
 
   /-!
@@ -76,7 +90,7 @@ namespace B.Builtins
   noncomputable abbrev app {α β : Type _} [Inhabited β] (f : SetRel α β) (x : α) : β :=
     if wf : appWF f x then
       -- This looks funny, but `x ∈ dom f` exactly means that `∃ y, (x, y) ∈ f`
-      -- (from the definition of `dom`)
+      -- (from the definition of `dom`), hence why it typechecks
       Classical.choose wf
     else
       undefined
