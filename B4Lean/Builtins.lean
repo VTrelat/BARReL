@@ -103,11 +103,11 @@ open Classical
 
   ----- Notations
 
-  scoped notation "ℕ" => NATURAL
-  scoped notation "ℕ₁" => NATURAL₁
-  scoped notation "ℤ" => INTEGER
-  scoped notation "ℝ" => REAL
-  scoped notation "𝔹" => BOOL
+  -- scoped notation "ℕ" => NATURAL
+  -- scoped notation "ℕ₁" => NATURAL₁
+  -- scoped notation "ℤ" => INTEGER
+  -- scoped notation "ℝ" => REAL
+  -- scoped notation "𝔹" => BOOL
   scoped prefix:250 "𝒫₁ " => POW₁
 
   scoped infixl:125 " ↔ " => rels
@@ -126,8 +126,8 @@ open Classical
   scoped infixl:170 ".." => interval
 
   scoped postfix:230 "⁻¹" => SetRel.inv
-  scoped notation F:300 "(" x:min ")" wf => app F x wf
-  scoped notation R:300 "[" X:min "]" => SetRel.image R X
+  scoped notation:290 F:290 "(" x:min ")'" wf:300 => app F x wf
+  scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
 
   /-
   TODO: add remaining Unicode characters

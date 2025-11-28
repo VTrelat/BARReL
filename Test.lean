@@ -35,13 +35,18 @@ open B.Builtins
 mch_discharger "specs/Injective.mch"
 next
   rintro X y Y x F F_inj - - x_mem_X y_mem_X
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?B, ?_⟩
   ·
     admit
   ·
     admit
   · intro F_eq
-    admit
+    obtain ⟨⟨_, inj⟩, _⟩ := F_inj
+    apply @inj x y (F(x)'?B)
+    ·
+      admit
+    · rw [F_eq]
+      admit
 
 -- mch_discharger "specs/HO.mch"
 -- next
