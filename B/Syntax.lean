@@ -66,6 +66,10 @@ namespace B.Syntax
     | inv (R : Term)
     | id (A : Term)
     | image (R X : Term)
+    | domRestr (R E : Term)
+    | domSubtr (R E : Term)
+    | codomRestr (R E : Term)
+    | codomSubtr (R E : Term)
     -- functions
     | dom (f : Term)
     | ran (f : Term)
@@ -138,6 +142,10 @@ namespace B.Syntax
     | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
     | .min S => «prefix» Term.pretty 250 "min " S
     | .max S => «prefix» Term.pretty 250 "max " S
+    | .domRestr R E => «infixl» Term.pretty 160 "◁" R E
+    | .domSubtr R E => «infixl» Term.pretty 160 "⩤" R E
+    | .codomRestr R E => «infixl» Term.pretty 160 "▷" R E
+    | .codomSubtr R E => «infixl» Term.pretty 160 "⩥" R E
     | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)

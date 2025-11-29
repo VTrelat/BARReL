@@ -237,6 +237,10 @@ namespace B
       | .id A => makeUnary ``B.Builtins.id A
       | .dom f => makeUnary ``B.Builtins.dom f
       | .ran f => makeUnary ``B.Builtins.ran f
+      | .domRestr R E => makeBinary ``B.Builtins.domRestr E R
+      | .domSubtr R E => makeBinary ``B.Builtins.domSubtr E R
+      | .codomRestr R E => makeBinary ``B.Builtins.codomRestr R E
+      | .codomSubtr R E => makeBinary ``B.Builtins.codomSubtr R E
       | .fun A B isPartial =>
         makeBinary (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do

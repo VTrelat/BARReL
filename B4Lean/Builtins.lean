@@ -74,6 +74,14 @@ open Classical
   noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : appWF f x): β :=
     Classical.choose wf
 
+  abbrev domRestr {α β : Type _} (R : SetRel α β) (E : Set α) : SetRel α β :=
+    { z ∈ R | z.1 ∈ E }
+  abbrev domSubtr {α β : Type _} (R : SetRel α β) (E : Set α) : SetRel α β :=
+    { z ∈ R | z.1 ∉ E }
+  abbrev codomRestr {α β : Type _} (R : SetRel α β) (E : Set β) : SetRel α β :=
+    { z ∈ R | z.2 ∈ E }
+  abbrev codomSubtr {α β : Type _} (R : SetRel α β) (E : Set β) : SetRel α β :=
+    { z ∈ R | z.2 ∉ E }
 
   /-!
     # Sets operators
@@ -120,6 +128,10 @@ open Classical
   scoped infixl:125 " ⤗ " => bijPFun
   scoped infixl:125 " ⤖ " => bijTFun
 
+  scoped infixl:160 " ◁ " => domRestr
+  scoped infixl:160 " ▷ " => codomRestr
+  scoped infixl:160 " ⩤ " => domSubtr
+  scoped infixl:160 " ⩥ " => codomSubtr
 
 
 
