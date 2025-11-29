@@ -18,7 +18,9 @@ private def Lean.Xml.Content.kind : Content → String
 ----------------------
 
 namespace B.POG
-  variable (vars : IO.Ref (Std.HashMap String Syntax.Typ))
+  variable
+    (vars : IO.Ref (Std.HashMap String Syntax.Typ))
+    (wf_id : IO.Ref Nat)
 
   private partial def parseType : Lean.Xml.Element → IO Syntax.Typ
     | ⟨"Id", attrs, _⟩ => do
@@ -60,8 +62,8 @@ namespace B.POG
 
   private def makeUnaryTermFromOp : String → IO (Syntax.Term → Syntax.Term)
     | "not" => return .not
-    | "max" | "imax" | "rmax" => return .max
-    | "min" | "imin" | "rmin" => return .min
+    | "max" | "imax" | "rmax" => do return (.max (← wf_id.modifyGet λ m ↦ (m, m+1)) ·)
+    | "min" | "imin" | "rmin" => do return (.min (← wf_id.modifyGet λ m ↦ (m, m+1)) ·)
     | "card" => return .card
     | "dom" => return .dom
     | "ran" => return .ran
@@ -161,7 +163,7 @@ namespace B.POG
     | "|>" => panic! "TODO"
     | "|>>" => panic! "TODO"
     | "[" => return .image
-    | "(" => return .app
+    | "(" => do return (.app (← wf_id.modifyGet λ m ↦ (m, m+1)) · ·)
     | "<'" => panic! "TODO"
     | "prj1" => panic! "TODO"
     | "prj2" => panic! "TODO"
@@ -221,7 +223,7 @@ namespace B.POG
       unless attrs.contains "op" do throwError s!"<{tag}> must contain the attribute `op`"
 
       let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
-      (← makeUnaryTermFromOp (attrs.get! "op")) <$> parseTerm types e
+      (← makeUnaryTermFromOp wf_id (attrs.get! "op")) <$> parseTerm types e
     | ⟨"Ternary_Exp", attrs, nodes⟩ => panic! "TODO"
     | ⟨"Nary_Exp", attrs, nodes⟩ => do
       -- possible op: '{', '['
@@ -300,7 +302,7 @@ namespace B.POG
       let .Element e₀ := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
       let .Element e₁ := nodes[1]! | throwError s!"Unexpected node kind {nodes[1]!.kind}"
 
-      (← makeBinaryTermFromOp (attrs.get! "op"))
+      (← makeBinaryTermFromOp wf_id (attrs.get! "op"))
         <$> parseTerm types e₀
         <*> parseTerm types e₁
     | ⟨"Quantified_Pred", attrs, nodes⟩ => do
@@ -446,7 +448,7 @@ namespace B.POG
       let mut i := 0
       while _h : i < nodes.size do
         try
-          terms := terms.push (← parseTerm vars types nodes[i])
+          terms := terms.push (← parseTerm vars wf_id types nodes[i])
           i := i + 1
         catch e =>
           throw e
@@ -477,7 +479,7 @@ namespace B.POG
       | "Goal" =>
         unless nodes.size = 1 do throwError s!"Expected a single node in <Goal>, got {nodes.size}"
         let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
-        goal ← parseTerm vars types e
+        goal ← parseTerm vars wf_id types e
       | "Proof_State" => continue
       | _ => throwError s!"Unrecognized tag {tag} in <Simple_Goal>"
 
@@ -500,20 +502,20 @@ namespace B.POG
       | "Hypothesis" =>
         unless nodes.size = 1 do throwError s!"Expected a single node in <Hypothesis>, got {nodes.size}"
         let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
-        obligation := { obligation with hypotheses := obligation.hypotheses.push (← parseTerm vars types e) }
+        obligation := { obligation with hypotheses := obligation.hypotheses.push (← parseTerm vars wf_id types e) }
       | "Local_Hyp" =>
         unless nodes.size = 1 do throwError s!"Expected a single node in <Local_Hyp>, got {nodes.size}"
         unless attrs.contains "num" do throwError s!"<Local_Hyp> node must contain a `num` attribute"
         let .Element e := nodes[0]! | throwError s!"Unexpected node kind {nodes[0]!.kind}"
         let i := attrs.get! "num" |>.toNat!
-        let term ← parseTerm vars types e
+        let term ← parseTerm vars wf_id types e
         if obligation.localHyps.contains i then throwError "Local hypothesis {i} already registered"
         obligation := { obligation with localHyps := obligation.localHyps.insert i term }
       | "Simple_Goal" =>
         let nodes ← nodes.mapM λ
           | .Element e => pure e
           | node => throwError s!"Unexpected node kind {node.kind}"
-        obligation := { obligation with simpleGoals := obligation.simpleGoals.push (← parseSimpleGoal vars nodes types) }
+        obligation := { obligation with simpleGoals := obligation.simpleGoals.push (← parseSimpleGoal vars wf_id nodes types) }
       | _ => throwError s!"Unexpected tag {name} in <Proof_Obligation>"
     return obligation
 
@@ -545,7 +547,7 @@ namespace B.POG
           let nodes ← nodes.mapM λ
             | .Element e => pure e
             | node => throwError s!"Unexpected node kind {node.kind}"
-          defines := defines.insert name (← parseDefine vars typeInfos nodes name)
+          defines := defines.insert name (← parseDefine vars wf_id typeInfos nodes name)
 
       -- Finally, parse proof obligations
       let mut obligations := #[]
@@ -554,7 +556,7 @@ namespace B.POG
         let nodes ← nodes.mapM λ
           | .Element e => pure e
           | node => throwError s!"Unexpected node kind {node.kind}"
-        obligations := obligations.push (← parseObligation vars nodes typeInfos)
+        obligations := obligations.push (← parseObligation vars wf_id nodes typeInfos)
 
       -- NOTE: remove all B builtins
       let vars := B.Syntax.reservedIdentifiers.fold (init := ← vars.get) Std.HashMap.erase
@@ -565,9 +567,10 @@ namespace B.POG
   omit vars in
   def parse' (content : String) : IO Schema.ProofObligations := do
     let vars ← IO.mkRef ∅
+    let wf_id ← IO.mkRef 0
 
     IO.ofExcept (Lean.Xml.parse content)
-      >>= parseProofObligations vars ∘ removeEmptyDeep
+      >>= parseProofObligations vars wf_id ∘ removeEmptyDeep
 
   omit vars in
   def parse (path : System.FilePath) : IO Schema.ProofObligations :=

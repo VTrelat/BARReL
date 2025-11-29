@@ -1,6 +1,6 @@
 import B4Lean.Discharger
 
-set_option trace.barrel.pog true
+set_option trace.barrel.pog false
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins
@@ -35,17 +35,30 @@ open B.Builtins
 mch_discharger "specs/Injective.mch"
 next
   rintro X y Y x F F_inj - - x_mem_X y_mem_X F_eq
-  obtain ⟨⟨_, inj⟩, _⟩ := F_inj
-  apply @inj x y (F(x))
-  ·
-    admit
+  obtain ⟨⟨-, inj⟩, ⟨-,F_istot⟩⟩ := F_inj
+  have Fx_WF : appWF F x := by
+    simp [appWF, dom]
+    obtain ⟨y, _, _⟩ := F_istot _ x_mem_X
+    exists y
+  have Fy_WF : appWF F y := by
+    simp [appWF, dom]
+    obtain ⟨y, _, _⟩ := F_istot _ y_mem_X
+    exists y
+  apply @inj x y (F(x)_@2)
+  · unfold app
+    rw [dite_cond_eq_true (eq_true Fx_WF)]
+    generalize_proofs chs_Fx
+    exact Classical.choose_spec chs_Fx
   · rw [F_eq]
-    admit
+    unfold app
+    rw [dite_cond_eq_true (eq_true Fy_WF)]
+    generalize_proofs chs_Fy
+    exact Classical.choose_spec chs_Fy
 
 -- mch_discharger "specs/HO.mch"
 -- next
 --   rintro X Y y₁ y₂ x F x_mem_X y₁_mem_Y y₂_mem_Y y₁_neq_y₂ F_fun - -
---   by_cases (F(x)) = y₁
+--   by_cases (F(x)_@3) = y₁
 --   ·
 --     admit
 --   ·
@@ -57,9 +70,16 @@ next
 
 mch_discharger "specs/Min.mch"
 next
-  unfold B.Builtins.INTEGER B.Builtins.min
-  split_ifs with h
-  · obtain ⟨x, x_mem, x_lt⟩ := h
-    admit
-  · -- NOTE: unprovable, as wanted!!
-    admit
+  unfold B.Builtins.min
+
+  iterate 2 rw [dite_cond_eq_true]
+  generalize_proofs h h'
+  have hh := Classical.choose_spec h
+  have hh' := Classical.choose_spec h'
+  set m := Classical.choose h
+  set m' := Classical.choose h'
+
+  · admit
+  · admit
+  · unfold minWF
+    done

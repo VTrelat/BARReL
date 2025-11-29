@@ -2,6 +2,6 @@ MACHINE
   Min
 
 ASSERTIONS
-  min(INTEGER) = 0
+  min(INTEGER) = min(NATURAL)
 
 END

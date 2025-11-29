@@ -20,7 +20,7 @@ namespace B.Builtins
     If you are seeing `undefined` in your proof, and your hypotheses are not contradictory,
     then you must have done something wrong, or your goal is unprovable.
   -/
-  noncomputable opaque undefined.{u} {α : Type u} [Inhabited α] : α
+  noncomputable opaque undefined.{u} {α : Type u} [Inhabited α] : Nat → α
 
   /-!
     # Builtin sets
@@ -87,13 +87,13 @@ namespace B.Builtins
   def appWF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop :=
     x ∈ dom f
 
-  noncomputable abbrev app {α β : Type _} [Inhabited β] (f : SetRel α β) (x : α) : β :=
+  noncomputable abbrev app {α β : Type _} [Inhabited β] (id : Nat) (f : SetRel α β) (x : α) : β :=
     if wf : appWF f x then
       -- This looks funny, but `x ∈ dom f` exactly means that `∃ y, (x, y) ∈ f`
       -- (from the definition of `dom`), hence why it typechecks
       Classical.choose wf
     else
-      undefined
+      undefined id
 
 
   /-!
@@ -112,20 +112,20 @@ namespace B.Builtins
   def minWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
     ∃ y ∈ S, ∀ x ∈ S, y ≤ x
 
-  noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+  noncomputable abbrev min {α : Type _} [LinearOrder α] [Inhabited α] (id : Nat) (S : Set α) : α :=
     if wf : minWF S then
       Classical.choose wf
     else
-      undefined
+      undefined id
 
   def maxWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
     ∃ y ∈ S, ∀ x ∈ S, x ≤ y
 
-  noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (S : Set α) : α :=
+  noncomputable abbrev max {α : Type _} [LinearOrder α] [Inhabited α] (id : Nat) (S : Set α) : α :=
     if wf : maxWF S then
       Classical.choose wf
     else
-      undefined
+      undefined id
 
 
   ----- Notations
@@ -153,9 +153,12 @@ namespace B.Builtins
   scoped infixl:170 ".." => interval
 
   scoped postfix:230 "⁻¹" => SetRel.inv
-  scoped notation:290 F:290 "(" x:min ")" => app F x
-  scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
 
+  scoped notation:290 "min_@" n "(" S:min ")" => min n S
+  scoped notation:290 "max_@" n "(" S:min ")" => max n S
+
+  scoped notation:290 F:290 "(" x:min ")_@" n => app n F x
+  scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
   /-
   TODO: add remaining Unicode characters
 

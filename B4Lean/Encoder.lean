@@ -245,18 +245,21 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
       | .bijfun A B isPartial => do
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
-      | .min S => do
-        makeUnary ``B.Builtins.min S
+      | .min id S => do
+        mkAppM ``B.Builtins.min #[mkNatLit id, ← S.toExpr]
+        -- makeUnary ``B.Builtins.min S
         -- let S ← S.toExpr
         -- let wf ← mkAppM ``B.Builtins.minWF #[S]
         -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
-      | .max S => do
-        makeUnary ``B.Builtins.max S
+      | .max id S => do
+        mkAppM ``B.Builtins.max #[mkNatLit id, ← S.toExpr]
+        -- makeUnary ``B.Builtins.max S
         -- let S ← S.toExpr
         -- let wf ← mkAppM ``B.Builtins.maxWF #[S]
         -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
-      | .app f x => do
-        makeBinary ``B.Builtins.app f x
+      | .app id f x => do
+        mkAppM ``B.Builtins.app #[mkNatLit id, ← f.toExpr, ← x.toExpr]
+        -- makeBinary ``B.Builtins.app f x
         -- let f ← f.toExpr
         -- let x ← x.toExpr
         -- let wf ← mkAppM ``B.Builtins.appWF #[f, x]

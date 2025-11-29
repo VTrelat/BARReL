@@ -69,14 +69,14 @@ namespace B.Syntax
     -- functions
     | dom (f : Term)
     | ran (f : Term)
-    | app (f x : Term)
+    | app (id : Nat) (f x : Term)
     | lambda (vs : Array (String × Typ)) (D P : Term)
     | «fun» (A B : Term) (isPartial := true)
     | injfun (A B : Term) (isPartial := true)
     | surjfun (A B : Term) (isPartial := true)
     | bijfun (A B : Term) (isPartial := true)
-    | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
-    | max (S : Term)
+    | min (id : Nat) (S : Term)
+    | max (id : Nat) (S : Term)
     -- quantifiers
     | all (vs : Array (String × Typ)) (P : Term)
     | exists (vs : Array (String × Typ)) (P : Term)
@@ -133,11 +133,11 @@ namespace B.Syntax
     | .lambda v D P =>
       let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
       binder Term.pretty 0 "λ " vs s!", " D " ⇒ " P ""
-    | .app f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
+    | .app _ f x => λ _ => Term.pretty f 300 ++ .paren (Term.pretty x 0)
     | .pow S => «prefix» Term.pretty 250 "𝒫 " S
     | .pow₁ S => «prefix» Term.pretty 250 "𝒫₁ " S
-    | .min S => «prefix» Term.pretty 250 "min " S
-    | .max S => «prefix» Term.pretty 250 "max " S
+    | .min _ S => «prefix» Term.pretty 250 "min " S
+    | .max _ S => «prefix» Term.pretty 250 "max " S
     | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)
