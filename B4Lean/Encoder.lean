@@ -97,14 +97,15 @@ namespace B
 
   private def makeWFHypothesis (wf : Expr) (k : Expr → MetaM Expr) : TermElabM Expr := do
     let hypsMap ← hyps.get
-    if let .some var := hypsMap.2.get? wf then
-      withLCtx ((← getLCtx).mkLocalDecl var.fvarId! `wf wf) (← getLocalInstances) do
-        k var
-    else
-      let h ← mkFVar <$> mkFreshFVarId
-      newHypothesis hyps h wf
-      withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
-        k h
+    let h ←
+      if let .some var := hypsMap.2.get? wf then
+        pure var
+      else
+        let h ← mkFVar <$> mkFreshFVarId
+        newHypothesis hyps h wf
+        pure h
+    withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
+      k h
 
   mutual
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)

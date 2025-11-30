@@ -5,7 +5,11 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
--- mch_discharger "specs/Counter.mch"
+mch_discharger "specs/Counter.mch"
+next admit
+next admit
+next admit
+next admit
 -- next
 --   grind
 -- next
@@ -16,23 +20,36 @@ open B.Builtins
 -- next
 --   grind
 
--- mch_discharger "specs/Nat.mch"
+mch_discharger "specs/Eval.mch"
+next admit
+
+mch_discharger "specs/Finite.mch"
+next admit
+
+mch_discharger "specs/Nat.mch"
+next admit
 -- next
 --   grind
 
--- mch_discharger "specs/Collect.mch"
+mch_discharger "specs/Collect.mch"
+next admit
 -- next
 --   grind
 
--- mch_discharger "specs/Forall.mch"
+mch_discharger "specs/Forall.mch"
+next admit
 -- next
 --   grind
 
--- mch_discharger "specs/Exists.mch"
+mch_discharger "specs/Exists.mch"
+next admit
 -- next
 --   exists 0
 
--- mch_discharger "specs/Injective.mch"
+-- TODO: fix
+mch_discharger "specs/Injective.mch"
+next
+  admit
 -- next
 --   rintro X y Y x F F_inj - - x_mem_X y_mem_X
 --   refine ⟨?_, ?B, ?_⟩
@@ -49,11 +66,14 @@ open B.Builtins
 --       admit
 
 -- TODO: fix
--- mch_discharger "specs/HO.mch"
+mch_discharger "specs/HO.mch"
+next
+  admit
 -- next
 --   admit
 
--- mch_discharger "specs/Enum.mch"
+mch_discharger "specs/Enum.mch"
+next admit
 -- next
 --   grind
 
@@ -64,7 +84,15 @@ next
 -- next
 --   and_intros <;> grind
 
--- pog_discharger "/Users/vtrelat/Documents/phd-b2smt/benchmark/"
+mch_discharger "specs/Union.mch"
+next admit
+
+mch_discharger "specs/Lambda.mch"
+next admit
+
+mch_discharger "specs/Demo.mch"
+next admit
+next admit
 
 
 -- #check Counter.Initialisation_0
