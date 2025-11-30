@@ -108,7 +108,7 @@ namespace B
     withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
       k h
 
-  def checkpoint {α} /-[ToMessageData α]-/ (t : IO.Ref WFHypotheses → TermElabM α) (k : α → TermElabM Expr) : TermElabM Expr := do
+  def checkpoint (tag : String) (t : IO.Ref WFHypotheses → TermElabM Expr) (k : Expr → TermElabM Expr) : TermElabM Expr := do
     let rec mkWfHyps (g : Expr) : List (Expr × Expr) → TermElabM Expr
       | [] => pure g
       | ⟨x, t⟩ :: xs => do
@@ -116,11 +116,20 @@ namespace B
         withLCtx lctx (← getLocalInstances) do
           mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
 
+    trace[barrel.checkpoints] m!"Checkpoint @{tag}!"
+
     let wfHyps ← IO.mkRef ⟨∅, ∅⟩
-    let t ← t wfHyps
-    -- if !(← wfHyps.get).1.isEmpty then
-    --   trace[barrel.pog] m!"Inserting some WF hypotheses before {t}"
-    mkWfHyps (← k t) (← wfHyps.get).1.toList
+    let t' ← t wfHyps
+
+    let hasWF := !(← wfHyps.get).1.isEmpty
+    if hasWF then
+      trace[barrel.pog] m!"Inserting {(← wfHyps.get).1.size} WF hypotheses before {indentExpr t'}"
+
+    let t ← k =<< mkWfHyps t' (← wfHyps.get).1.toList
+    if hasWF then
+      trace[barrel.pog] m!"  Finished term: {t}"
+    return t
+
 
   mutual
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
@@ -130,7 +139,7 @@ namespace B
         let ⟨x, t⟩ := xs[0]!
 
         withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
-          liftMetaM ∘ mkBinder #[xvec] =<< checkpoint P.toExpr pure
+          liftMetaM ∘ mkBinder #[xvec] =<< checkpoint "binder:in" P.toExpr pure
       else
         let x ← mkFreshBinderName
 
@@ -147,7 +156,7 @@ namespace B
               -- x̄ = xs'
               let eq : Expr ← mkEq xvec xs'
               -- x̄ = xs' ∧ P[x̄/vs]
-              return mkConcl eq (← checkpoint P.toExpr pure)
+              return mkConcl eq (← checkpoint "binder:in" P.toExpr pure)
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
                 (liftMetaM ∘ mkBinder #[y] =<< go xs)
@@ -175,15 +184,12 @@ namespace B
       | .div x y => mkIntDiv <$> x.toExpr hyps <*> y.toExpr hyps
       | .mod x y => mkIntMod <$> x.toExpr hyps <*> y.toExpr hyps
       | .exp x y => do mkIntPowNat <$> x.toExpr hyps <*> mkAppM ``Int.toNat #[← y.toExpr hyps]
-      | .and x y =>
-        checkpoint (Functor.map mkAnd ∘ x.toExpr) λ x ↦
-          x <$> checkpoint y.toExpr pure
+      | .and x y => mkAnd <$> x.toExpr hyps <*> checkpoint "and:right" y.toExpr pure
       | .or x y => mkOr <$> x.toExpr hyps <*> y.toExpr hyps
       | .imp x y =>
-        checkpoint (Functor.map (mkForall `_  .default) ∘ x.toExpr) λ x ↦
-          checkpoint y.toExpr λ y ↦
-            pure <| x y
-      | .iff x y => mkIff <$> checkpoint x.toExpr pure <*> checkpoint y.toExpr pure
+        checkpoint "imp:right" y.toExpr λ y ↦ do
+          pure <| mkForall `_  .default (← x.toExpr hyps) y
+      | .iff x y => mkIff <$> checkpoint "iff:left" x.toExpr pure <*> checkpoint "iff:right" y.toExpr pure
       | .not x => mkNot <$> x.toExpr hyps
       | .eq x y => do
         let x' ← x.toExpr hyps
@@ -217,12 +223,12 @@ namespace B
         let lam ← withLocalDeclD z γ fun zvec ↦ do
           let rec go : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
-              let F ← checkpoint F.toExpr pure
+              let F ← checkpoint "lam:val" F.toExpr pure
 
               assignMVar β (← inferType F)
               let β ← instantiateMVars β
 
-              let P ← checkpoint P.toExpr pure
+              let P ← checkpoint "lam:dom" P.toExpr pure
 
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
@@ -306,7 +312,7 @@ namespace B
 
       trace[barrel.pog] "Decoded goal: {sg.goal}"
 
-      let g ← checkpoint sg.goal.toExpr pure
+      let g ← checkpoint "goal" sg.goal.toExpr pure
 
       trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 

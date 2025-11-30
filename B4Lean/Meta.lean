@@ -4,6 +4,7 @@ import POGReader.Extractor
 open Lean
 
 initialize registerTraceClass `barrel.pog
+initialize registerTraceClass `barrel.checkpoints
 initialize mchStore : IO.Ref (Std.HashMap System.FilePath (UInt64 × System.FilePath)) ← IO.mkRef ∅
 initialize pogStore : IO.Ref (Std.HashMap System.FilePath UInt64) ← IO.mkRef ∅
 initialize poStore : IO.Ref (Std.HashMap UInt64 (Array B.POG.Goal)) ← IO.mkRef ∅

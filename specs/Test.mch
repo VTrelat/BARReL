@@ -1,9 +1,9 @@
 MACHINE
   Test
 
-SETS X
+SETS X;Y
 
 INVARIANT
-  (min(INTEGER) = 0 & max(INTEGER) = 0) ⇒ 0 = 1
+  ∀ (F, G). (F ∈ X --> Y ∧ G ∈ X --> Y ∧ (∀ (x). (x ∈ X => F(x) = G(x))) => F = G)
 
 END
