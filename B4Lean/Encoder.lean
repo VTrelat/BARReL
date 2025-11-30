@@ -85,6 +85,15 @@ namespace B
 
 
 
+  inductive WFQuantifier | all | ex
+
+  instance : ToString WFQuantifier where
+    toString | .all => "∀" | .ex => "∃"
+
+  def WFQuantifier.invert : WFQuantifier → WFQuantifier
+    | .all => .ex
+    | .ex => .all
+
   def WFHypotheses := Std.HashMap Expr Expr × Std.HashMap Expr Expr
   -- variable (hyps : IO.Ref WFHypotheses)
 
@@ -108,18 +117,22 @@ namespace B
     withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
       k h
 
-  def checkpoint (tag : String) (t : IO.Ref WFHypotheses → TermElabM Expr) (k : Expr → TermElabM Expr) : TermElabM Expr := do
+  def checkpoint (tag : String) (quant : WFQuantifier)
+    (t : WFQuantifier → IO.Ref WFHypotheses → TermElabM Expr) (k : Expr → TermElabM Expr) :
+      TermElabM Expr := do
     let rec mkWfHyps (g : Expr) : List (Expr × Expr) → TermElabM Expr
       | [] => pure g
       | ⟨x, t⟩ :: xs => do
         let lctx := (← getLCtx).mkLocalDecl x.fvarId! `wf t
         withLCtx lctx (← getLocalInstances) do
-          mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
+          match quant with
+          | .ex => mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
+          | .all => liftMetaM ∘ mkForallFVars #[x] =<< mkWfHyps g xs
 
-    trace[barrel.checkpoints] m!"Checkpoint @{tag}!"
+    trace[barrel.checkpoints] m!"Checkpoint @{tag} (quant := {quant})!"
 
     let wfHyps ← IO.mkRef ⟨∅, ∅⟩
-    let t' ← t wfHyps
+    let t' ← t quant wfHyps
 
     let hasWF := !(← wfHyps.get).1.isEmpty
     if hasWF then
@@ -132,14 +145,14 @@ namespace B
 
 
   mutual
-    partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
+    partial def makeBinder (quant : WFQuantifier) (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
       (mkBinder : Array Expr → Expr → MetaM Expr) (mkHyp : Expr → MetaM Expr) (mkConcl : Expr → Expr → Expr) :
         TermElabM Expr := do
       if xs.size = 1 then
         let ⟨x, t⟩ := xs[0]!
 
         withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
-          liftMetaM ∘ mkBinder #[xvec] =<< checkpoint "binder:in" P.toExpr pure
+          liftMetaM ∘ mkBinder #[xvec] =<< checkpoint "binder:in" quant P.toExpr pure
       else
         let x ← mkFreshBinderName
 
@@ -156,7 +169,7 @@ namespace B
               -- x̄ = xs'
               let eq : Expr ← mkEq xvec xs'
               -- x̄ = xs' ∧ P[x̄/vs]
-              return mkConcl eq (← checkpoint "binder:in" P.toExpr pure)
+              return mkConcl eq (← checkpoint "binder:in" quant P.toExpr pure)
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
                 (liftMetaM ∘ mkBinder #[y] =<< go xs)
@@ -164,47 +177,49 @@ namespace B
 
           liftMetaM ∘ mkBinder #[xvec] =<< go xs.toList
 
-    partial def makeBinary (hyps : IO.Ref WFHypotheses) (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
-      mkAppM f #[← t₁.toExpr hyps, ← t₂.toExpr hyps]
+    partial def makeBinary (quant : WFQuantifier) (hyps : IO.Ref WFHypotheses) (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
+      mkAppM f #[← t₁.toExpr quant hyps, ← t₂.toExpr quant hyps]
 
-    partial def makeUnary (hyps : IO.Ref WFHypotheses) (f : Name) (t : Syntax.Term) : TermElabM Expr := do
-      mkAppM f #[← t.toExpr hyps]
+    partial def makeUnary (quant : WFQuantifier) (hyps : IO.Ref WFHypotheses) (f : Name) (t : Syntax.Term) : TermElabM Expr := do
+      mkAppM f #[← t.toExpr quant hyps]
 
-    partial def Syntax.Term.toExpr (hyps : IO.Ref WFHypotheses) : Syntax.Term → TermElabM Expr
+    partial def Syntax.Term.toExpr (quant : WFQuantifier) (hyps : IO.Ref WFHypotheses) : Syntax.Term → TermElabM Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
-      | .uminus x => mkIntNeg <$> x.toExpr hyps
-      | .le x y => mkIntLE <$> x.toExpr hyps <*> y.toExpr hyps
-      | .lt x y => mkIntLT <$> x.toExpr hyps <*> y.toExpr hyps
+      | .uminus x => mkIntNeg <$> x.toExpr quant hyps
+      | .le x y => mkIntLE <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .lt x y => mkIntLT <$> x.toExpr quant hyps <*> y.toExpr quant hyps
       | .bool b => return mkConst (if b then ``True else ``False)
-      | .maplet x y => makeBinary hyps ``Prod.mk x y
-      | .add x y => mkIntAdd <$> x.toExpr hyps <*> y.toExpr hyps
-      | .sub x y => mkIntSub <$> x.toExpr hyps <*> y.toExpr hyps
-      | .mul x y => mkIntMul <$> x.toExpr hyps <*> y.toExpr hyps
-      | .div x y => mkIntDiv <$> x.toExpr hyps <*> y.toExpr hyps
-      | .mod x y => mkIntMod <$> x.toExpr hyps <*> y.toExpr hyps
-      | .exp x y => do mkIntPowNat <$> x.toExpr hyps <*> mkAppM ``Int.toNat #[← y.toExpr hyps]
-      | .and x y => mkAnd <$> x.toExpr hyps <*> checkpoint "and:right" y.toExpr pure
-      | .or x y => mkOr <$> x.toExpr hyps <*> y.toExpr hyps
+      | .maplet x y => makeBinary quant hyps ``Prod.mk x y
+      | .add x y => mkIntAdd <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .sub x y => mkIntSub <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .mul x y => mkIntMul <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .div x y => mkIntDiv <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .mod x y => mkIntMod <$> x.toExpr quant hyps <*> y.toExpr quant hyps
+      | .exp x y => do mkIntPowNat <$> x.toExpr quant hyps <*> mkAppM ``Int.toNat #[← y.toExpr quant hyps]
+      | .and x y => mkAnd <$> x.toExpr quant hyps <*> checkpoint "and:right" quant y.toExpr pure
+      | .or x y => mkOr <$> x.toExpr quant hyps <*> y.toExpr quant hyps
       | .imp x y =>
-        checkpoint "imp:right" y.toExpr λ y ↦ do
-          pure <| mkForall `_  .default (← x.toExpr hyps) y
-      | .iff x y => mkIff <$> checkpoint "iff:left" x.toExpr pure <*> checkpoint "iff:right" y.toExpr pure
-      | .not x => mkNot <$> x.toExpr hyps
+        checkpoint "imp:right" quant y.toExpr λ y ↦ do
+          pure <| mkForall `_  .default (← x.toExpr quant.invert hyps) y
+      | .iff x y =>
+        mkIff <$> checkpoint "iff:left" quant x.toExpr pure
+              <*> checkpoint "iff:right" quant y.toExpr pure
+      | .not x => mkNot <$> x.toExpr quant hyps
       | .eq x y => do
-        let x' ← x.toExpr hyps
-        let y' ← y.toExpr hyps
-        liftMetaM <| mkEq x' y'
-      | .mem x S => makeBinary hyps ``Membership.mem S x
+        let x ← x.toExpr quant hyps
+        let y ← y.toExpr quant hyps
+        liftMetaM <| mkEq x y
+      | .mem x S => makeBinary quant hyps ``Membership.mem S x
       | .𝔹 => mkAppOptM ``Set.univ #[mkSort 0]
       | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
       | .ℝ => mkAppOptM ``Set.univ #[mkConst ``Real]
       | .collect xs P => do
-        mkAppM ``setOf #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
+        mkAppM ``setOf #[← makeBinder quant xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
       | .all xs P => do
-        makeBinder xs P mkForallFVars pure <| mkForall `_ .default
+        makeBinder quant xs P mkForallFVars pure <| mkForall `_ .default
       | .exists xs P => do
-        mkAppM ``Exists #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
+        mkAppM ``Exists #[← makeBinder quant xs P mkLambdaFVars (mkAppM ``Exists #[·]) mkAnd]
       | .lambda xs P F => do
         -- { z | ∃ x₁ … xₙ, ∃ y, z = ((x₁, …, xₙ), y) ∧ D ∧ y = F }
 
@@ -223,12 +238,12 @@ namespace B
         let lam ← withLocalDeclD z γ fun zvec ↦ do
           let rec go : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
-              let F ← checkpoint "lam:val" F.toExpr pure
+              let F ← checkpoint "lam:val" quant F.toExpr pure
 
               assignMVar β (← inferType F)
               let β ← instantiateMVars β
 
-              let P ← checkpoint "lam:dom" P.toExpr pure
+              let P ← checkpoint "lam:dom" quant P.toExpr pure
 
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
@@ -249,53 +264,53 @@ namespace B
 
           liftMetaM ∘ mkLambdaFVars #[zvec] =<< go xs.toList
         mkAppM ``setOf #[lam]
-      | .interval lo hi => makeBinary hyps ``Builtins.interval lo hi
-      | .subset S T => makeBinary hyps ``HasSubset.Subset S T
+      | .interval lo hi => makeBinary quant hyps ``Builtins.interval lo hi
+      | .subset S T => makeBinary quant hyps ``HasSubset.Subset S T
       | .set es ty => do
         if es.isEmpty then
           mkAppOptM ``EmptyCollection.emptyCollection #[ty.toExpr, .none]
         else
-          let emp ← mkAppOptM ``Singleton.singleton #[.none, ty.toExpr, .none, ← es.back!.toExpr hyps]
-          es.pop.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr hyps, acc]
-      | .setminus S T => makeBinary hyps ``SDiff.sdiff S T
-      | .pow S => makeUnary hyps ``Set.powerset S
-      | .pow₁ S => makeUnary hyps ``Builtins.POW₁ S
-      | .cprod S T => makeBinary hyps ``SProd.sprod S T
-      | .union S T => makeBinary hyps ``Union.union S T
-      | .inter S T => makeBinary hyps ``Inter.inter S T
-      | .rel A B => makeBinary hyps ``B.Builtins.rels A B
-      | .image R X => makeBinary hyps ``SetRel.image R X
-      | .inv R => makeUnary hyps ``SetRel.inv R
-      | .id A => makeUnary hyps ``B.Builtins.id A
-      | .dom f => makeUnary hyps ``B.Builtins.dom f
-      | .ran f => makeUnary hyps ``B.Builtins.ran f
-      | .domRestr R E => makeBinary hyps ``B.Builtins.domRestr E R
-      | .domSubtr R E => makeBinary hyps ``B.Builtins.domSubtr E R
-      | .codomRestr R E => makeBinary hyps ``B.Builtins.codomRestr R E
-      | .codomSubtr R E => makeBinary hyps ``B.Builtins.codomSubtr R E
+          let emp ← mkAppOptM ``Singleton.singleton #[.none, ty.toExpr, .none, ← es.back!.toExpr quant hyps]
+          es.pop.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr quant hyps, acc]
+      | .setminus S T => makeBinary quant hyps ``SDiff.sdiff S T
+      | .pow S => makeUnary quant hyps ``Set.powerset S
+      | .pow₁ S => makeUnary quant hyps ``Builtins.POW₁ S
+      | .cprod S T => makeBinary quant hyps ``SProd.sprod S T
+      | .union S T => makeBinary quant hyps ``Union.union S T
+      | .inter S T => makeBinary quant hyps ``Inter.inter S T
+      | .rel A B => makeBinary quant hyps ``B.Builtins.rels A B
+      | .image R X => makeBinary quant hyps ``SetRel.image R X
+      | .inv R => makeUnary quant hyps ``SetRel.inv R
+      | .id A => makeUnary quant hyps ``B.Builtins.id A
+      | .dom f => makeUnary quant hyps ``B.Builtins.dom f
+      | .ran f => makeUnary quant hyps ``B.Builtins.ran f
+      | .domRestr R E => makeBinary quant hyps ``B.Builtins.domRestr E R
+      | .domSubtr R E => makeBinary quant hyps ``B.Builtins.domSubtr E R
+      | .codomRestr R E => makeBinary quant hyps ``B.Builtins.codomRestr R E
+      | .codomSubtr R E => makeBinary quant hyps ``B.Builtins.codomSubtr R E
       | .fun A B isPartial =>
-        makeBinary hyps (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
+        makeBinary quant hyps (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do
-        makeBinary hyps (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) A B
+        makeBinary quant hyps (if isPartial then ``B.Builtins.injPFun else ``B.Builtins.injTFun) A B
       | .surjfun A B isPartial => do
-        makeBinary hyps (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
+        makeBinary quant hyps (if isPartial then ``B.Builtins.surjPFun else ``B.Builtins.surjTFun) A B
       | .bijfun A B isPartial => do
-        makeBinary hyps (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
+        makeBinary quant hyps (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
-        let S ← S.toExpr hyps
+        let S ← S.toExpr quant hyps
         let wf ← mkAppM ``B.Builtins.min.WF #[S]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
       | .max S => do
-        let S ← S.toExpr hyps
+        let S ← S.toExpr quant hyps
         let wf ← mkAppM ``B.Builtins.max.WF #[S]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
       | .app f x => do
-        let f ← f.toExpr hyps
-        let x ← x.toExpr hyps
+        let f ← f.toExpr quant hyps
+        let x ← x.toExpr quant hyps
         let wf ← mkAppM ``B.Builtins.app.WF #[f, x]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
-      | .fin S => makeUnary hyps ``B.Builtins.FIN S
-      | .fin₁ S => makeUnary hyps ``B.Builtins.FIN₁ S
+      | .fin S => makeUnary quant hyps ``B.Builtins.FIN S
+      | .fin₁ S => makeUnary quant hyps ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
   end
 
@@ -312,7 +327,7 @@ namespace B
 
       trace[barrel.pog] "Decoded goal: {sg.goal}"
 
-      let g ← checkpoint "goal" sg.goal.toExpr pure
+      let g ← checkpoint "goal" .ex sg.goal.toExpr pure
 
       trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 

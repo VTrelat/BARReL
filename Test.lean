@@ -97,11 +97,16 @@ mch_discharger "specs/Demo.mch"
 next admit
 next admit
 
--- set_option trace.barrel.checkpoints true
+set_option trace.barrel.checkpoints true
 
 mch_discharger "specs/Extensionality.mch"
 next
   intros G X Y F _ _ F_fun G_fun ext
+  admit
+
+mch_discharger "specs/Test.mch"
+next
+  intros Y X F F_fun _ _ h
   admit
 
 
