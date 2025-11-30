@@ -10,7 +10,7 @@ open Lean Parser Elab Term Command
 
 private structure ParserResult where
   name : String
-  goals : Array B.POG.Goal
+  goals : Array (String × Lean.Expr)
 
 def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt64) := .none) : CommandElabM ParserResult := do
   let .some pogName := pogPath.fileName | throwError "what?"
@@ -26,7 +26,9 @@ def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt
         goals
       }
 
-  let goals ← B.POG.extractGoals <$> B.POG.parse' pog
+  let goals ← do
+    let goals ← B.POG.extractGoals <$> B.POG.parse' pog
+    liftTermElabM <| goals.mapM λ g ↦ Prod.mk g.name <$> g.toExpr
 
   if let .some (mchPath, mchHash) := mch then
     trace[barrel.pog] "Caching new machine file {mchPath}"
@@ -106,10 +108,8 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
       if i = goals.size then
         throwErrorAt step s!"No more goals to be discharged."
 
-      let g := goals[i]!
-      let g_name := g.name
+      let ⟨g_name, g⟩ := goals[i]!
 
-      let g ← liftTermElabM g.toExpr
       let e ← liftTermElabM do
         let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
         synthesizeSyntheticMVarsNoPostponing
