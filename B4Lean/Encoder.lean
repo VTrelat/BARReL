@@ -85,21 +85,26 @@ namespace B
 
 
 
-  variable (hyps : IO.Ref (Std.HashMap Expr Expr))
+  variable (hyps : IO.Ref (Std.HashMap Expr Expr × Std.HashMap Expr Expr))
 
   private def newHypothesis (h : Expr) (thm : Expr) : TermElabM PUnit := do
     trace[barrel.pog] "Generating new WF hypothesis {h} : {thm}"
 
     let hypsMap ← hyps.get
-    if hypsMap.contains h then throwError s!"Hypothesis {repr h} already exists"
+    if hypsMap.1.contains h then throwError s!"Hypothesis {repr h} already exists"
     let thm ← Meta.ensureHasType thm <| mkSort 0
-    hyps.set <| hypsMap.insert h thm
+    hyps.set (hypsMap.1.insert h thm, hypsMap.2.insert thm h)
 
   private def makeWFHypothesis (wf : Expr) (k : Expr → MetaM Expr) : TermElabM Expr := do
-    let h ← mkFVar <$> mkFreshFVarId
-    newHypothesis hyps h wf
-    withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
-      k h
+    let hypsMap ← hyps.get
+    if let .some var := hypsMap.2.get? wf then
+      withLCtx ((← getLCtx).mkLocalDecl var.fvarId! `wf wf) (← getLocalInstances) do
+        k var
+    else
+      let h ← mkFVar <$> mkFreshFVarId
+      newHypothesis hyps h wf
+      withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
+        k h
 
   mutual
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
@@ -282,18 +287,19 @@ namespace B
             mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
 
       let aux (t : Syntax.Term) (k : Expr → TermElabM Expr) : TermElabM Expr := do
-        let wfHyps ← IO.mkRef ∅
+        let wfHyps ← IO.mkRef ⟨∅, ∅⟩
         let t ← t.toExpr wfHyps
-        if !(← wfHyps.get).isEmpty then
+        if !(← wfHyps.get).1.isEmpty then
           trace[barrel.pog] m!"Inserting some WF hypotheses before {indentExpr t}"
-        mkWfHyps (← k t) (← wfHyps.get).toList
+        mkWfHyps (← k t) (← wfHyps.get).1.toList
 
       let rec goHyp : List Syntax.Term → TermElabM Expr
         | [] => aux sg.goal pure
         | t :: ts => do
           aux t λ t ↦ mkForall `_ .default t <$> goHyp ts
 
-      let g ← goHyp sg.hyps.toList
+      -- let g ← goHyp sg.hyps.toList
+      let g ← aux sg.goal pure
 
       trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 

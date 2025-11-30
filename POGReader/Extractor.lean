@@ -7,7 +7,7 @@ namespace B.POG
   structure Goal : Type _ where
     name : String
     vars : Array (String × Syntax.Typ)
-    hyps : Array Syntax.Term
+    -- hyps : Array Syntax.Term
     goal : Syntax.Term
   deriving Inhabited
 
@@ -48,7 +48,6 @@ namespace B.POG
         {
           name
           vars := pos.vars
-          hyps := hyps₁ ++ hyps₂ ++ hyps₃ ++ hyps₄
-          goal := goal.goal
+          goal := (hyps₁ ++ hyps₂ ++ hyps₃ ++ hyps₄).foldr .imp goal.goal
         }
 end B.POG

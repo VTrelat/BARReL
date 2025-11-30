@@ -32,27 +32,21 @@ open B.Builtins
 -- next
 --   exists 0
 
-mch_discharger "specs/Injective.mch"
-next
-  rintro X y Y x F F_inj - - x_mem_X y_mem_X
-  refine ⟨?_, ?B, ?_⟩
-  ·
-    admit
-  ·
-    admit
-  · intro F_eq
-    obtain ⟨⟨_, inj⟩, _⟩ := F_inj
-    apply @inj x y (F(x)'?B)
-    ·
-      admit
-    · rw [F_eq]
-      admit
+-- mch_discharger "specs/Injective.mch"
 -- next
---   admit
--- next
---   admit
--- next
---   admit
+--   rintro X y Y x F F_inj - - x_mem_X y_mem_X
+--   refine ⟨?_, ?B, ?_⟩
+--   ·
+--     admit
+--   ·
+--     admit
+--   · intro F_eq
+--     obtain ⟨⟨_, inj⟩, _⟩ := F_inj
+--     apply @inj x y (F(x)'?B)
+--     ·
+--       admit
+--     · rw [F_eq]
+--       admit
 
 -- TODO: fix
 -- mch_discharger "specs/HO.mch"
@@ -63,7 +57,9 @@ next
 -- next
 --   grind
 
--- mch_discharger "specs/Min.mch"
+mch_discharger "specs/Min.mch"
+next
+  admit
 -- next admit
 -- next
 --   and_intros <;> grind
