@@ -49,6 +49,7 @@ next admit
 -- TODO: fix
 mch_discharger "specs/Injective.mch"
 next
+  intros X y Y x F F_inj _ _ x_mem_X y_mem_X
   admit
 -- next
 --   rintro X y Y x F F_inj - - x_mem_X y_mem_X
@@ -68,6 +69,7 @@ next
 -- TODO: fix
 mch_discharger "specs/HO.mch"
 next
+  intros X Y y0 y1 x F x_mem_X y0_mem_Y y1_mem_Y y0_neq_y1 F_fun _ _
   admit
 -- next
 --   admit
@@ -79,6 +81,7 @@ next admit
 
 mch_discharger "specs/Min.mch"
 next
+  intros X X_sub_INT
   admit
 -- next admit
 -- next
@@ -93,6 +96,11 @@ next admit
 mch_discharger "specs/Demo.mch"
 next admit
 next admit
+
+mch_discharger "specs/Test.mch"
+next
+  intros _ _
+  admit
 
 
 -- #check Counter.Initialisation_0

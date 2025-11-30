@@ -4,6 +4,6 @@ MACHINE
 SETS X
 
 INVARIANT
-  ∀ (x, y). (x ∈ X ∧ y ∈ Y) ⇒ x = y
+  (min(INTEGER) = 0 & max(INTEGER) = 0) ⇒ 0 = 1
 
 END
