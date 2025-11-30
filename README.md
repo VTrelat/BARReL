@@ -1,4 +1,5 @@
-# BARReL: **B** **A**utomated t**R**anslation for **Re**asoning in Lean
+
+# <img src=".assets/barrel.png" height="80px" style="vertical-align:middle;"> BARReL: **B** **A**utomated t**R**anslation for **Re**asoning in Lean
 
 BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the PO XML format produced by Atelier B), converts the obligations into Lean terms, and lets you discharge them with Lean tactics.
 
