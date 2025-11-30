@@ -131,6 +131,8 @@ namespace B
 
     trace[barrel.checkpoints] m!"Checkpoint @{tag} (quant := {quant})!"
 
+    trace[barrel.checkpoints] m!"Checkpoint @{tag}!"
+
     let wfHyps ← IO.mkRef ⟨∅, ∅⟩
     let t' ← t quant wfHyps
 
