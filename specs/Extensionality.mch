@@ -1,5 +1,5 @@
 MACHINE
-  Test
+  Extensionality
 
 SETS X;Y
 
