@@ -47,6 +47,12 @@ next
       admit
     · rw [F_eq]
       admit
+-- next
+--   admit
+-- next
+--   admit
+-- next
+--   admit
 
 -- TODO: fix
 -- mch_discharger "specs/HO.mch"

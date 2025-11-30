@@ -251,16 +251,16 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
         let S ← S.toExpr
-        let wf ← mkAppM ``B.Builtins.minWF #[S]
+        let wf ← mkAppM ``B.Builtins.min.WF #[S]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
       | .max S => do
         let S ← S.toExpr
-        let wf ← mkAppM ``B.Builtins.maxWF #[S]
+        let wf ← mkAppM ``B.Builtins.max.WF #[S]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
       | .app f x => do
         let f ← f.toExpr
         let x ← x.toExpr
-        let wf ← mkAppM ``B.Builtins.appWF #[f, x]
+        let wf ← mkAppM ``B.Builtins.app.WF #[f, x]
         makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S

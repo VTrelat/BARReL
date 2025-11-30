@@ -68,11 +68,12 @@ open Classical
   abbrev ran {α β : Type _} (R : SetRel α β) : Set β :=
     { y | ∃ x, (x, y) ∈ R }
 
-  def appWF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop :=
-    x ∈ dom f
+  structure app.WF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop where
+    isPartialFunction : f ∈ pfun (dom f) (ran f)
+    isInDomain : x ∈ dom f
 
-  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : appWF f x): β :=
-    Classical.choose wf
+  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : app.WF f x): β :=
+    Classical.choose wf.isInDomain
 
   abbrev domRestr {α β : Type _} (R : SetRel α β) (E : Set α) : SetRel α β :=
     { z ∈ R | z.1 ∈ E }
@@ -96,17 +97,17 @@ open Classical
     # Arithmetic operators
   -/
 
-  def minWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
-    ∃ y ∈ S, ∀ x ∈ S, y ≤ x
+  structure min.WF {α : Type _} [LinearOrder α] (S : Set α) : Prop where
+    isBoundedBelow : ∃ x ∈ S, ∀ y ∈ S, x ≤ y
 
-  noncomputable abbrev min {α : Type _} [LinearOrder α] (S : Set α) (wf : minWF S) : α :=
-    Classical.choose wf
+  noncomputable abbrev min {α : Type _} [LinearOrder α] (S : Set α) (wf : min.WF S) : α :=
+    Classical.choose wf.isBoundedBelow
 
-  def maxWF {α : Type _} [LinearOrder α] (S : Set α) : Prop :=
-    ∃ y ∈ S, ∀ x ∈ S, x ≤ y
+  structure max.WF {α : Type _} [LinearOrder α] (S : Set α) : Prop where
+    isBoundedAbove : ∃ x ∈ S, ∀ y ∈ S, y ≤ x
 
-  noncomputable abbrev max {α : Type _} [LinearOrder α] (S : Set α) (wf : maxWF S) : α :=
-    Classical.choose wf
+  noncomputable abbrev max {α : Type _} [LinearOrder α] (S : Set α) (wf : max.WF S) : α :=
+    Classical.choose wf.isBoundedAbove
 
 
   ----- Notations

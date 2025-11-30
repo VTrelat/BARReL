@@ -67,7 +67,20 @@ def mch2goals (mchPath : System.FilePath) : CommandElabM ParserResult := do
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"pog").toString,
-    args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, bxml.toString]
+    /-
+      Although `pog` can generate the WF conditions for us (with the `-w` flag), we will not be using these.
+
+      Reasons are:
+      * The WF conditions are placed at the very end of the `.pog` file, while we would need to
+        reference this in our main goals.
+      * Knowing whether a goal is a WF condition requires parsing its description, which is very
+        fragile and error-prone.
+      * Even with these issues ironed out, we would still need complicated logic in order to correctly
+        instantiate those conditions in our goals (which is even worse in the cases where a WF condition
+        may depend on the previous conjunct, e.g. in goals like `∃ G. G ∈ A ⟶ B ∧ G(x) ∈ B`, where the
+        generated WF condition is `∀ G. G ∈ A ⟶ B ⇒ x ∈ dom(G) ∧ G ∈ dom(G) ⇸ ran(G)`).
+    -/
+    args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, /- "-w", -/ bxml.toString]
   }
 
   -- Then parse the POG and generate the goals
@@ -77,10 +90,6 @@ declare_syntax_cat discharger_command
 syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
 syntax (name := pogDischarger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
 syntax (name := mchDischarger) "mch_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
-
-inductive Path
-  | mch : System.FilePath → Path
-  | pog : System.FilePath → Path
 
 def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   -- TODO: check how we can also replay the proofs that we already have
