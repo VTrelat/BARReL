@@ -1,6 +1,6 @@
 import B4Lean.Discharger
 
-set_option trace.barrel.pog false
+set_option trace.barrel.pog true
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins
@@ -72,12 +72,7 @@ next
   intros X Y y0 y1 x F x_mem_X y0_mem_Y y1_mem_Y y0_neq_y1 F_fun _ _
   admit
 -- next
---   rintro X Y y₁ y₂ x F x_mem_X y₁_mem_Y y₂_mem_Y y₁_neq_y₂ F_fun - -
---   by_cases (F(x)_@3) = y₁
---   ·
---     admit
---   ·
---     admit
+--   admit
 
 mch_discharger "specs/Enum.mch"
 next admit
@@ -114,7 +109,9 @@ next
   intros Y X F F_fun _ _ h
   admit
 
-  · admit
-  · admit
-  · unfold minWF
-    done
+
+-- #check Counter.Initialisation_0
+-- #check Counter.Initialisation_1
+-- #check Counter.Operation_inc_2
+-- #check Counter.Operation_inc_3
+-- #check Nat.Initialisation_0

@@ -18,8 +18,7 @@ private def Lean.Xml.Content.kind : Content → String
 ----------------------
 
 namespace B.POG
-  variable
-    (vars : IO.Ref (Std.HashMap String Syntax.Typ))
+  variable (vars : IO.Ref (Std.HashMap String Syntax.Typ))
 
   private partial def parseType : Lean.Xml.Element → IO Syntax.Typ
     | ⟨"Id", attrs, _⟩ => do
