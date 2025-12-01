@@ -9,7 +9,7 @@ open Lean Parser Elab Term Command
 
 private structure ParserResult where
   name : String
-  goals : Array (String × Lean.Expr)
+  goals : Array (String × String × Lean.Expr)
 
 def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt64) := .none) : CommandElabM ParserResult := do
   let .some pogName := pogPath.fileStem | throwError "what?"
@@ -27,7 +27,7 @@ def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt
 
   let goals ← do
     let goals ← B.POG.extractGoals <$> B.POG.parse' pog
-    liftTermElabM <| goals.mapM λ g ↦ Prod.mk g.name <$> g.toExpr
+    liftTermElabM <| goals.mapM λ g ↦ (Prod.mk g.name ∘ Prod.mk g.reason) <$> g.toExpr
 
   if let .some (mchPath, mchHash) := mch then
     trace[barrel.pog] "Caching new machine file {mchPath}"
@@ -94,20 +94,21 @@ syntax (name := mchDischarger) "mch_discharger " str ppSpace withPosition((colEq
 
 def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   -- TODO: check how we can also replay the proofs that we already have
-  let name := res.name
-  let goals := res.goals
+  let ⟨name, goals⟩ := res
+  let ns ← getCurrNamespace
 
   let mut i := 0
 
-  let ns ← getCurrNamespace
-
   for step in steps do
     match step with
-    | `(discharger_command| next $tac:tacticSeq) =>
+    | `(discharger_command| next%$tk $tac:tacticSeq) =>
       if i = goals.size then
         throwErrorAt step s!"No more goals to be discharged."
 
-      let ⟨g_name, g⟩ := goals[i]!
+      let ⟨g_name, g_reason, g⟩ := goals[i]!
+
+      if (← getOptions).getBool `barrel.show_goal_names true then
+        logInfoAt tk m!"{g_name}: {g_reason}"
 
       let e ← liftTermElabM do
         let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
@@ -116,13 +117,19 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
 
       let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
 
+      let declName := ns |>.str name |>.str s!"{g_name}_{i}"
       let decl : Declaration := .thmDecl {
-        name := ns |>.str name |>.str s!"{g_name}_{i}"
+        name := declName
         levelParams := levelParams.toList
         type := g
         value := e
       }
       liftCoreM <| addDecl decl false
+      liftTermElabM <| Lean.addDocStringOf false declName .missing
+        (mkNode ``docComment #[
+          mkAtom SourceInfo.none "/--",
+          mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{g_name}`: {g_reason} -/"
+        ])
 
       i := i + 1
 

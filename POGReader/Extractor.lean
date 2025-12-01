@@ -6,6 +6,7 @@ namespace B.POG
   -/
   structure Goal : Type _ where
     name : String
+    reason : String
     vars : Array (String × Syntax.Typ)
     -- hyps : Array Syntax.Term
     goal : Syntax.Term
@@ -116,9 +117,11 @@ namespace B.POG
         let hyps₄ := goal.refHyps.map λ i ↦ obligation.localHyps[i]!
 
         let name := obligation.name -- NOTE: do something with `goal.name`?
+        let reason := goal.name
 
         {
           name
+          reason
           vars := pos.vars
           goal := Syntax.Term.normalize <| (hyps₁ ++ hyps₂ ++ hyps₃ ++ hyps₄).foldr .imp goal.goal
         }
