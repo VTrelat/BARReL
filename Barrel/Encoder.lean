@@ -1,6 +1,6 @@
 import POGReader.Basic
-import B4Lean.Meta
-import B4Lean.Builtins
+import Barrel.Meta
+import Barrel.Builtins
 
 open Std Lean Meta Elab Term
 

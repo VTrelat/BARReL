@@ -1,4 +1,4 @@
-import B4Lean.Builtins
+import Barrel.Builtins
 
 import Mathlib.Data.Fintype.Basic
 

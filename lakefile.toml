@@ -1,6 +1,6 @@
-name = "B4Lean"
+name = "Barrel"
 version = "0.1.0"
-defaultTargets = ["b4lean"]
+defaultTargets = ["Barrel"]
 
 [[require]]
 name = "mathlib"
@@ -8,7 +8,7 @@ scope = "leanprover-community"
 rev = "v4.25.0"
 
 [[lean_lib]]
-name = "B4Lean"
+name = "Barrel"
 
 [[lean_lib]]
 name = "Extra"
@@ -18,7 +18,3 @@ name = "B"
 
 [[lean_lib]]
 name = "POGReader"
-
-[[lean_exe]]
-name = "b4lean"
-root = "Main"

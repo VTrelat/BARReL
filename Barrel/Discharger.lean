@@ -1,10 +1,9 @@
 import Lean.Elab.Command
 import Lean.Elab.BuiltinTerm
 import Mathlib.Util.WhatsNew
-import B4Lean.Encoder
+import Barrel.Encoder
 import POGReader.Basic
-import B4Lean.Meta
--- import B4Lean.Elab
+import Barrel.Meta
 
 open Lean Parser Elab Term Command
 

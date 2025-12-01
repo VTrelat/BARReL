@@ -1,4 +1,4 @@
-import B4Lean.Discharger
+import Barrel.Discharger
 
 set_option trace.barrel.pog true
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
