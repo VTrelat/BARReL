@@ -145,8 +145,8 @@ namespace B.POG
     | "<+" => panic! "TODO"
     | "<->" => return .rel
     | "<-" => panic! "TODO"
-    | "<<|" => panic! "TODO"
     | "<|" => return .domRestr
+    | "<<|" => return .domSubtr
     | ">+>" => return .injfun (isPartial := true)
     | ">->" => return .injfun (isPartial := false)
     | ">+>>" => panic! "TODO"
@@ -158,8 +158,8 @@ namespace B.POG
     | "^" => panic! "TODO"
     | "mod" => return .mod
     | "," | "|->" => return .maplet
-    | "|>" => panic! "TODO"
-    | "|>>" => panic! "TODO"
+    | "|>" => return .codomRestr
+    | "|>>" => return .codomSubtr
     | "[" => return .image
     | "(" => return .app
     | "<'" => panic! "TODO"

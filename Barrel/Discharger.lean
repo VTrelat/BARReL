@@ -12,7 +12,7 @@ private structure ParserResult where
   goals : Array (String × Lean.Expr)
 
 def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt64) := .none) : CommandElabM ParserResult := do
-  let .some pogName := pogPath.fileName | throwError "what?"
+  let .some pogName := pogPath.fileStem | throwError "what?"
 
   let pog : String ← IO.FS.readFile pogPath
   let pogHash : UInt64 := hash pog
