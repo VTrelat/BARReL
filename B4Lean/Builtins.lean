@@ -4,7 +4,23 @@ import Mathlib.Data.Finite.Defs
 import Mathlib.Data.Real.Basic
 
 namespace B.Builtins
-open Classical
+  open Classical
+
+  /--
+    An opaque inhabitant of every type.
+
+    In an ideal world, it would not be possible to reason on `Inhabited.default`.
+    Unfortunately, it is possible to prove the goal `⊢ @Inhabited.default ℤ = 0`, which we
+    actually don't want here.
+
+    Instead, we introduce an opaque symbol `undefined`.
+    The fact that it is opaque means that it cannot be unfolded at all, nor can
+    any property be derived for it.
+
+    If you are seeing `undefined` in your proof, and your hypotheses are not contradictory,
+    then you must have done something wrong, or your goal is unprovable.
+  -/
+  noncomputable opaque undefined.{u} {α : Type u} [Inhabited α] : Nat → α
 
   /-!
     # Builtin sets
@@ -139,9 +155,12 @@ open Classical
   scoped infixl:170 ".." => interval
 
   scoped postfix:230 "⁻¹" => SetRel.inv
-  scoped notation:290 F:290 "(" x:min ")'" wf:300 => app F x wf
-  scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
 
+  scoped notation:290 "min_@" n "(" S:min ")" => min n S
+  scoped notation:290 "max_@" n "(" S:min ")" => max n S
+
+  scoped notation:290 F:290 "(" x:min ")_@" n => app n F x
+  scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
   /-
   TODO: add remaining Unicode characters
 

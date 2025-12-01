@@ -79,7 +79,7 @@ namespace B.Syntax
     | injfun (A B : Term) (isPartial := true)
     | surjfun (A B : Term) (isPartial := true)
     | bijfun (A B : Term) (isPartial := true)
-    | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
+    | min (S : Term)
     | max (S : Term)
     -- quantifiers
     | all (vs : Array (String × Typ)) (P : Term)
