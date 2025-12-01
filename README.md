@@ -54,7 +54,7 @@ This machine generates four proof obligations:
 
 In Lean, we can discharge them as follows:
 
-```hs
+```lean
 import Barrel.Discharger
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
@@ -82,6 +82,12 @@ next
       Int.neg_neg]
 ```
 
+> [!NOTE]
+> By default, option `barrel.show_goal_names` is set to `true`, which will display the name of each proof obligation at each `next`, but it can be disabled with:
+> ```lean
+> set_option barrel.show_goal_names false
+> ```
+
 ## Using the discharger
 Two commands are provided to discharge proof obligations from B machines:
 
@@ -90,7 +96,7 @@ Two commands are provided to discharge proof obligations from B machines:
 
 Each command expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:
 
-```hs
+```lean
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
 open B.Builtins
