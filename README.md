@@ -1,5 +1,5 @@
 
-# <img src=".assets/barrel.png" height="80px" style="vertical-align:middle;"> BARReL: **B** **A**utomated t**R**anslation for **Re**asoning in Lean
+# BARReL: **B** **A**utomated t**R**anslation for **Re**asoning in Lean <img src=".assets/barrel.png" height="80px" style="vertical-align:middle;" align="right"/>
 
 BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the PO XML format produced by Atelier B), converts the obligations into Lean terms, and lets you discharge them with Lean tactics.
 
@@ -29,28 +29,28 @@ lake env lean Test.lean
 ```
 
 ### Quick example
-Consider the B machine [`Counter.mch`](specs/Counter.mch):
+Consider the B machine [`CounterMin.mch`](specs/CounterMin.mch):
 ```
-MACHINE Counter
-VARIABLES x
+MACHINE CounterMin
+VARIABLES X
 INVARIANT
-  x ∈ NAT & x ≤ 10
+  X ∈ FIN1(ℤ) ∧ max(X) = -min(X)
 INITIALISATION
-  x := 0
+  X := {0}
 OPERATIONS
   inc =
-    PRE x < 10 THEN
-      x := x + 1
-    END
+  ANY z WHERE z ∈ ℕ THEN
+    X := (-z)..z
+  END
 END
 ```
 This machine generates four proof obligations:
 - _Initialisation_:
-  - $0 ∈ \mathrm{NAT}$
-  - $0 \leq 10$.
+  - `{0} ∈ FIN₁(INTEGER)`
+  - `max({0}) = -min({0})`
 - _Invariant preservation_ for `inc`:
-  - $\forall x ∈ \mathrm{NAT}, x \leq 10 \to x < 10 \to x + 1 ∈ \mathrm{NAT}$
-  - $\forall x ∈ \mathrm{NAT}, x \leq 10 \to x < 10 \to x + 1 \leq 10$
+  - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → (-z)..z ∈ FIN₁(ℤ)`
+  - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → max((-z)..z) = -min((-z)..z)`
 
 In Lean, we can discharge them as follows:
 
@@ -59,16 +59,27 @@ import Barrel.Discharger
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-mch_discharger "specs/Counter.mch"
-next -- 0 ∈ NAT
-  grind
-next -- 0 ≤ 10
-  grind
-next -- ∀ x ∈ NAT, x ≤ 10 → x < 10 → x + 1 ∈ NAT
-  rintro x ⟨_, _⟩ _ _
-  grind
-next -- ∀ x ∈ NAT, x ≤ 10 → x < 10 → x + 1 ≤ 10
-  grind
+mch_discharger "specs/CounterMin.mch"
+next
+  exact FIN₁.singleton_mem trivial
+next
+  exists max.WF_singleton, min.WF_singleton
+  simp
+next
+  rintro z X hX
+  exists max.WF_of_finite hX, min.WF_of_finite hX
+  rintro - hz
+  exact interval.FIN₁_mem (neg_le_self hz)
+next
+  intro z X hX
+  exists max.WF_of_finite hX, min.WF_of_finite hX
+  rintro _ hz
+  exists
+    min.WF_of_finite (interval.FIN₁_mem (neg_le_self hz)),
+    max.WF_of_finite (interval.FIN₁_mem (neg_le_self hz))
+  rw [interval.min_eq (neg_le_self hz),
+      interval.max_eq (neg_le_self hz),
+      Int.neg_neg]
 ```
 
 ## Using the discharger
@@ -100,7 +111,7 @@ Each `next` corresponds to one simple goal inside the POG. If fewer `next` block
 The discharger also produces Lean theorems named after the POG tags–e.g. `Counter.Initialisation_<i>`, which can be used as lemmas in subsequent proofs, if needed.
 
 ## How it works (high level)
-1. **Parse POG XML**: read types, definitions, and proof obligations from Atelier B’s PO XML schema.
+1. **Parse PO XML**: read types, definitions, and proof obligations from Atelier B’s PO XML schema.
 2. **Extract logical goals**: turn the schema into `Goal` records containing variables, hypotheses, and the goal term.
 3. **Encode to Lean**: map B terms and types to Lean expressions, using the set-theoretic primitives in `Barrel/Builtins.lean` and Lean's meta-programming features.
 4. **Discharge**: generate Lean theorem declarations for each goal and run the user-supplied tactics. Generated goals should closely resemble the original B proof obligations.
