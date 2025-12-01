@@ -5,12 +5,11 @@ BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the 
 
 ## Repository layout
 - [`B/`](B/): a lightweight Lean embedding of the B syntax and basic pretty-printing.
-- [`B4Lean/`](B4Lean/): the encoding layer: built-in B sets and relations ([`Builtins.lean`](B4Lean/Builtins.lean)), translation to Lean expressions ([`Encoder.lean`](B4Lean/Encoder.lean)), and the proof-obligation discharger macros ([`Discharger.lean`](B4Lean/Discharger.lean)).
+- [`Barrel/`](Barrel/): the encoding layer: built-in B sets and relations ([`Builtins.lean`](Barrel/Builtins.lean)), translation to Lean expressions ([`Encoder.lean`](Barrel/Encoder.lean)), and the proof-obligation discharger macros ([`Discharger.lean`](Barrel/Discharger.lean)).
 - [`POGReader/`](POGReader/): XML parsing for Atelier B POG files ([`Parser.lean`](POGReader/Parser.lean)), schema definitions, and extraction of goals ([`Extractor.lean`](POGReader/Extractor.lean)).
 - [`Extra/`](Extra/): utility formatting helpers.
 - [`specs/`](specs/): sample B machines (`.mch`)
 - [`Test.lean`](Test.lean): an example script showing how to call the discharger on the sample machines.
-- [`Main.lean`](Main.lean): minimal executable stub.
 
 ## Prerequisites
 - Lean 4 (see [`lean-toolchain`](lean-toolchain) for version).
@@ -56,7 +55,7 @@ This machine generates four proof obligations:
 In Lean, we can discharge them as follows:
 
 ```hs
-import B4Lean.Discharger
+import Barrel.Discharger
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
@@ -96,14 +95,14 @@ next
   ...
 ```
 
-Each `next` corresponds to one simple goal inside the POG. If fewer `next` blocks are provided than goals, the command fails and reports how many remain. Theorems are added under the current namespace using the POG tag and an index (see [`Discharger.lean`](B4Lean/Discharger.lean) for naming details).
+Each `next` corresponds to one simple goal inside the POG. If fewer `next` blocks are provided than goals, the command fails and reports how many remain. Theorems are added under the current namespace using the POG tag and an index (see [`Discharger.lean`](Barrel/Discharger.lean) for naming details).
 
 The discharger also produces Lean theorems named after the POG tags–e.g. `Counter.Initialisation_<i>`, which can be used as lemmas in subsequent proofs, if needed.
 
 ## How it works (high level)
 1. **Parse POG XML**: read types, definitions, and proof obligations from Atelier B’s PO XML schema.
 2. **Extract logical goals**: turn the schema into `Goal` records containing variables, hypotheses, and the goal term.
-3. **Encode to Lean**: map B terms and types to Lean expressions, using the set-theoretic primitives in `B4Lean/Builtins.lean` and Lean's meta-programming features.
+3. **Encode to Lean**: map B terms and types to Lean expressions, using the set-theoretic primitives in `Barrel/Builtins.lean` and Lean's meta-programming features.
 4. **Discharge**: generate Lean theorem declarations for each goal and run the user-supplied tactics. Generated goals should closely resemble the original B proof obligations.
 
 ## Sample models
