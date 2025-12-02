@@ -50,7 +50,7 @@ namespace B.POG
     | .mod t₁ t₂ => .mod t₁.normalize t₂.normalize
     | .exp t₁ t₂ => .exp t₁.normalize t₂.normalize
     | .le t₁ t₂ => .le t₁.normalize t₂.normalize
-    | .lt t₁ t₂ => .le t₁.normalize t₂.normalize
+    | .lt t₁ t₂ => .lt t₁.normalize t₂.normalize
     -- logic
     | .and t₁ t₂ => .and t₁.normalize t₂.normalize
     | .or t₁ t₂ => .or t₁.normalize t₂.normalize
