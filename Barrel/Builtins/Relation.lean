@@ -13,11 +13,11 @@ namespace B.Builtins
   abbrev ran {α β : Type _} (R : SetRel α β) : Set β :=
     { y | ∃ x, (x, y) ∈ R }
 
-  abbrev domRestr {α β : Type _} (R : SetRel α β) (E : Set α) : SetRel α β :=
+  abbrev domRestr {α β : Type _} (E : Set α) (R : SetRel α β) : SetRel α β :=
     { z ∈ R | z.1 ∈ E }
   scoped infixl:160 " ◁ " => domRestr
 
-  abbrev domSubtr {α β : Type _} (R : SetRel α β) (E : Set α) : SetRel α β :=
+  abbrev domSubtr {α β : Type _} (E : Set α) (R : SetRel α β) : SetRel α β :=
     { z ∈ R | z.1 ∉ E }
   scoped infixl:160 " ⩤ " => domSubtr
 
@@ -29,6 +29,17 @@ namespace B.Builtins
     { z ∈ R | z.2 ∉ E }
   scoped infixl:160 " ⩥ " => codomSubtr
 
+  abbrev overload {α β : Type _} (R₁ : SetRel α β) (R₂ : SetRel α β) : SetRel α β :=
+    { (x, y) | (x, y) ∈ R₁ ∧ x ∉ dom R₂ ∨ (x, y) ∈ R₂ }
+  scoped infixl:160 " <+ " => overload
+
   scoped postfix:230 "⁻¹" => SetRel.inv
   scoped notation:290 R:290 "[" X:min "]" => SetRel.image R X
+
+  section Lemmas
+    @[grind →]
+    theorem mem_dom_of_pair_mem {α β : Type _} {f : SetRel α β} {x : α} {y : β} (hxy : (x, y) ∈ f) :
+      x ∈ dom f := ⟨y, hxy⟩
+
+  end Lemmas
 end B.Builtins
