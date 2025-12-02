@@ -94,7 +94,10 @@ namespace B
     | .all => .ex
     | .ex => .all
 
-  def WFHypotheses := Std.HashMap Expr Expr × Std.HashMap Expr Expr
+  structure WFHypotheses where
+    fvars : Array Expr
+    fvarsToThm : Std.HashMap Expr Expr
+    thmToFvars : Std.HashMap Expr Expr
   -- variable (hyps : IO.Ref WFHypotheses)
 
   private def newHypothesis (hyps : IO.Ref WFHypotheses) (h : Expr) (thm : Expr) : TermElabM PUnit := do
@@ -103,7 +106,11 @@ namespace B
     let hypsMap ← hyps.get
     if hypsMap.1.contains h then throwError s!"Hypothesis {repr h} already exists"
     let thm ← Meta.ensureHasType thm <| mkSort 0
-    hyps.set (hypsMap.1.insert h thm, hypsMap.2.insert thm h)
+    hyps.set {
+      fvars := hypsMap.fvars.push h
+      fvarsToThm := hypsMap.fvarsToThm.insert h thm
+      thmToFvars := hypsMap.thmToFvars.insert thm h
+    }
 
   private def makeWFHypothesis (hyps : IO.Ref WFHypotheses) (wf : Expr) (k : Expr → MetaM Expr) : TermElabM Expr := do
     let hypsMap ← hyps.get
@@ -133,14 +140,17 @@ namespace B
 
     trace[barrel.checkpoints] m!"Checkpoint @{tag}!"
 
-    let wfHyps ← IO.mkRef ⟨∅, ∅⟩
+    let wfHyps ← IO.mkRef ⟨∅, ∅, ∅⟩
     let t' ← t quant wfHyps
 
-    let hasWF := !(← wfHyps.get).1.isEmpty
-    if hasWF then
-      trace[barrel.pog] m!"Inserting {(← wfHyps.get).1.size} WF hypotheses before {indentExpr t'}"
+    let hypsMap ← wfHyps.get
+    let hasWF := !hypsMap.fvars.isEmpty
 
-    let t ← k =<< mkWfHyps t' (← wfHyps.get).1.toList
+    if hasWF then
+      trace[barrel.pog] m!"Inserting {(← wfHyps.get).fvars.size} WF hypotheses before {indentExpr t'}"
+
+    let t ← k =<< mkWfHyps t' (hypsMap.fvars.map λ v ↦ (v, hypsMap.fvarsToThm.get! v)).toList
+
     if hasWF then
       trace[barrel.pog] m!"  Finished term: {t}"
     return t

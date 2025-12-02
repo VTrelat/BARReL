@@ -18,7 +18,11 @@ private def Lean.Xml.Content.kind : Content → String
 ----------------------
 
 namespace B.POG
-  variable (vars : IO.Ref (Std.HashMap String Syntax.Typ))
+  structure Vars where
+    vars : Array String
+    varsToTyp : Std.HashMap String Syntax.Typ
+
+  variable (vars : IO.Ref Vars)
 
   private partial def parseType : Lean.Xml.Element → IO Syntax.Typ
     | ⟨"Id", attrs, _⟩ => do
@@ -192,7 +196,10 @@ namespace B.POG
       let typref := attrs.get! "typref" |>.toNat!
       let name := attrs.get! "value" ++ attrs.getD "suffix" ""
       let ty := types.get! typref
-      vars.modifyGet λ vars ↦ (⟨name, ty⟩, vars.insert name ty)
+      vars.modifyGet λ vars ↦ (⟨name, ty⟩, {
+        vars := if name ∈ vars.vars then vars.vars else vars.vars.push name,
+        varsToTyp := vars.varsToTyp.insert name ty
+      })
     | _ => unreachable!
 
   private def Syntax.Typ.toTerm : Syntax.Typ → Syntax.Term
@@ -557,14 +564,16 @@ namespace B.POG
         obligations := obligations.push (← parseObligation vars nodes typeInfos)
 
       -- NOTE: remove all B builtins
-      let vars := B.Syntax.reservedIdentifiers.fold (init := ← vars.get) Std.HashMap.erase
+      let vars ← vars.get
+      let vars := B.Syntax.reservedIdentifiers.fold (init := vars.vars) Array.erase
+        |>.map λ v ↦ (v, vars.varsToTyp.get! v)
 
-      return { defines, obligations, vars := vars.toArray /-, typeInfos -/ }
+      return { defines, obligations, vars := vars /-, typeInfos -/ }
     | ⟨name, _, _⟩ => throwError s!"Unexpected root element '{name}'"
 
   omit vars in
   def parse' (content : String) : IO Schema.ProofObligations := do
-    let vars ← IO.mkRef ∅
+    let vars ← IO.mkRef ⟨∅, ∅⟩
 
     IO.ofExcept (Lean.Xml.parse content)
       >>= parseProofObligations vars ∘ removeEmptyDeep
