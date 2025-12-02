@@ -111,7 +111,7 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
         logInfoAt tk m!"{g_name}: {g_reason}"
 
       let e ← liftTermElabM do
-        let e ← elabTerm (← `(term| by $tac)) (.some g) (catchExPostpone := false)
+        let e ← elabTerm (← `(term| by%$tk $tac)) (.some g) (catchExPostpone := false)
         synthesizeSyntheticMVarsNoPostponing
         instantiateMVars e
 
