@@ -1,9 +1,9 @@
 import Barrel.Discharger
 import Mathlib.Util.AssertNoSorry
 
-set_option trace.barrel true
-set_option trace.barrel.cache true
-set_option trace.barrel.wf true
+-- set_option trace.barrel true
+-- set_option trace.barrel.cache true
+-- set_option trace.barrel.wf true
 -- set_option trace.barrel.checkpoints true
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 

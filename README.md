@@ -52,7 +52,7 @@ This machine generates four proof obligations:
   - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → (-z)..z ∈ FIN₁(ℤ)`
   - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → max((-z)..z) = -min((-z)..z)`
 
-In Lean, we can discharge them as follows:
+In Lean, we can discharge them as follows (the first four obligations are well-formedness conditions):
 
 ```lean
 import Barrel.Discharger
@@ -61,24 +61,32 @@ set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2
 
 mch_discharger "specs/CounterMin.mch"
 next
+  exact fun _ _ ↦ max.WF_singleton
+next
+  exact fun _ _ ↦ min.WF_singleton
+next
+  exact fun _ _ ↦ max.WF_of_finite
+next
+  exact fun _ _ ↦ min.WF_of_finite
+next
+  rintro _ z - - z_mem
+  exact max.WF_interval <| neg_le_self z_mem
+next
+  rintro _ z - - z_mem
+  exact min.WF_interval <| neg_le_self z_mem
+next
   exact FIN₁.singleton_mem trivial
 next
-  exists max.WF_singleton, min.WF_singleton
-  simp
+  intros _ _
+  rw [max.of_singleton, min.of_singleton]
+  rfl
 next
-  rintro z X hX
-  exists max.WF_of_finite hX, min.WF_of_finite hX
-  rintro - hz
-  exact interval.FIN₁_mem (neg_le_self hz)
+  rintro X z - - z_mem
+  exact interval.FIN₁_mem <| neg_le_self z_mem
 next
-  intro z X hX
-  exists max.WF_of_finite hX, min.WF_of_finite hX
-  rintro _ hz
-  exists
-    max.WF_of_finite (interval.FIN₁_mem (neg_le_self hz)),
-    min.WF_of_finite (interval.FIN₁_mem (neg_le_self hz))
-  rw [interval.max_eq (neg_le_self hz),
-      interval.min_eq (neg_le_self hz),
+  rintro X z - - hz
+  rw [interval.min_eq (neg_le_self hz),
+      interval.max_eq (neg_le_self hz),
       Int.neg_neg]
 ```
 
