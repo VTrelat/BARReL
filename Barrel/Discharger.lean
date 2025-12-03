@@ -115,7 +115,7 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
         mvar.assign (.const n_wf [])
 
         j := j + 1
-        wfs' := wfs'.push (n_wf, "Assertion is well-defined", g')
+        wfs' := wfs'.push (n_wf, "Assertion is well-defined", ← instantiateMVars g')
 
       pure (← instantiateMVars g, wfs')
     trace[barrel.pog] "Generated theorem: {g'}"
