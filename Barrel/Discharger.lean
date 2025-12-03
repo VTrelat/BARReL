@@ -98,31 +98,28 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
 
   -- let mut wfs := #[]
   let mut res := #[]
-  let mut wfs := #[]
+  let mut wfs : Array (Name × String × Expr) := #[]
   let mut i := 0
-
-  let mut allWFs : IO.Ref (Array (Name × Expr)) ← IO.mkRef #[]
 
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"
 
     let (declName, reason, g', wfs') ← liftTermElabM do
-      let (g', wfs) ← g.toExpr
+      let (g', wfs'') ← g.toExpr
 
       let mut wfs' : Array (Name × String × Expr) := #[]
       let mut j := 0
-      for ⟨g', mvar⟩ in wfs do
+      for ⟨g', mvar⟩ in wfs'' do
         let n_wf := declName.str s!"wf_{j}"
         j := j + 1
 
-        if let .some (n, _) ← (← allWFs.get).findM? λ (_, g'') ↦ Meta.isDefEq g' g'' then
+        if let .some (n, _, _) ← (wfs ++ wfs').findM? λ (_, _, g'') ↦ Meta.isDefEq g' g'' then
           trace[barrel.wf] "Found duplicated WF theorem: using {n} instead"
           mvar.assign (.const n [])
         else do
           mvar.assign (.const n_wf [])
           let g' ← instantiateMVars g'
           wfs' := wfs'.push (n_wf, "Assertion is well-defined", g')
-          allWFs.modify (Array.push · (n_wf, g'))
 
       let g' ← instantiateMVars g'
       trace[barrel] "Generated theorem: {g'}"
