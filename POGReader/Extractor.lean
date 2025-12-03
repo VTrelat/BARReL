@@ -106,12 +106,12 @@ namespace B.POG
     pos.obligations.flatMap λ obligation ↦
       let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
       let (sets, hyps₁) := extractSetsAndHyps uses
-      let hyps₂ := obligation.hypotheses
-      let hyps₃ := sets.map λ set ↦
+      let hyps₂ := sets.map λ set ↦
         if set.values.isEmpty then
           .mem (.var set.name) <| .fin₁ .ℤ
         else
           .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
+      let hyps₃ := obligation.hypotheses
 
       obligation.simpleGoals.map λ goal ↦
         let hyps₄ := goal.refHyps.map λ i ↦ obligation.localHyps[i]!

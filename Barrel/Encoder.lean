@@ -250,24 +250,28 @@ namespace B
         let lam ← withLocalDeclD z γ fun zvec ↦ do
           let rec go : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
-              let F ← checkpoint "lam:val" quant F.toExpr pure
-
-              assignMVar β (← inferType F)
-              let β ← instantiateMVars β
-
               let P ← checkpoint "lam:dom" quant P.toExpr pure
 
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
+                let F ← checkpoint "lam:val" quant (λ q hyps ↦ do
+                  -- We need to checkpoint around ``
+                  let F ← F.toExpr q hyps
+
+                  assignMVar β (← inferType F)
+
+                  liftMetaM <| mkEq y F) pure
+                let β ← instantiateMVars β
+
                 let xs' ← do
                   xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
                     mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
                 -- x̄ = (xs', y)
                 let eq : Expr ← mkEq zvec (mkApp4 (mkConst ``Prod.mk [levelα, lmvar]) α β xs' y)
                 -- y = F[x̄/xs']
-                let eqF : Expr ← mkEq y F
+                -- let eqF : Expr ← mkEq y F
                 -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
-                mkLambdaFVars #[y] <| mkAndN [eq, P, eqF]
+                mkLambdaFVars #[y] <| mkAndN [eq, P, F]
               mkAppM ``Exists #[lam]
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
