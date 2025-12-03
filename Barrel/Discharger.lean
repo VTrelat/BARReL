@@ -9,8 +9,6 @@ open Lean Parser Elab Term Command
 
 declare_syntax_cat discharger_command
 syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
-syntax (name := pogDischarger) "pog_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
-syntax (name := mchDischarger) "mch_discharger " str ppSpace withPosition((colEq discharger_command)*) : command
 
 private structure ParserResult where
   name : String
@@ -33,10 +31,10 @@ def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt
   let goals ← B.POG.extractGoals <$> B.POG.parse' pog
 
   if let .some (mchPath, mchHash) := mch then
-    trace[barrel.pog] "Caching new machine file {mchPath}"
+    trace[barrel.cache] "Caching new machine file {mchPath}"
     registerFile mchPath pogPath mchHash pogHash goals
   else
-    trace[barrel.pog] "Caching new POG file {pogPath}"
+    trace[barrel.cache] "Caching new POG file {pogPath}"
     registerFile "" pogPath 0 pogHash goals
 
   return {
@@ -56,6 +54,8 @@ def mch2goals (mchPath : System.FilePath) : CommandElabM ParserResult := do
       let .some pogPath ← getPogPath mchPath | unreachable!
       let .some pogHash ← getPogHash pogPath | unreachable!
       let .some goals ← getGoals pogHash | unreachable!
+
+      trace[barrel.cache] "Found entry in cache!"
 
       return {
         name := mchName
@@ -101,62 +101,73 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
   let mut wfs := #[]
   let mut i := 0
 
+  let mut allWFs : IO.Ref (Array (Name × Expr)) ← IO.mkRef #[]
+
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"
 
-    let ⟨g', wfs'⟩ ← liftTermElabM do
-      let (g, wfs) ← g.toExpr
+    let (declName, reason, g', wfs') ← liftTermElabM do
+      let (g', wfs) ← g.toExpr
 
-      let mut wfs' := #[]
+      let mut wfs' : Array (Name × String × Expr) := #[]
       let mut j := 0
       for ⟨g', mvar⟩ in wfs do
         let n_wf := declName.str s!"wf_{j}"
-
-        mvar.assign (.const n_wf [])
-
         j := j + 1
-        wfs' := wfs'.push (n_wf, "Assertion is well-defined", ← instantiateMVars g')
 
-      pure (← instantiateMVars g, wfs')
-    trace[barrel.pog] "Generated theorem: {g'}"
+        if let .some (n, _) ← (← allWFs.get).findM? λ (_, g'') ↦ Meta.isDefEq g' g'' then
+          trace[barrel.wf] "Found duplicated WF theorem: using {n} instead"
+          mvar.assign (.const n [])
+        else do
+          mvar.assign (.const n_wf [])
+          let g' ← instantiateMVars g'
+          wfs' := wfs'.push (n_wf, "Assertion is well-defined", g')
+          allWFs.modify (Array.push · (n_wf, g'))
 
-    res := res.push (declName, g.reason, g')
+      let g' ← instantiateMVars g'
+      trace[barrel] "Generated theorem: {g'}"
+
+      pure (declName, g.reason, g', wfs')
+
+    res := res.push (declName, reason, g')
     wfs := wfs ++ wfs'
     i := i + 1
 
+  let goals := wfs ++ res
   let mut proofs_missing := 0
   i := 0
-  for ⟨declName, r_reason, g'⟩ in wfs ++ res do
+  for ⟨declName, r_reason, g'⟩ in goals do
     if let .some (step : TSyntax `discharger_command) := steps[i]? then
       if let `(discharger_command| next%$tk $tac:tacticSeq) := step then
         if (← getOptions).getBool `barrel.show_goal_names true then
           logInfoAt tk m!"{declName}: {r_reason}"
 
-        let g' ← liftTermElabM do
+        liftTermElabM <| withOptions (Elab.async.set · false) do
           let g' ← instantiateMVars g'
           if g'.hasExprMVar then
             throwError "Resulting expression contains metavariables{indentExpr g'}"
-          pure g'
 
-        let e ← liftTermElabM do
-          let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
-          synthesizeSyntheticMVarsNoPostponing
-          instantiateMVars e
+          let e ← do
+            let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
+            synthesizeSyntheticMVarsNoPostponing
+            instantiateMVars e
 
-        let levelParams := (collectLevelParams {} g').params ++ (collectLevelParams {} e).params
+          let levelParams := (collectLevelParams {} g').params ++ (collectLevelParams {} e).params
 
-        let decl : Declaration := .thmDecl {
-          name := declName
-          levelParams := levelParams.toList
-          type := g'
-          value := e
-        }
-        liftCoreM <| addDecl decl false
-        liftTermElabM <| Lean.addDocStringOf false declName .missing
-          (mkNode ``docComment #[
-            mkAtom SourceInfo.none "/--",
-            mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
-          ])
+          let decl : Declaration := .thmDecl {
+            name := declName
+            levelParams := levelParams.toList
+            type := g'
+            value := e
+          }
+
+          addDecl decl false
+
+          Lean.addDocStringOf false declName .missing
+            (mkNode ``docComment #[
+              mkAtom SourceInfo.none "/--",
+              mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
+            ])
     else
       proofs_missing := proofs_missing + 1
 
@@ -164,9 +175,16 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
 
   if proofs_missing > 0 then
     throwError s!"There still {if proofs_missing = 1 then "is" else "are"} {proofs_missing} goal{if proofs_missing = 1 then "" else "s"} to discharge."
+  else if steps.size > goals.size then
+    dbg_trace s!"i: {i}, goals.size: {goals.size}, steps.size: {steps.size}"
+    let `(discharger_command| next%$tk $_) := steps[i]! | unreachable!
+    throwErrorAt tk "There are no more goals to discharge."
 
-elab_rules : command
-| `(command| mch_discharger $path $steps*) => do
-  pog2obligations (← mch2goals (System.FilePath.mk path.getString)) steps
-| `(command| pog_discharger $path $steps*) => do
-  pog2obligations (← pog2goals (System.FilePath.mk path.getString)) steps
+
+-- @[incremental]
+elab "mch_discharger " path:str ppSpace steps:withPosition((colEq discharger_command)*) : command => do
+  pog2obligations (← mch2goals (System.FilePath.mk <| Lean.TSyntax.getString ⟨path⟩)) steps
+
+-- @[incremental]
+elab "pog_discharger " path:str ppSpace steps:withPosition((colEq discharger_command)*) : command => do
+  pog2obligations (← pog2goals (System.FilePath.mk <| Lean.TSyntax.getString ⟨path⟩)) steps

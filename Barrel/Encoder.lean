@@ -31,17 +31,17 @@ namespace B
   private def newMVar (type? : Option Lean.Expr) : MetaM Expr := do
     -- let mvar ← pure Int.mkType
     let mvar ← Meta.mkFreshExprMVar type?
-    trace[barrel.pog] "New metavariable {mvar}"
+    trace[barrel] "New metavariable {mvar}"
     return mvar
 
   private def assignMVar (β ty : Expr) : MetaM PUnit := do
     if !(← β.mvarId!.isAssigned) && (← Meta.isDefEq (← β.mvarId!.getType) (← inferType ty)) then
-      trace[barrel.pog] m!"Assigning metavariable {β} to {ty}"
+      trace[barrel] m!"Assigning metavariable {β} to {ty}"
       β.mvarId!.assign ty
 
   private def newLMVar : MetaM Level := do
     let lmvar ← Meta.mkFreshLevelMVar
-    trace[b4lea.pog] "New level metavariable {lmvar}"
+    trace[barrel] "New level metavariable {lmvar}"
     return lmvar
 
   private partial def getSetElemType (ty : Expr) : MetaM Expr := do
@@ -371,11 +371,11 @@ namespace B
       --   | [] => checkpoint sg.goal.toExpr pure
       --   | t :: ts => checkpoint t.toExpr λ t ↦ mkForall `_ .default t <$> goHyp ts
 
-      trace[barrel.pog] "Decoded goal: {sg.goal}"
+      trace[barrel] "Decoded goal: {sg.goal}"
 
       let g ← sg.goal.toExpr
 
-      trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
+      trace[barrel] "Generated goal (no quantified variable): {indentExpr g}"
 
       let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
               >>= Term.ensureHasType (.some <| .sort 0)
@@ -384,7 +384,7 @@ namespace B
 
     let mvars := g.collectMVars {} |>.result
 
-    trace[barrel.pog] "Generated goal: {indentExpr g}"
+    trace[barrel] "Generated goal: {indentExpr g}"
 
     let mut wfs := #[]
     let mut i := 0
@@ -393,7 +393,7 @@ namespace B
       let ty ← mvar.withContext do
         liftMetaM ∘ mkForallFVars (← getLCtx).getFVars =<< mvar.getType
 
-      trace[barrel.pog] "WF metavariable to solve {sg.name}.wf_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
+      trace[barrel.wf] "WF metavariable to solve {sg.name}.wf_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
 
       wfs := wfs.push (ty, mvar)
 

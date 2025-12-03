@@ -3,11 +3,13 @@ import POGReader.Extractor
 
 open Lean
 
+initialize registerTraceClass `barrel
 initialize registerTraceClass `barrel.pog
-initialize registerTraceClass `barrel.checkpoints
-initialize mchStore : IO.Ref (Std.HashMap System.FilePath (UInt64 × System.FilePath)) ← IO.mkRef ∅
-initialize pogStore : IO.Ref (Std.HashMap System.FilePath UInt64) ← IO.mkRef ∅
-initialize poStore : IO.Ref (Std.HashMap UInt64 (Array B.POG.Goal)) ← IO.mkRef ∅
+initialize registerTraceClass `barrel.cache
+initialize registerTraceClass `barrel.wf
+initialize mchStore : IO.Ref (Lean.PersistentHashMap System.FilePath (UInt64 × System.FilePath)) ← IO.mkRef .empty
+initialize pogStore : IO.Ref (Lean.PersistentHashMap System.FilePath UInt64) ← IO.mkRef .empty
+initialize poStore : IO.Ref (Lean.PersistentHashMap UInt64 (Array B.POG.Goal)) ← IO.mkRef .empty
 
 register_option barrel.atelierb : String := {
   defValue := ""
@@ -22,16 +24,16 @@ register_option barrel.show_goal_names : Bool := {
 -----------
 
 def getMchHash (path : System.FilePath) : IO (Option UInt64) := do
-  return Prod.fst <$> (← mchStore.get).get? (← IO.FS.realPath path)
+  return Prod.fst <$> (← mchStore.get).find? (← IO.FS.realPath path)
 
 def getPogPath (path : System.FilePath) : IO (Option System.FilePath) := do
-  return Prod.snd <$> (← mchStore.get).get? (← IO.FS.realPath path)
+  return Prod.snd <$> (← mchStore.get).find? (← IO.FS.realPath path)
 
 def getPogHash (path : System.FilePath) : IO (Option UInt64) := do
-  return (← pogStore.get).get? (← IO.FS.realPath path)
+  return (← pogStore.get).find? (← IO.FS.realPath path)
 
 def getGoals (pogHash : UInt64) : IO (Option (Array B.POG.Goal)) := do
-  return (← poStore.get).get? pogHash
+  return (← poStore.get).find? pogHash
 
 -----------
 

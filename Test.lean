@@ -1,7 +1,9 @@
 import Barrel.Discharger
 import Mathlib.Util.AssertNoSorry
 
--- set_option trace.barrel.pog true
+set_option trace.barrel true
+set_option trace.barrel.cache true
+set_option trace.barrel.wf true
 -- set_option trace.barrel.checkpoints true
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
@@ -84,7 +86,8 @@ next
       have Y_eq : Y = Y ∪ {y₀} := by ext; grind
       rw [X_eq, Y_eq]
       exact tfun_of_overload F_fun tfun_of_singleton
-    · admit
+    ·
+      admit
       -- exists wf_Fx', wf_Fx
       -- simp
       -- intro contr
@@ -138,10 +141,6 @@ next
   exact fun _ _ ↦ max.WF_of_finite
 next
   exact fun _ _ ↦ min.WF_of_finite
-next
-  exact CounterMin.Operation_inc_2.wf_0
-next
-  exact CounterMin.Operation_inc_2.wf_1
 next
   rintro _ z - - z_mem
   exact max.WF_interval <| neg_le_self z_mem
