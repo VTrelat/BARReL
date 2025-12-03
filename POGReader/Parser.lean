@@ -196,11 +196,16 @@ namespace B.POG
       let typref := attrs.get! "typref" |>.toNat!
       let name := attrs.get! "value" ++ attrs.getD "suffix" ""
       let ty := types.get! typref
+
       vars.modifyGet λ vars ↦ (⟨name, ty⟩, {
         vars := if name ∈ vars.vars then vars.vars else vars.vars.push name,
         varsToTyp := vars.varsToTyp.insert name ty
       })
     | _ => unreachable!
+
+  private def locally {α} (f : IO.Ref Vars → IO α) : IO α := do
+    let vars' ← vars.get
+    f vars <* vars.set vars'
 
   private def Syntax.Typ.toTerm : Syntax.Typ → Syntax.Term
     | .bool => .𝔹
@@ -280,18 +285,21 @@ namespace B.POG
       let .Element ⟨"Pred", _, predNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Exp> must be <Pred>"
       let .Element ⟨"Body", _, bodyNodes⟩ := nodes[2]! | throwError s!"Third child of <Quantified_Exp> must be <Body>"
 
-      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
-      for vNode in varNodes do
-        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
-        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+      let (vsWithTy, pred, body) ← locally vars λ vars ↦ do
+        let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+        for vNode in varNodes do
+          let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+          vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
 
-      unless predNodes.size = 1 do throwError s!"<Pred> in <Quantified_Exp> expects a single child, got {predNodes.size}"
-      let .Element pred := predNodes[0]! | throwError s!"Unexpected node kind {predNodes[0]!.kind}"
-      let pred ← parseTerm types pred
+        unless predNodes.size = 1 do throwError s!"<Pred> in <Quantified_Exp> expects a single child, got {predNodes.size}"
+        let .Element pred := predNodes[0]! | throwError s!"Unexpected node kind {predNodes[0]!.kind}"
+        let pred ← parseTerm types pred
 
-      unless bodyNodes.size = 1 do throwError s!"<Body> in <Quantified_Exp> expects a single child, got {bodyNodes.size}"
-      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
-      let body ← parseTerm types body
+        unless bodyNodes.size = 1 do throwError s!"<Body> in <Quantified_Exp> expects a single child, got {bodyNodes.size}"
+        let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+        let body ← parseTerm types body
+
+        pure (vsWithTy, pred, body)
 
       return (← makeBoundedQuantifier (attrs.get! "type")) vsWithTy pred body
     | ⟨"Struct", attrs, nodes⟩ => panic! "TODO"
@@ -317,15 +325,18 @@ namespace B.POG
       let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Pred> must be <Variables>"
       let .Element ⟨"Body", _, bodyNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Pred> must be <Body>"
 
-      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
-      for vNode in varNodes do
-        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
-        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+      let (vsWithTy, body) ← locally vars λ vars ↦ do
+        let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+        for vNode in varNodes do
+          let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+          vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
 
-      unless bodyNodes.size = 1 do
-        throwError s!"<Body> in <Quantified_Pred> expects a single child, got {bodyNodes.size}"
-      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
-      let body ← parseTerm types body
+        unless bodyNodes.size = 1 do
+          throwError s!"<Body> in <Quantified_Pred> expects a single child, got {bodyNodes.size}"
+        let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+        let body ← parseTerm types body
+
+        pure (vsWithTy, body)
 
       match attrs.get! "type" with
       | "!" => return .all vsWithTy body
@@ -337,15 +348,18 @@ namespace B.POG
       let .Element ⟨"Variables", _, varNodes⟩ := nodes[0]! | throwError s!"First child of <Quantified_Set> must be <Variables>"
       let .Element ⟨"Body", _, bodyNodes⟩ := nodes[1]! | throwError s!"Second child of <Quantified_Set> must be <Body>"
 
-      let mut vsWithTy : Array (String × Syntax.Typ) := #[]
-      for vNode in varNodes do
-        let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
-        vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
+      let (vsWithTy, body) ← locally vars λ vars ↦ do
+        let mut vsWithTy : Array (String × Syntax.Typ) := #[]
+        for vNode in varNodes do
+          let .Element v := vNode | throwError s!"Unexpected node kind {vNode.kind} in <Variables>"
+          vsWithTy := vsWithTy.push (←parseAndRegisterId vars types v)
 
-      unless bodyNodes.size = 1 do
-        throwError s!"<Body> in <Quantified_Set> expects a single child, got {bodyNodes.size}"
-      let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
-      let body ← parseTerm types body
+        unless bodyNodes.size = 1 do
+          throwError s!"<Body> in <Quantified_Set> expects a single child, got {bodyNodes.size}"
+        let .Element body := bodyNodes[0]! | throwError s!"Unexpected node kind {bodyNodes[0]!.kind}"
+        let body ← parseTerm types body
+
+        pure (vsWithTy, body)
 
       return .collect vsWithTy body
     | ⟨tag, _, _⟩ => throwError s!"Unknown tag {tag} for expression"
@@ -568,7 +582,7 @@ namespace B.POG
       let vars := B.Syntax.reservedIdentifiers.fold (init := vars.vars) Array.erase
         |>.map λ v ↦ (v, vars.varsToTyp.get! v)
 
-      return { defines, obligations, vars := vars /-, typeInfos -/ }
+      return { defines, obligations, vars /-, typeInfos -/ }
     | ⟨name, _, _⟩ => throwError s!"Unexpected root element '{name}'"
 
   omit vars in
