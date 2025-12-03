@@ -75,10 +75,10 @@ next
   exists max.WF_of_finite hX, min.WF_of_finite hX
   rintro _ hz
   exists
-    min.WF_of_finite (interval.FIN₁_mem (neg_le_self hz)),
-    max.WF_of_finite (interval.FIN₁_mem (neg_le_self hz))
-  rw [interval.min_eq (neg_le_self hz),
-      interval.max_eq (neg_le_self hz),
+    max.WF_of_finite (interval.FIN₁_mem (neg_le_self hz)),
+    min.WF_of_finite (interval.FIN₁_mem (neg_le_self hz))
+  rw [interval.max_eq (neg_le_self hz),
+      interval.min_eq (neg_le_self hz),
       Int.neg_neg]
 ```
 
