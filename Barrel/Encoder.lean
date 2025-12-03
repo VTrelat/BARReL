@@ -232,9 +232,10 @@ namespace B
           liftMetaM ∘ mkLambdaFVars #[x] =<< checkpoint "and:right" quant y.toExpr pure
         mkAppM ``Exists #[lam]
       | .or x y => mkOr <$> x.toExpr quant hyps <*> y.toExpr quant hyps
-      | .imp x y =>
-        checkpoint "imp:right" quant y.toExpr λ y ↦ do
-          pure <| mkForall `_  .default (← x.toExpr quant.invert hyps) y
+      | .imp x y => do
+        let z ← mkFreshBinderName
+        withLocalDecl z .default (← x.toExpr quant.invert hyps) λ z ↦
+          liftMetaM ∘ mkForallFVars #[z] =<< y.toExpr quant hyps
       | .iff x y =>
         mkIff <$> checkpoint "iff:left" quant x.toExpr pure
               <*> checkpoint "iff:right" quant y.toExpr pure
