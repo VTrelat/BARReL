@@ -7,7 +7,7 @@ initialize registerTraceClass `barrel.pog
 initialize registerTraceClass `barrel.checkpoints
 initialize mchStore : IO.Ref (Std.HashMap System.FilePath (UInt64 × System.FilePath)) ← IO.mkRef ∅
 initialize pogStore : IO.Ref (Std.HashMap System.FilePath UInt64) ← IO.mkRef ∅
-initialize poStore : IO.Ref (Std.HashMap UInt64 (Array (Name × String × Lean.Expr))) ← IO.mkRef ∅
+initialize poStore : IO.Ref (Std.HashMap UInt64 (Array B.POG.Goal)) ← IO.mkRef ∅
 
 register_option barrel.atelierb : String := {
   defValue := ""
@@ -30,12 +30,12 @@ def getPogPath (path : System.FilePath) : IO (Option System.FilePath) := do
 def getPogHash (path : System.FilePath) : IO (Option UInt64) := do
   return (← pogStore.get).get? (← IO.FS.realPath path)
 
-def getGoals (pogHash : UInt64) : IO (Option (Array (Name × String × Lean.Expr))) := do
+def getGoals (pogHash : UInt64) : IO (Option (Array B.POG.Goal)) := do
   return (← poStore.get).get? pogHash
 
 -----------
 
-def registerFile (mchPath pogPath : System.FilePath) (mchHash pogHash : UInt64) (goals : Array (Name × String × Lean.Expr)) : IO PUnit := do
+def registerFile (mchPath pogPath : System.FilePath) (mchHash pogHash : UInt64) (goals : Array B.POG.Goal) : IO PUnit := do
   mchStore.set <| (← mchStore.get).insert mchPath (mchHash, pogPath)
   pogStore.set <| (← pogStore.get).insert pogPath pogHash
   poStore.set <| (← poStore.get).insert pogHash goals
