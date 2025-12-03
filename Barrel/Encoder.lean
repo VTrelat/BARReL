@@ -255,7 +255,8 @@ namespace B
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
                 let F ← checkpoint "lam:val" quant (λ q hyps ↦ do
-                  -- We need to checkpoint around ``
+                  -- NOTE: We need to checkpoint around `y = F[x̄/xs']`, not just `F[x̄/xs']`,
+                  -- in order to insert the `WF` hypotheses outside of `F`
                   let F ← F.toExpr q hyps
 
                   assignMVar β (← inferType F)
