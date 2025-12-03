@@ -103,7 +103,7 @@ namespace B.POG
     | .domRestr t₁ t₂ => .domRestr t₁.normalize t₂.normalize
 
   def extractGoals (pos : Schema.ProofObligations) : Array Goal :=
-    let pos := pos.obligations.flatMap λ obligation ↦
+    pos.obligations.flatMap λ obligation ↦
       let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
       let (sets, hyps₁) := extractSetsAndHyps uses
       let hyps₂ := sets.map λ set ↦
@@ -111,6 +111,7 @@ namespace B.POG
           .mem (.var set.name) <| .fin₁ .ℤ
         else
           .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
+          -- TODO: add distinct set.values
       let hyps₃ := obligation.hypotheses
 
       obligation.simpleGoals.map λ goal ↦
@@ -125,6 +126,4 @@ namespace B.POG
           vars := pos.vars
           goal := Syntax.Term.normalize <| (hyps₁ ++ hyps₂ ++ hyps₃ ++ hyps₄).foldr .imp goal.goal
         }
-
-    Function.uncurry (· ++ ·) <| pos.partition λ g ↦ g.name == "WellDefinednessAssertions"
 end B.POG

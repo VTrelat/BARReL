@@ -71,7 +71,20 @@ def mch2goals (mchPath : System.FilePath) : CommandElabM ParserResult := do
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"pog").toString,
-    args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, "-w", bxml.toString]
+    /-
+      Although `pog` can generate the WF conditions for us (with the `-w` flag), we will not be using these.
+
+      Reasons are:
+      * The WF conditions are placed at the very end of the `.pog` file, while we would need to
+        reference this in our main goals.
+      * Knowing whether a goal is a WF condition requires parsing its description, which is very
+        fragile and error-prone.
+      * Even with these issues ironed out, we would still need complicated logic in order to correctly
+        instantiate those conditions in our goals (which is even worse in the cases where a WF condition
+        may depend on the previous conjunct, e.g. in goals like `∃ G. G ∈ A ⟶ B ∧ G(x) ∈ B`, where the
+        generated WF condition is `∀ G. G ∈ A ⟶ B ⇒ x ∈ dom(G) ∧ G ∈ dom(G) ⇸ ran(G)`).
+    -/
+    args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, /- "-w", -/ bxml.toString]
   }
 
   -- Then parse the POG and generate the goals
@@ -83,26 +96,47 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
 
   let ns ← getCurrNamespace
 
-  let mut wfs := #[]
+  -- let mut wfs := #[]
   let mut res := #[]
+  let mut wfs := #[]
   let mut i := 0
-  let mut proofs_missing := 0
 
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"
 
-    let g' ← liftTermElabM <| g.toExpr wfs
-    if g.name = "WellDefinednessAssertions" then
-      wfs := wfs.push (declName, g')
-    else
-      res := res.push (declName, g.reason, g')
+    let ⟨g', wfs'⟩ ← liftTermElabM do
+      let (g, wfs) ← g.toExpr
 
+      let mut wfs' := #[]
+      let mut j := 0
+      for ⟨g', mvar⟩ in wfs do
+        let n_wf := declName.str s!"wf_{j}"
+
+        mvar.assign (.const n_wf [])
+
+        j := j + 1
+        wfs' := wfs'.push (n_wf, "Assertion is well-defined", g')
+
+      pure (← instantiateMVars g, wfs')
     trace[barrel.pog] "Generated theorem: {g'}"
 
+    res := res.push (declName, g.reason, g')
+    wfs := wfs ++ wfs'
+    i := i + 1
+
+  let mut proofs_missing := 0
+  i := 0
+  for ⟨declName, r_reason, g'⟩ in wfs ++ res do
     if let .some (step : TSyntax `discharger_command) := steps[i]? then
       if let `(discharger_command| next%$tk $tac:tacticSeq) := step then
         if (← getOptions).getBool `barrel.show_goal_names true then
-          logInfoAt tk m!"{g.name}: {g.reason}"
+          logInfoAt tk m!"{declName}: {r_reason}"
+
+        let g' ← liftTermElabM do
+          let g' ← instantiateMVars g'
+          if g'.hasExprMVar then
+            throwError "Resulting expression contains metavariables{indentExpr g'}"
+          pure g'
 
         let e ← liftTermElabM do
           let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
@@ -121,7 +155,7 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
         liftTermElabM <| Lean.addDocStringOf false declName .missing
           (mkNode ``docComment #[
             mkAtom SourceInfo.none "/--",
-            mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{declName}`: {g.reason} -/"
+            mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
           ])
     else
       proofs_missing := proofs_missing + 1

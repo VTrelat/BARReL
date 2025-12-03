@@ -85,15 +85,16 @@ namespace B
 
 
 
-  variable (wfs : Array (Name × Expr))
+  -- variable (wfs : Array (Name × Expr))
+  -- variable (wfMVars : IO.Ref (Array Expr))
 
-  def findWFByConclusion (concl : Expr) : MetaM (Option (Array Expr × Array BinderInfo × Name × Expr)) := do
-    for ⟨v, t⟩ in wfs do
-      let ⟨ms, bs, body⟩ ← Meta.forallMetaTelescope t
-      trace[barrel.pog] "Checking whether {indentExpr concl}\nis the same as {indentExpr body}"
-      if ← Meta.isDefEq body concl then
-        return .some ⟨← ms.mapM instantiateMVars, bs, v, ← instantiateMVars body⟩
-    return .none
+  -- def findWFByConclusion (concl : Expr) : MetaM (Option (Array Expr × Array BinderInfo × Name × Expr)) := do
+  --   for ⟨v, t⟩ in wfs do
+  --     let ⟨ms, bs, body⟩ ← Meta.forallMetaTelescope t
+  --     trace[barrel.pog] "Checking whether {indentExpr concl}\nis the same as {indentExpr body}"
+  --     if ← Meta.isDefEq body concl then
+  --       return .some ⟨← ms.mapM instantiateMVars, bs, v, ← instantiateMVars body⟩
+  --   return .none
 
 
   inductive WFQuantifier | all | ex
@@ -198,7 +199,7 @@ namespace B
               -- x̄ = xs' ∧ P[x̄/vs]
               return mkConcl eq (← checkpoint "binder:in" quant P.toExpr pure)
             | ⟨x, t⟩ :: xs => do
-              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
+              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
                 (liftMetaM ∘ mkBinder #[y] =<< go xs)
               mkHyp lam
 
@@ -335,84 +336,59 @@ namespace B
         makeBinary quant hyps (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
         let S ← S.toExpr quant hyps
-        -- lookup the theorem `min.WF_of_nonempty_of_finite`
-        let min_wf_proof ← mkConst ``B.Builtins.min.WF_of_nonempty_finite []
-        -- It *SHOULD* have 3 hypotheses, the first one being the set itself.
-        let proof_ty ← inferType min_wf_proof
-        let proof_ty ← instantiateForall proof_ty #[S]
-
-        let heads := proof_ty.getForallHeads
-
-        trace[barrel.pog] m!"proof_ty: {proof_ty}"
-        -- trace[barrel.pog] m!"proof_ty heads: {heads}"
-
-        let wfs ← heads.mapM λ t ↦ findWFByConclusion wfs t
-        if let .some wfs := wfs.mapM id then
-          let wfs ← wfs.mapM λ ⟨metavars, _, name, _⟩ ↦ do
-            let mut mvars := #[]
-            for mvar in metavars do
-              if mvar.isMVar then
-                if let .some fvar := ← Meta.findLocalDeclWithType? (← mvar.mvarId!.getType) then
-                  mvar.mvarId!.assign (mkFVar fvar)
-                  mvars := mvars.push (← instantiateMVars mvar)
-                else
-                  throwError m!"Failed to find hypothesis of type {indentExpr (← mvar.mvarId!.getType)}"
-              else
-                mvars := mvars.push mvar
-
-            pure <| mkAppN (← mkConst name) mvars
-
-          assert! wfs.length = 2
-          let min_wf_proof := mkAppN min_wf_proof (S :: wfs).toArray
-
-          -- trace[barrel.pog] "{wfs}"
-          -- (← getLCtx).fvarIdToDecl.forM λ k decl ↦ do trace[barrel.pog] "({repr k}): {decl.toExpr}: {decl.type}"
-          -- panic! "JSP"
-
-          mkAppM ``B.Builtins.min #[S, min_wf_proof]
-        else
-          throwError m!"Failed to fetch WF hypothesis"
-
-        -- let wf ← mkAppM ``B.Builtins.min.WF #[S]
-        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h
+        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.min.WF #[S]
+        mkAppM ``B.Builtins.min #[S, wfMVar]
       | .max S => do
-        -- let S ← S.toExpr quant hyps
-        -- let wf ← mkAppM ``B.Builtins.max.WF #[S]
-        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
-        panic! "TODO max"
+        let S ← S.toExpr quant hyps
+        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.max.WF #[S]
+        mkAppM ``B.Builtins.max #[S, wfMVar]
       | .app f x => do
-        -- let f ← f.toExpr quant hyps
-        -- let x ← x.toExpr quant hyps
-        -- let wf ← mkAppM ``B.Builtins.app.WF #[f, x]
-        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
-        panic! "TODO app"
+        let f ← f.toExpr quant hyps
+        let x ← x.toExpr quant hyps
+        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.app.WF #[f, x]
+        mkAppM ``B.Builtins.app #[f, x, wfMVar]
       | .fin S => makeUnary quant hyps ``B.Builtins.FIN S
       | .fin₁ S => makeUnary quant hyps ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
   end
 
-  def POG.Goal.toExpr (sg : POG.Goal) : TermElabM Expr := do
+  def POG.Goal.toExpr (sg : POG.Goal) : TermElabM (Expr × Array (Expr × MVarId)) := do
     -- trace[barrel.pog] s!"Encoding: {goal}"
 
     let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
       sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
 
-    Meta.withLocalDeclsD vars λ vars ↦ do
+    let g ← Meta.withLocalDeclsD vars λ vars ↦ do
       -- let rec goHyp : List Syntax.Term → TermElabM Expr
       --   | [] => checkpoint sg.goal.toExpr pure
       --   | t :: ts => checkpoint t.toExpr λ t ↦ mkForall `_ .default t <$> goHyp ts
 
       trace[barrel.pog] "Decoded goal: {sg.goal}"
 
-      let g ← checkpoint "goal" .ex (sg.goal.toExpr wfs) pure
+      let g ← checkpoint "goal" .ex sg.goal.toExpr pure
 
       trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 
       let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
               >>= Term.ensureHasType (.some <| .sort 0)
       Meta.check g
-      let g ← instantiateMVars g
-      Meta.liftMetaM g.ensureHasNoMVars
-      return g
+      instantiateMVars g
+
+    let mvars := g.collectMVars {} |>.result
+
+    trace[barrel.pog] "Generated goal: {indentExpr g}"
+
+    let mut wfs := #[]
+    let mut i := 0
+
+    for mvar in mvars do
+      let ty ← mvar.withContext do
+        liftMetaM ∘ mkForallFVars (← getLCtx).getFVars =<< mvar.getType
+
+      trace[barrel.pog] "WF metavariable to solve {sg.name}.wf_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
+
+      wfs := wfs.push (ty, mvar)
+
+    return (g, wfs)
 
 end B
