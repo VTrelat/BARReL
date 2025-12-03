@@ -133,7 +133,7 @@ namespace B.Syntax
       binder Term.pretty 250 "∀ " vs ". " (.var "") "" P ""
     | .collect v P =>
       let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
-      binder Term.pretty 250 "{ " vs " | " (.var "") "" P ""
+      binder Term.pretty 250 "{ " vs " | " (.var "") "" P " }"
     | .lambda v D P =>
       let vs := (v.map fun ⟨n, ty⟩ ↦ s!"{n} : {ty}").toList |> String.intercalate ", "
       binder Term.pretty 0 "λ " vs s!", " D " ⇒ " P ""

@@ -85,6 +85,17 @@ namespace B
 
 
 
+  variable (wfs : Array (Name × Expr))
+
+  def findWFByConclusion (concl : Expr) : MetaM (Option (Array Expr × Array BinderInfo × Name × Expr)) := do
+    for ⟨v, t⟩ in wfs do
+      let ⟨ms, bs, body⟩ ← Meta.forallMetaTelescope t
+      trace[barrel.pog] "Checking whether {indentExpr concl}\nis the same as {indentExpr body}"
+      if ← Meta.isDefEq body concl then
+        return .some ⟨← ms.mapM instantiateMVars, bs, v, ← instantiateMVars body⟩
+    return .none
+
+
   inductive WFQuantifier | all | ex
 
   instance : ToString WFQuantifier where
@@ -155,6 +166,10 @@ namespace B
       trace[barrel.pog] m!"  Finished term: {t}"
     return t
 
+  partial def _root_.Lean.Expr.getForallHeads : Lean.Expr → List Lean.Expr
+    | .forallE _ t b _ => t :: b.getForallHeads
+    | .mdata _ b => b.getForallHeads
+    | _ => []
 
   mutual
     partial def makeBinder (quant : WFQuantifier) (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
@@ -209,7 +224,12 @@ namespace B
       | .div x y => mkIntDiv <$> x.toExpr quant hyps <*> y.toExpr quant hyps
       | .mod x y => mkIntMod <$> x.toExpr quant hyps <*> y.toExpr quant hyps
       | .exp x y => do mkIntPowNat <$> x.toExpr quant hyps <*> mkAppM ``Int.toNat #[← y.toExpr quant hyps]
-      | .and x y => mkAnd <$> x.toExpr quant hyps <*> checkpoint "and:right" quant y.toExpr pure
+      | .and x y => do
+        let w ← mkFreshUserName `h
+        let x ← x.toExpr quant hyps
+        let lam ← withLocalDeclD w x λ x ↦
+          liftMetaM ∘ mkLambdaFVars #[x] =<< checkpoint "and:right" quant y.toExpr pure
+        mkAppM ``Exists #[lam]
       | .or x y => mkOr <$> x.toExpr quant hyps <*> y.toExpr quant hyps
       | .imp x y =>
         checkpoint "imp:right" quant y.toExpr λ y ↦ do
@@ -315,17 +335,57 @@ namespace B
         makeBinary quant hyps (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
         let S ← S.toExpr quant hyps
-        let wf ← mkAppM ``B.Builtins.min.WF #[S]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h]
+        -- lookup the theorem `min.WF_of_nonempty_of_finite`
+        let min_wf_proof ← mkConst ``B.Builtins.min.WF_of_nonempty_finite []
+        -- It *SHOULD* have 3 hypotheses, the first one being the set itself.
+        let proof_ty ← inferType min_wf_proof
+        let proof_ty ← instantiateForall proof_ty #[S]
+
+        let heads := proof_ty.getForallHeads
+
+        trace[barrel.pog] m!"proof_ty: {proof_ty}"
+        -- trace[barrel.pog] m!"proof_ty heads: {heads}"
+
+        let wfs ← heads.mapM λ t ↦ findWFByConclusion wfs t
+        if let .some wfs := wfs.mapM id then
+          let wfs ← wfs.mapM λ ⟨metavars, _, name, _⟩ ↦ do
+            let mut mvars := #[]
+            for mvar in metavars do
+              if mvar.isMVar then
+                if let .some fvar := ← Meta.findLocalDeclWithType? (← mvar.mvarId!.getType) then
+                  mvar.mvarId!.assign (mkFVar fvar)
+                  mvars := mvars.push (← instantiateMVars mvar)
+                else
+                  throwError m!"Failed to find hypothesis of type {indentExpr (← mvar.mvarId!.getType)}"
+              else
+                mvars := mvars.push mvar
+
+            pure <| mkAppN (← mkConst name) mvars
+
+          assert! wfs.length = 2
+          let min_wf_proof := mkAppN min_wf_proof (S :: wfs).toArray
+
+          -- trace[barrel.pog] "{wfs}"
+          -- (← getLCtx).fvarIdToDecl.forM λ k decl ↦ do trace[barrel.pog] "({repr k}): {decl.toExpr}: {decl.type}"
+          -- panic! "JSP"
+
+          mkAppM ``B.Builtins.min #[S, min_wf_proof]
+        else
+          throwError m!"Failed to fetch WF hypothesis"
+
+        -- let wf ← mkAppM ``B.Builtins.min.WF #[S]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.min #[S, h
       | .max S => do
-        let S ← S.toExpr quant hyps
-        let wf ← mkAppM ``B.Builtins.max.WF #[S]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
+        -- let S ← S.toExpr quant hyps
+        -- let wf ← mkAppM ``B.Builtins.max.WF #[S]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.max #[S, h]
+        panic! "TODO max"
       | .app f x => do
-        let f ← f.toExpr quant hyps
-        let x ← x.toExpr quant hyps
-        let wf ← mkAppM ``B.Builtins.app.WF #[f, x]
-        makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
+        -- let f ← f.toExpr quant hyps
+        -- let x ← x.toExpr quant hyps
+        -- let wf ← mkAppM ``B.Builtins.app.WF #[f, x]
+        -- makeWFHypothesis hyps wf λ h ↦ mkAppM ``B.Builtins.app #[f, x, h]
+        panic! "TODO app"
       | .fin S => makeUnary quant hyps ``B.Builtins.FIN S
       | .fin₁ S => makeUnary quant hyps ``B.Builtins.FIN₁ S
       | .card S => panic! "not implemented (card)"
@@ -344,7 +404,7 @@ namespace B
 
       trace[barrel.pog] "Decoded goal: {sg.goal}"
 
-      let g ← checkpoint "goal" .ex sg.goal.toExpr pure
+      let g ← checkpoint "goal" .ex (sg.goal.toExpr wfs) pure
 
       trace[barrel.pog] "Generated goal (no quantified variable): {indentExpr g}"
 

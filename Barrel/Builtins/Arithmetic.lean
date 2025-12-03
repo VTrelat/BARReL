@@ -205,5 +205,9 @@ namespace B.Builtins
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
 
+    theorem min.WF_of_nonempty_finite {S : Set Int} (h : S ≠ ∅) (h' : S ∩ (INTEGER \ NATURAL) ∈ FIN INTEGER) :
+        min.WF S := by
+      admit
+
   end Lemmas
 end B.Builtins
