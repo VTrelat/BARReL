@@ -43,7 +43,9 @@
 
 \newcommand\todo[1][]{\simplenotes@box{{\tiny\faTasks}}{simplenotes@todo}{#1}}
 \newcommand\fixme[1][]{\simplenotes@box{{\tiny\faTools}}{simplenotes@fixme}{#1}}
-\newcommand\note[1][]{\simplenotes@box{{\tiny\faCommentDots}}{simplenotes@note}{#1}}
+\@ifundefined{note}{%
+	\newcommand\note[1][]{\simplenotes@box{{\tiny\faCommentDots}}{simplenotes@note}{#1}}
+}{}
 \newcommand\warn[1][]{\simplenotes@box{{\tiny\faExclamationTriangle}}{simplenotes@warn}{#1}}
 \newcommand\info[1][]{\simplenotes@box{{\tiny\faInfoCircle}}{simplenotes@info}{#1}}
 \newcommand\what{\simplenotes@box{{\tiny\faRadiation}}{simplenotes@what}{}}
