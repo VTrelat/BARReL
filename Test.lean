@@ -41,7 +41,8 @@ next
   assumption
 
 mch_discharger "specs/Collect.mch"
-next simp
+next
+  simp
 
 mch_discharger "specs/Forall.mch"
 next
@@ -49,7 +50,8 @@ next
   assumption
 
 mch_discharger "specs/Exists.mch"
-next exists 0
+next
+  exists 0
 
 -- -- -- TODO: fix
 mch_discharger "specs/Injective.mch"
@@ -86,8 +88,7 @@ next
       have Y_eq : Y = Y ∪ {y₁} := by ext; grind
       rw [X_eq, Y_eq]
       exact tfun_of_overload F_fun tfun_of_singleton
-    ·
-      generalize_proofs _ wf_x
+    · generalize_proofs _ wf_x
       rw [app.of_pair_iff wf_x] at hF
       simpa [hF, ←ne_eq, ne_comm, ne_eq]
   · exists F <+ {(x, y₀)}
@@ -182,8 +183,8 @@ assert_no_sorry CounterMin.Operation_inc_3
 
 mch_discharger "specs/Pixels.mch"
 next
-  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp ⟨x, y⟩ color _
-  exact fun h₁ h₂ => app.WF_of_mem_tfun hpp h₂
+  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp ⟨x, y⟩ color _ h₁ h₂
+  exact app.WF_of_mem_tfun hpp h₂
 next
   rintro Colors Red Green Blue _ rfl rfl Colors_card
   and_intros
