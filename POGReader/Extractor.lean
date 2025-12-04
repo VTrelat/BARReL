@@ -110,8 +110,11 @@ namespace B.POG
         if set.values.isEmpty then
           .mem (.var set.name) <| .fin₁ .ℤ
         else
-          .eq (.var set.name) (.set (set.values.map .var) (.pow .int))
-          -- TODO: add distinct set.values
+          .and
+            (.eq (.var set.name) (.set (set.values.map .var) (.pow .int))) -- S = {v₁, v₂, ...}
+            (.not (.eq
+              (.bijfun (.var set.name) (.interval (.int 1) (.int set.values.size)) (isPartial := false))
+              (.set #[] (.pow (.pow (.prod .int .int)))))) -- S >->> 1..n ≠ ∅
       let hyps₃ := obligation.hypotheses
 
       obligation.simpleGoals.map λ goal ↦

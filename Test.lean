@@ -50,14 +50,19 @@ next admit
 -- -- -- TODO: fix
 mch_discharger "specs/Injective.mch"
 next
-  intros X Y F x y F_inj _ _ x_mem_X y_mem_X
-  admit
+  rintro X Y F x y ⟨_, F_tot⟩ _ _ x_mem_X _
+  exact app.WF_of_mem_tfun F_tot x_mem_X
 next
-  intros X Y F x y F_inj _ _ x_mem_X y_mem_X
-  admit
+  rintro X Y F x y ⟨_, F_tot⟩ _ _ _ y_mem_X
+  exact app.WF_of_mem_tfun F_tot y_mem_X
 next
-  rintro X Y F x y F_inj _ _ x_mem_X y_mem_X F_eq
-  admit
+  rintro X Y F x y ⟨⟨_, F_inj⟩, F_tot⟩ _ _ x_mem_X y_mem_X F_eq
+  generalize_proofs wf_x wf_y at F_eq
+  apply F_inj
+  · exact app.pair_app_mem (wf := wf_x)
+  · rw [F_eq]
+    exact app.pair_app_mem (wf := wf_y)
+
 
 -- -- -- TODO: fix
 mch_discharger "specs/HO.mch"
