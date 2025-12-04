@@ -91,30 +91,47 @@ namespace B
           withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
             liftMetaM ∘ mkLambdaFVars #[xvec] =<< P.toExpr
         else
-          let x ← mkFreshBinderName
+          let xs := xs.map λ (n, t) ↦ (Name.mkStr1 n, t.toExpr)
 
-          -- α = (α₁ × …) × αₙ
-          let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
-            mkAppM ``Prod #[acc, τᵢ.toExpr]
+          withLocalDeclsD (xs.map <| Prod.map id (λ t _ ↦ pure t)) λ xs' ↦ do
+            let P ← P.toExpr
 
-          withLocalDeclD x α fun xvec ↦ do
-            let rec go_collect : List (String × Syntax.Typ) → TermElabM Expr
-              | [] => do
-                let xs' ← do
-                  xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
-                    mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
-                -- x̄ = xs'
-                let eq : Expr ← mkEq xvec xs'
-                -- x̄ = xs' ∧ P[x̄/vs]
-                let lam ← withLocalDeclD (← mkFreshBinderName) eq λ eq ↦
-                  liftMetaM ∘ mkLambdaFVars #[eq] =<< P.toExpr
-                mkAppM ``DepAnd #[lam]
-              | ⟨x, t⟩ :: xs => do
-                let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
-                  (liftMetaM ∘ mkLambdaFVars #[y] =<< go_collect xs)
-                mkAppM ``Exists #[lam]
+            let var₀ ← pure (Match.Pattern.var xs'[0]!.fvarId!, ← inferType xs'[0]!)
+            let (pattern, α) ← xs'[1:].foldlM (init := var₀) λ (pat₁, t₁) v ↦ do
+              let t₂ ← inferType v
+              let t ← mkAppM ``Prod #[t₁, t₂]
+              let u₁ ← getDecLevel t₁
+              let u₂ ← getDecLevel t₂
+              pure (.ctor ``Prod.mk [u₁, u₂] [t₁, t₂] [pat₁, .var v.fvarId!], t)
 
-            liftMetaM ∘ mkLambdaFVars #[xvec] =<< go_collect xs.toList
+            -- let ((x₁, …, xₙ), y) := z; ...
+            let lhss := [{ ref := .missing
+                           fvarDecls := ← xs'.toList.mapM λ v ↦ do pure <| (← getLCtx).findFVar? v |>.get!
+                           patterns := [pattern]
+                        }]
+
+            let z ← mkFreshUserName `z
+            withLocalDeclD z α fun zvec ↦ do
+              let D ← mkLambdaFVars xs' P
+
+              let matchType := mkForall `_ .default α <| mkSort 0
+
+              trace[barrel] "lambda motive: {matchType}"
+
+              let matcherResult ← mkMatcher { matcherName := ← mkAuxName `match
+                                              matchType
+                                              discrInfos := #[{}]
+                                              lhss
+                                            }
+              reportMatcherResultErrors lhss matcherResult
+              matcherResult.addMatcher
+
+              trace[barrel] matcherResult.matcher
+
+              let motive ← liftMetaM <| forallBoundedTelescope matchType (.some 1) mkLambdaFVars
+              let r := mkAppN matcherResult.matcher #[motive, zvec, D]
+
+              mkLambdaFVars #[zvec] r
 
         mkAppM ``setOf #[lam]
       | .all xs P => do
@@ -137,47 +154,63 @@ namespace B
       | .lambda xs P F => do
         -- { z | ∃ x₁ … xₙ, ∃ y, z = ((x₁, …, xₙ), y) ∧ D ∧ y = F }
 
-        -- α = (α₁ × …) × αₙ
-        let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
-          mkAppM ``Prod #[acc, τᵢ.toExpr]
-        let levelα ← getDecLevel α
-
         -- β is the return type of the function
         let lmvar ← newLMVar
         let β ← newMVar (mkSort <| .succ lmvar)
 
-        let γ := mkApp2 (mkConst ``Prod [levelα, lmvar]) α β
+        let xs := xs.map λ (n, t) ↦ (Name.mkStr1 n, t.toExpr)
 
-        let z ← mkFreshBinderName
-        let lam ← withLocalDeclD z γ fun zvec ↦ do
-          let rec go_lambda : List (String × Syntax.Typ) → TermElabM Expr
-            | [] => do
-              let y ← mkFreshBinderName
-              let lam ← withLocalDeclD y β fun y ↦ do
-                let xs' ← do
-                  xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
-                    mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
-                -- x̄ = (xs', y)
-                let eq : Expr ← mkEq zvec (mkApp4 (mkConst ``Prod.mk [levelα, lmvar]) α β xs' y)
+        let lam ← withLocalDeclsD (xs.map <| Prod.map id (λ t _ ↦ pure t)) λ xs' ↦ do
+          let y ← mkFreshUserName `y
+          withLocalDeclD y β fun y' ↦ do
+            let var₀ ← pure (Match.Pattern.var xs'[0]!.fvarId!, ← inferType xs'[0]!)
+            let (pattern, α) ← xs'[1:].foldlM (init := var₀) λ (pat₁, t₁) v ↦ do
+              let t₂ ← inferType v
+              let t ← mkAppM ``Prod #[t₁, t₂]
+              let u₁ ← getDecLevel t₁
+              let u₂ ← getDecLevel t₂
+              pure (.ctor ``Prod.mk [u₁, u₂] [t₁, t₂] [pat₁, .var v.fvarId!], t)
 
-                -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
-                let lam ← withLocalDeclD (← mkFreshUserName `h₁) eq λ eq ↦
-                  liftMetaM ∘ mkLambdaFVars #[eq] =<< do
-                    withLocalDeclD (← mkFreshUserName `h₂) (← P.toExpr) λ P ↦ do
-                      let F ← F.toExpr
-                      -- NOTE: Make sure to assign metavariable at some point
-                      assignMVar β (← inferType F)
-                      -- xP[x̄/xs'] ∧ y = F[x̄/xs']
-                      mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] (← mkEq y F)]
+            let P ← P.toExpr
+            let D ← liftMetaM ∘ mkLambdaFVars (xs'.push y') =<< withLocalDeclD (← mkFreshUserName `h) P λ P ↦ do
+              let F ← F.toExpr
+              assignMVar β (← inferType F)
+              mkAppM ``DepAnd #[← mkLambdaFVars #[P] (← mkEq y' F)]
 
-                mkLambdaFVars #[y] (← mkAppM ``DepAnd #[lam])
-              mkAppM ``Exists #[lam]
-            | ⟨x, t⟩ :: xs => do
-              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
-                (liftMetaM ∘ mkLambdaFVars #[y] =<< go_lambda xs)
-              mkAppM ``Exists #[lam]
+            let β ← instantiateMVars β
 
-          liftMetaM ∘ mkLambdaFVars #[zvec] =<< go_lambda xs.toList
+            let levelα ← getDecLevel α
+            let γ := mkApp2 (mkConst ``Prod [levelα, lmvar]) α β
+
+            let pattern : Match.Pattern := .ctor ``Prod.mk [levelα, lmvar] [α, β] [pattern, .var y'.fvarId!]
+
+            -- let ((x₁, …, xₙ), y) := z; ...
+            let lhss := [{ ref := .missing
+                           fvarDecls := ← (xs'.push y').toList.mapM λ v ↦ do pure <| (← getLCtx).findFVar? v |>.get!
+                           patterns := [pattern]
+                        }]
+
+            let z ← mkFreshUserName `z
+            withLocalDeclD z γ fun zvec ↦ do
+              let matchType := mkForall `_ .default γ <| mkSort 0
+
+              trace[barrel] "lambda motive: {matchType}"
+
+              let matcherResult ← mkMatcher { matcherName := ← mkAuxName `match
+                                              matchType
+                                              discrInfos := #[{}]
+                                              lhss
+                                            }
+              reportMatcherResultErrors lhss matcherResult
+              matcherResult.addMatcher
+
+              trace[barrel] matcherResult.matcher
+
+              let motive ← liftMetaM <| forallBoundedTelescope matchType (.some 1) mkLambdaFVars
+              let r := mkAppN matcherResult.matcher #[motive, zvec, D]
+
+              mkLambdaFVars #[zvec] r
+
         mkAppM ``setOf #[lam]
       | .interval lo hi => makeBinary ``Builtins.interval lo hi
       | .subset S T => makeBinary ``HasSubset.Subset S T

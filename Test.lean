@@ -179,7 +179,7 @@ assert_no_sorry CounterMin.Operation_inc_3
 
 mch_discharger "specs/Pixels.mch"
 next
-  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp ⟨x, y⟩ color _ h₁ h₂
+  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
   exact app.WF_of_mem_tfun hpp h₂
 next
   rintro Colors Red Green Blue _ rfl rfl Colors_card
@@ -206,9 +206,33 @@ next
 mch_discharger "specs/Lambda.mch"
 next
   and_intros
-  · rintro ⟨a, b⟩ ⟨_, _, _|_, _, rfl⟩
-    constructor <;> trivial
-  · rintro _ _ _ ⟨_, _, _|_, _, rfl⟩ ⟨_, _, _|_, _, rfl⟩
+  · rintro ⟨⟨a, b⟩, c⟩ ⟨⟨_, _⟩, rfl⟩
+    grind
+  · rintro ⟨a, b⟩ c d ⟨⟨_, _⟩, rfl⟩ ⟨⟨_, _⟩, rfl⟩
     rfl
-  · rintro x x_mem
-    exists x, x_mem, x, x, ?_, ?_ <;> trivial
+  · rintro ⟨x, y⟩ h
+    obtain ⟨x_mem, y_mem⟩ := Set.prodMk_mem_set_prod_eq.mp h
+    refine ⟨x + y, ?_, ⟨x_mem, y_mem⟩, rfl⟩
+    grind
+
+mch_discharger "specs/Eta.mch"
+next
+  intros X Y F F_tfun _ _ x _ x_mem
+  exact app.WF_of_mem_tfun F_tfun x_mem
+next
+  intros X Y F F_tfun _ _
+  ext ⟨x, y⟩
+  dsimp
+  generalize_proofs wf₁
+  constructor
+  · rintro ⟨_, h⟩
+    rwa [eq_comm, ← app.of_pair_iff] at h
+  · intro h
+
+    have x_mem_dom : x ∈ X := by
+      rw [← tfun_dom_eq F_tfun]
+      apply mem_dom_of_pair_mem h
+
+    constructor
+    · rwa [app.of_pair_iff (wf₁ x_mem_dom), eq_comm] at h
+    · assumption

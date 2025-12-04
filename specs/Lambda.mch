@@ -1,6 +1,6 @@
 MACHINE Lambda
 
-INVARIANT
-  (% x. (x ∈ NATURAL | x)) ∈ NATURAL --> NATURAL
+ASSERTIONS 
+  (%(x, y). (x ∈ NATURAL ∧ y ∈ NATURAL | x + y)) ∈ (NATURAL × NATURAL --> NATURAL)
 
 END
