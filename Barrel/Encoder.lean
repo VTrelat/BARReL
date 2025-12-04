@@ -154,24 +154,21 @@ namespace B
             | [] => do
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
-                -- compute return type of F: this consumes F already
-                let _ ← assignMVar β (← inferType (← F.toExpr))
-                -- let β ← instantiateMVars β
-
                 let xs' ← do
                   xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
                     mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
                 -- x̄ = (xs', y)
                 let eq : Expr ← mkEq zvec (mkApp4 (mkConst ``Prod.mk [levelα, lmvar]) α β xs' y)
-                -- y = F[x̄/xs']
-                -- let eqF : Expr ← mkEq y F
-                -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
 
+                -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
                 let lam ← withLocalDeclD (← mkFreshUserName `h₁) eq λ eq ↦
                   liftMetaM ∘ mkLambdaFVars #[eq] =<< do
                     withLocalDeclD (← mkFreshUserName `h₂) (← P.toExpr) λ P ↦ do
-                      let eq' ← mkEq y (←F.toExpr) -- no other choice
-                      mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] eq']
+                      let F ← F.toExpr
+                      -- NOTE: Make sure to assign metavariable at some point
+                      assignMVar β (← inferType F)
+                      -- xP[x̄/xs'] ∧ y = F[x̄/xs']
+                      mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] (← mkEq y F)]
 
                 mkLambdaFVars #[y] (← mkAppM ``DepAnd #[lam])
               mkAppM ``Exists #[lam]
