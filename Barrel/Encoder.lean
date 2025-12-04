@@ -5,7 +5,6 @@ import Barrel.Builtins
 open Std Lean Meta Elab Term
 
 namespace B
-  open Lean Elab
 
   def reservedVarToExpr : (k : String) → TermElabM Lean.Expr
     | "MININT", _ => return mkConst ``Builtins.MININT
@@ -88,6 +87,14 @@ namespace B
     | .mdata _ b => b.getForallHeads
     | _ => []
 
+  private def _root_.Lean.Meta.mkUnaryOp (className : Name) (opName : Name) (a : Expr) : MetaM Expr := do
+    let aType ← inferType a
+    let u ← getDecLevel aType
+    let inst ← synthInstance (mkApp (mkConst className [u]) aType)
+    return mkApp3 (mkConst opName [u]) aType inst a
+
+  private def _root_.Lean.Meta.mkNeg (a : Expr) : MetaM Expr := Lean.Meta.mkUnaryOp ``Neg ``Neg.neg a
+
   mutual
     partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
       (mkBinder : Array Expr → Expr → MetaM Expr) (mkHyp : Expr → MetaM Expr) (mkConcl : Expr → TermElabM Expr → TermElabM Expr) :
@@ -130,14 +137,14 @@ namespace B
     partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
-      | .uminus x => mkIntNeg <$> x.toExpr
-      | .le x y => mkIntLE <$> x.toExpr <*> y.toExpr
-      | .lt x y => mkIntLT <$> x.toExpr <*> y.toExpr
+      | .uminus x => do mkNeg (←x.toExpr)
+      | .le x y => do mkLE (← x.toExpr) (← y.toExpr)
+      | .lt x y => do mkLT (← x.toExpr) (← y.toExpr)
       | .bool b => return mkConst (if b then ``True else ``False)
       | .maplet x y => makeBinary ``Prod.mk x y
-      | .add x y => mkIntAdd <$> x.toExpr <*> y.toExpr
-      | .sub x y => mkIntSub <$> x.toExpr <*> y.toExpr
-      | .mul x y => mkIntMul <$> x.toExpr <*> y.toExpr
+      | .add x y => do mkAdd (←x.toExpr) (←y.toExpr)
+      | .sub x y => do mkSub (←x.toExpr) (←y.toExpr)
+      | .mul x y => do mkMul (←x.toExpr) (←y.toExpr)
       | .div x y => mkIntDiv <$> x.toExpr <*> y.toExpr
       | .mod x y => mkIntMod <$> x.toExpr <*> y.toExpr
       | .exp x y => do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
@@ -278,7 +285,11 @@ namespace B
         mkAppM ``B.Builtins.app #[f, x, wfMVar]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
-      | .card S => panic! "not implemented (card)"
+      | .card S => do
+        let S ← S.toExpr
+        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.card.WF #[S]
+        mkAppM ``B.Builtins.card #[S, wfMVar]
+
   end
 
   def POG.Goal.toExpr (sg : POG.Goal) : TermElabM (Expr × Array (Expr × MVarId)) := do

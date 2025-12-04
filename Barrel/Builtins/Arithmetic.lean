@@ -1,5 +1,6 @@
 import Barrel.Builtins.Init
 import Barrel.Builtins.Power
+import Barrel.Builtins.Function
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Fintype.EquivFin
@@ -23,6 +24,13 @@ namespace B.Builtins
 
   noncomputable abbrev max {α : Type _} [LinearOrder α] (S : Set α) (wf : max.WF S) : α :=
     Classical.choose wf.isBoundedAbove
+
+  structure card.WF {α : Type _} (S : Set α) : Prop where
+    isFinite : S.Finite
+
+  noncomputable abbrev card {α : Type _} (S : Set α) (wf : card.WF S) : ℤ :=
+    have : Fintype S := @Fintype.ofFinite _ wf.isFinite
+    S.toFinset.card
 
   section Lemmas
 

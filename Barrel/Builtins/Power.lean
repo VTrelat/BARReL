@@ -51,5 +51,6 @@ namespace B.Builtins
       obtain h | h := h
         <;> [ skip ; rw [Set.inter_comm] ]
         <;> exact FIN.of_sub (Set.mem_of_mem_inter_left h) Set.inter_subset_left
+
   end Lemmas
 end B.Builtins
