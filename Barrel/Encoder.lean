@@ -115,9 +115,6 @@ namespace B
               let D ← mkLambdaFVars xs' P
 
               let matchType := mkForall `_ .default α <| mkSort 0
-
-              trace[barrel] "lambda motive: {matchType}"
-
               let matcherResult ← mkMatcher { matcherName := ← mkAuxName `match
                                               matchType
                                               discrInfos := #[{}]
@@ -193,9 +190,6 @@ namespace B
             let z ← mkFreshUserName `z
             withLocalDeclD z γ fun zvec ↦ do
               let matchType := mkForall `_ .default γ <| mkSort 0
-
-              trace[barrel] "lambda motive: {matchType}"
-
               let matcherResult ← mkMatcher { matcherName := ← mkAuxName `match
                                               matchType
                                               discrInfos := #[{}]
