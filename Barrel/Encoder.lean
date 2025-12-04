@@ -146,7 +146,7 @@ namespace B
         let x ← x.toExpr
         let lam ← withLocalDeclD w x λ x ↦
           liftMetaM ∘ mkLambdaFVars #[x] =<< y.toExpr
-        mkAppM ``Exists #[lam]
+        mkAppM ``DepAnd #[lam]
       | .or x y => mkOr <$> x.toExpr <*> y.toExpr
       | .imp x y => do
         withLocalDecl (← mkFreshBinderName) .default (← x.toExpr) λ z ↦
@@ -164,7 +164,7 @@ namespace B
       | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
       | .ℝ => mkAppOptM ``Set.univ #[mkConst ``Real]
       | .collect xs P => do
-        mkAppM ``setOf #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) λ t₁ t₂ ↦ do
+        mkAppM ``setOf #[← makeBinder xs P mkLambdaFVars (mkAppM ``DepAnd #[·]) λ t₁ t₂ ↦ do
           withLocalDecl (← mkFreshBinderName) .default t₁ λ z ↦
             liftMetaM ∘ mkForallFVars #[z] =<< t₂
         ]
@@ -218,10 +218,10 @@ namespace B
                   liftMetaM ∘ mkLambdaFVars #[eq] =<< (
                     withLocalDeclD n₂ P λ P ↦ do
                       let eq' ← mkEq y (←F.toExpr) -- no other choice
-                      mkAppM ``Exists #[←liftMetaM <| mkLambdaFVars #[P] eq']
+                      mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] eq']
                   )
 
-                mkLambdaFVars #[y] (← mkAppM ``Exists #[lam])
+                mkLambdaFVars #[y] (← mkAppM ``DepAnd #[lam])
                 -- mkLambdaFVars #[y] <| mkAndN [eq, P, F]
               mkAppM ``Exists #[lam]
             | ⟨x, t⟩ :: xs => do
