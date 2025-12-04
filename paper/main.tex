@@ -12,10 +12,12 @@
 
 %\pdfoutput=1 %uncomment to ensure pdflatex processing (mandatatory e.g. to submit to arXiv)
 %\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
+\usepackage{todonotes}
+\usepackage{xcolor}
 
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
-\title{BARReL:\@ From B to Lean, in Lean}
+\title{BARReL:\@ A modern backend for Atelier B, in Lean}
 
 \author{Ghilain Bergeron}{Université de Lorraine, CNRS, Inria, LORIA}{}{}{}
 \author{Vincent Tr\'elat}{Université de Lorraine, CNRS, Inria, LORIA}{}{}{}
@@ -24,18 +26,28 @@
 
 \Copyright{Ghilain Bergeron and Vincent Tr\'elat}
 
-\ccsdesc[100]{\textcolor{red}{Replace ccsdesc macro with valid one}} %TODO mandatory: Please choose ACM 2012 classifications from https://dl.acm.org/ccs/ccs_flat.cfm 
+\ccsdesc[500]{Theory of computation~Logic and verification}
+\ccsdesc[500]{Theory of computation~Parsing}
+\ccsdesc[500]{Theory of computation~Assertions}
+\ccsdesc[500]{Theory of computation~Invariants}
 
-\keywords{}
+\keywords{Lean~4, Atelier~B, Metaprogramming, Interactive Theorem Proving}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-	\textcolor{red}{TODO}
+	\input{abstract}
 \end{abstract}
 
-\textcolor{red}{TODO}
+\input{introduction}
 
+\input{background}
+
+\input{futurework}
+
+\input{relatedwork}
+
+\bibliography{ref}
 \end{document}
