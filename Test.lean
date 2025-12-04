@@ -202,3 +202,13 @@ next admit
 mch_discharger "specs/Collect2.mch"
 next
   grind
+
+mch_discharger "specs/Lambda.mch"
+next
+  and_intros
+  · rintro ⟨a, b⟩ ⟨_, _, _|_, _, rfl⟩
+    constructor <;> trivial
+  · rintro _ _ _ ⟨_, _, _|_, _, rfl⟩ ⟨_, _, _|_, _, rfl⟩
+    rfl
+  · rintro x x_mem
+    exists x, x_mem, x, x, ?_, ?_ <;> trivial

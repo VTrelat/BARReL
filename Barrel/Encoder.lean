@@ -43,57 +43,10 @@ namespace B
     trace[barrel] "New level metavariable {lmvar}"
     return lmvar
 
-  private partial def getSetElemType (ty : Expr) : MetaM Expr := do
-    let rec loop (t : Expr) (didWhnf : Bool) : MetaM Expr := do
-      match t with
-      | .app (.const ``Set _) α => pure α
-      | .forallE n dom body bi =>
-          Meta.withLocalDecl n bi dom fun x => do
-            let body' := body.instantiate1 x
-            if (← Meta.isProp body') then
-              return dom
-            else if didWhnf then
-              throwError "Expected a set type, got {t}"
-            else
-              loop (← Meta.whnf t) true
-      | _ =>
-          let t' ← Meta.whnf t
-          if didWhnf || t' == t then
-            throwError "Expected a set type, got {t}"
-          else
-            loop t' true
-    loop ty false
-
-  private partial def flattenProdType : Expr → Nat → MetaM (List Expr)
-    | .app (.app (.const ``Prod _) α) β, n + 1 => do
-        return (←flattenProdType α n).concat β
-    | ty, _ + 1 => throwError "Expected a product type, got {ty}"
-    | ty, 0 => return [ty]
-
-  private partial def mkProdTuple : List Expr → MetaM Expr
-    | [] => throwError "mkProdTuple: empty tuple"
-    | [x] => pure x
-    | x :: xs => do
-        let tail ← mkProdTuple xs
-        mkAppM ``Prod.mk #[x, tail]
-
   private def lookupVar (x : String) : TermElabM Expr := do
     let some e := (← getLCtx).findFromUserName? (.mkStr1 x)
       | throwError "No variable {x} found in context"
     return e.toExpr
-
-  partial def _root_.Lean.Expr.getForallHeads : Lean.Expr → List Lean.Expr
-    | .forallE _ t b _ => t :: b.getForallHeads
-    | .mdata _ b => b.getForallHeads
-    | _ => []
-
-  private def _root_.Lean.Meta.mkUnaryOp (className : Name) (opName : Name) (a : Expr) : MetaM Expr := do
-    let aType ← inferType a
-    let u ← getDecLevel aType
-    let inst ← synthInstance (mkApp (mkConst className [u]) aType)
-    return mkApp3 (mkConst opName [u]) aType inst a
-
-  private def _root_.Lean.Meta.mkNeg (a : Expr) : MetaM Expr := Lean.Meta.mkUnaryOp ``Neg ``Neg.neg a
 
   mutual
     partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
@@ -105,7 +58,7 @@ namespace B
     partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
-      | .uminus x => do mkNeg (←x.toExpr)
+      | .uminus x => makeUnary ``Neg.neg x
       | .le x y => do mkLE (← x.toExpr) (← y.toExpr)
       | .lt x y => do mkLT (← x.toExpr) (← y.toExpr)
       | .bool b => return mkConst (if b then ``True else ``False)
@@ -113,27 +66,20 @@ namespace B
       | .add x y => do mkAdd (←x.toExpr) (←y.toExpr)
       | .sub x y => do mkSub (←x.toExpr) (←y.toExpr)
       | .mul x y => do mkMul (←x.toExpr) (←y.toExpr)
-      | .div x y => mkIntDiv <$> x.toExpr <*> y.toExpr
-      | .mod x y => mkIntMod <$> x.toExpr <*> y.toExpr
-      | .exp x y => do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
+      | .div x y => makeBinary ``HDiv.hDiv x y -- mkIntDiv <$> x.toExpr <*> y.toExpr
+      | .mod x y => makeBinary ``HMod.hMod x y -- mkIntMod <$> x.toExpr <*> y.toExpr
+      | .exp x y => makeBinary ``HPow.hPow x y -- do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
       | .and x y => do
-        let w ← mkFreshUserName `h
-        let x ← x.toExpr
-        let lam ← withLocalDeclD w x λ x ↦
+        let lam ← withLocalDeclD (← mkFreshUserName `h) (← x.toExpr) λ x ↦
           liftMetaM ∘ mkLambdaFVars #[x] =<< y.toExpr
         mkAppM ``DepAnd #[lam]
       | .or x y => mkOr <$> x.toExpr <*> y.toExpr
       | .imp x y => do
-        withLocalDecl (← mkFreshBinderName) .default (← x.toExpr) λ z ↦
+        withLocalDecl (← mkFreshUserName `h) .default (← x.toExpr) λ z ↦
           liftMetaM ∘ mkForallFVars #[z] =<< y.toExpr
-      | .iff x y =>
-        mkIff <$> x.toExpr
-              <*> y.toExpr
+      | .iff x y => mkIff <$> x.toExpr <*> y.toExpr
       | .not x => mkNot <$> x.toExpr
-      | .eq x y => do
-        let x ← x.toExpr
-        let y ← y.toExpr
-        liftMetaM <| mkEq x y
+      | .eq x y => do mkEq (← x.toExpr) (← y.toExpr)
       | .mem x S => makeBinary ``Membership.mem S x
       | .𝔹 => mkAppOptM ``Set.univ #[mkSort 0]
       | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
@@ -204,13 +150,13 @@ namespace B
 
         let z ← mkFreshBinderName
         let lam ← withLocalDeclD z γ fun zvec ↦ do
-          let rec go : List (String × Syntax.Typ) → TermElabM Expr
+          let rec go_lambda : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
                 -- compute return type of F: this consumes F already
                 let _ ← assignMVar β (← inferType (← F.toExpr))
-                let β ← instantiateMVars β
+                -- let β ← instantiateMVars β
 
                 let xs' ← do
                   xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
@@ -221,11 +167,9 @@ namespace B
                 -- let eqF : Expr ← mkEq y F
                 -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
 
-                let n₁ ← mkFreshUserName `h₁
-                let n₂ ← mkFreshUserName `h₂
-                let lam ← withLocalDeclD n₁ eq λ eq ↦
+                let lam ← withLocalDeclD (← mkFreshUserName `h₁) eq λ eq ↦
                   liftMetaM ∘ mkLambdaFVars #[eq] =<< do
-                    withLocalDeclD n₂ (← P.toExpr) λ P ↦ do
+                    withLocalDeclD (← mkFreshUserName `h₂) (← P.toExpr) λ P ↦ do
                       let eq' ← mkEq y (←F.toExpr) -- no other choice
                       mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] eq']
 
@@ -233,10 +177,10 @@ namespace B
               mkAppM ``Exists #[lam]
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
-                (liftMetaM ∘ mkLambdaFVars #[y] =<< go xs)
+                (liftMetaM ∘ mkLambdaFVars #[y] =<< go_lambda xs)
               mkAppM ``Exists #[lam]
 
-          liftMetaM ∘ mkLambdaFVars #[zvec] =<< go xs.toList
+          liftMetaM ∘ mkLambdaFVars #[zvec] =<< go_lambda xs.toList
         mkAppM ``setOf #[lam]
       | .interval lo hi => makeBinary ``Builtins.interval lo hi
       | .subset S T => makeBinary ``HasSubset.Subset S T
