@@ -23,12 +23,8 @@ next
 mch_discharger "specs/Eval.mch"
 next
   intros X Y _ _
-  exists ((∅, ∅), ∅), ∅, ∅, ∅
-  intro
-  exists ?_, ?_
-  · simp
-  · simp
-  · simp
+  exists ∅, ∅, ∅
+  exists ?_, ?_ <;> simp
 
 mch_discharger "specs/Finite.mch"
 next
@@ -202,3 +198,7 @@ next
 next admit
 next admit
 next admit
+
+mch_discharger "specs/Collect2.mch"
+next
+  grind

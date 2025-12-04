@@ -96,38 +96,6 @@ namespace B
   private def _root_.Lean.Meta.mkNeg (a : Expr) : MetaM Expr := Lean.Meta.mkUnaryOp ``Neg ``Neg.neg a
 
   mutual
-    partial def makeBinder (xs : Array (String × Syntax.Typ)) (P : Syntax.Term)
-      (mkBinder : Array Expr → Expr → MetaM Expr) (mkHyp : Expr → MetaM Expr) (mkConcl : Expr → TermElabM Expr → TermElabM Expr) :
-        TermElabM Expr := do
-      if xs.size = 1 then
-        let ⟨x, t⟩ := xs[0]!
-
-        withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
-          liftMetaM ∘ mkBinder #[xvec] =<< P.toExpr
-      else
-        let x ← mkFreshBinderName
-
-        -- α = (α₁ × …) × αₙ
-        let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
-          mkAppM ``Prod #[acc, τᵢ.toExpr]
-
-        withLocalDeclD x α fun xvec ↦ do
-          let rec go : List (String × Syntax.Typ) → TermElabM Expr
-            | [] => do
-              let xs' ← do
-                xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
-                  mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
-              -- x̄ = xs'
-              let eq : Expr ← mkEq xvec xs'
-              -- x̄ = xs' ∧ P[x̄/vs]
-              mkConcl eq P.toExpr
-            | ⟨x, t⟩ :: xs => do
-              let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
-                (liftMetaM ∘ mkBinder #[y] =<< go xs)
-              mkHyp lam
-
-          liftMetaM ∘ mkBinder #[xvec] =<< go xs.toList
-
     partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
       mkAppM f #[← t₁.toExpr, ← t₂.toExpr]
 
@@ -171,19 +139,55 @@ namespace B
       | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
       | .ℝ => mkAppOptM ``Set.univ #[mkConst ``Real]
       | .collect xs P => do
-        mkAppM ``setOf #[← makeBinder xs P mkLambdaFVars (mkAppM ``DepAnd #[·]) λ t₁ t₂ ↦ do
-          withLocalDecl (← mkFreshBinderName) .default t₁ λ z ↦
-            liftMetaM ∘ mkForallFVars #[z] =<< t₂
-        ]
+        let lam ← if xs.size = 1 then
+          let ⟨x, t⟩ := xs[0]!
+
+          withLocalDeclD (Name.mkStr1 x) t.toExpr λ xvec ↦
+            liftMetaM ∘ mkLambdaFVars #[xvec] =<< P.toExpr
+        else
+          let x ← mkFreshBinderName
+
+          -- α = (α₁ × …) × αₙ
+          let α ← xs[1:].foldlM (init := xs[0]!.snd.toExpr) fun acc ⟨_, τᵢ⟩ ↦ do
+            mkAppM ``Prod #[acc, τᵢ.toExpr]
+
+          withLocalDeclD x α fun xvec ↦ do
+            let rec go_collect : List (String × Syntax.Typ) → TermElabM Expr
+              | [] => do
+                let xs' ← do
+                  xs[1:].foldlM (init := ← lookupVar xs[0]!.fst) fun acc ⟨xᵢ, _⟩ ↦ do
+                    mkAppM ``Prod.mk #[acc, ← lookupVar xᵢ]
+                -- x̄ = xs'
+                let eq : Expr ← mkEq xvec xs'
+                -- x̄ = xs' ∧ P[x̄/vs]
+                let lam ← withLocalDeclD (← mkFreshBinderName) eq λ eq ↦
+                  liftMetaM ∘ mkLambdaFVars #[eq] =<< P.toExpr
+                mkAppM ``DepAnd #[lam]
+              | ⟨x, t⟩ :: xs => do
+                let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
+                  (liftMetaM ∘ mkLambdaFVars #[y] =<< go_collect xs)
+                mkAppM ``Exists #[lam]
+
+            liftMetaM ∘ mkLambdaFVars #[xvec] =<< go_collect xs.toList
+
+        mkAppM ``setOf #[lam]
       | .all xs P => do
-        makeBinder xs P mkForallFVars pure λ t₁ t₂ ↦ do
-          withLocalDecl (← mkFreshBinderName) .default t₁ λ z ↦
-            liftMetaM ∘ mkForallFVars #[z] =<< t₂
+        let rec go_forall : List (String × Syntax.Typ) → TermElabM Expr
+          | [] => P.toExpr
+          | ⟨x, t⟩ :: xs => do
+            withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
+              (liftMetaM ∘ mkForallFVars #[y] =<< go_forall xs)
+
+        go_forall xs.toList
       | .exists xs P => do
-        mkAppM ``Exists #[← makeBinder xs P mkLambdaFVars (mkAppM ``Exists #[·]) λ t₁ t₂ ↦ do
-          withLocalDecl (← mkFreshBinderName) .default t₁ λ z ↦
-            liftMetaM ∘ mkForallFVars #[z] =<< t₂
-        ]
+        let rec go_exists : List (String × Syntax.Typ) → TermElabM Expr
+          | [] => P.toExpr
+          | ⟨x, t⟩ :: xs => do
+            let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
+              (liftMetaM ∘ mkLambdaFVars #[y] =<< go_exists xs)
+            mkAppM ``Exists #[lam]
+
+        go_exists xs.toList
       | .lambda xs P F => do
         -- { z | ∃ x₁ … xₙ, ∃ y, z = ((x₁, …, xₙ), y) ∧ D ∧ y = F }
 
@@ -202,8 +206,6 @@ namespace B
         let lam ← withLocalDeclD z γ fun zvec ↦ do
           let rec go : List (String × Syntax.Typ) → TermElabM Expr
             | [] => do
-              let P ← P.toExpr
-
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
                 -- compute return type of F: this consumes F already
@@ -222,14 +224,12 @@ namespace B
                 let n₁ ← mkFreshUserName `h₁
                 let n₂ ← mkFreshUserName `h₂
                 let lam ← withLocalDeclD n₁ eq λ eq ↦
-                  liftMetaM ∘ mkLambdaFVars #[eq] =<< (
-                    withLocalDeclD n₂ P λ P ↦ do
+                  liftMetaM ∘ mkLambdaFVars #[eq] =<< do
+                    withLocalDeclD n₂ (← P.toExpr) λ P ↦ do
                       let eq' ← mkEq y (←F.toExpr) -- no other choice
                       mkAppM ``DepAnd #[←liftMetaM <| mkLambdaFVars #[P] eq']
-                  )
 
                 mkLambdaFVars #[y] (← mkAppM ``DepAnd #[lam])
-                -- mkLambdaFVars #[y] <| mkAndN [eq, P, F]
               mkAppM ``Exists #[lam]
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
