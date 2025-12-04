@@ -9,15 +9,6 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
--- mch_discharger "specs/MinZ.mch"
--- next
---   admit
--- next
---   ext x
---   simp
---   exists {x}
---   exact Eq.symm min.of_singleton
-
 mch_discharger "specs/Counter.mch"
 next
   grind
@@ -30,22 +21,35 @@ next
   grind
 
 mch_discharger "specs/Eval.mch"
-next admit
+next
+  intros X Y _ _
+  exists ((∅, ∅), ∅), ∅, ∅, ∅
+  intro
+  exists ?_, ?_
+  · simp
+  · simp
+  · simp
 
 mch_discharger "specs/Finite.mch"
-next admit
+next
+  intros
+  exact interval.FIN_mem
 
 mch_discharger "specs/Nat.mch"
-next admit
+next
+  rintro _ ⟨_, _⟩
+  assumption
 
 mch_discharger "specs/Collect.mch"
-next admit
+next simp
 
 mch_discharger "specs/Forall.mch"
-next admit
+next
+  rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
+  assumption
 
 mch_discharger "specs/Exists.mch"
-next admit
+next exists 0
 
 -- -- -- TODO: fix
 mch_discharger "specs/Injective.mch"
@@ -67,11 +71,11 @@ next
 -- -- -- TODO: fix
 mch_discharger "specs/HO.mch"
 next
-  intros X Y x y₀ y₁ F x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun _ _ G G_fun
-  admit
+  intros X Y x _ _  _ x_mem_X _ _ _ _ _ _ G G_fun
+  exact app.WF_of_mem_tfun G_fun x_mem_X
 next
-  intros X Y x y₀ y₁ F x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun _ _ G G_fun
-  admit
+  intros X Y x _ _ F x_mem_X _ _ _ F_fun _ _ _ _
+  exact app.WF_of_mem_tfun F_fun x_mem_X
 next
   intros X Y x y₀ y₁ F x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun _ _
 
@@ -82,22 +86,19 @@ next
       have Y_eq : Y = Y ∪ {y₁} := by ext; grind
       rw [X_eq, Y_eq]
       exact tfun_of_overload F_fun tfun_of_singleton
-    · admit
-      -- exists wf_Fx', wf_Fx
-      -- simpa [app.of_pair_eq wf_Fx hF, ne_comm] using y₀_neq_y₁
+    ·
+      generalize_proofs _ wf_x
+      rw [app.of_pair_iff wf_x] at hF
+      simpa [hF, ←ne_eq, ne_comm, ne_eq]
   · exists F <+ {(x, y₀)}
     refine ⟨?_, ?_⟩
     · have X_eq : X = X ∪ {x} := by ext; grind
       have Y_eq : Y = Y ∪ {y₀} := by ext; grind
       rw [X_eq, Y_eq]
       exact tfun_of_overload F_fun tfun_of_singleton
-    ·
-      admit
-      -- exists wf_Fx', wf_Fx
-      -- simp
-      -- intro contr
-      -- rw [eq_comm, ←app.of_pair_iff] at contr
-      -- contradiction
+    · generalize_proofs _ wf_x
+      rw [app.of_pair_iff wf_x, ←ne_eq, ne_comm, ne_eq] at hF
+      simpa
 
 mch_discharger "specs/Demo.mch"
 next
@@ -111,10 +112,10 @@ next
 -- -- -- TODO: fix
 mch_discharger "specs/Extensionality.mch"
 next
-  intros X Y F G _ _ F_fun G_fun x hx
+  intros X Y F _ _ _ F_fun _ x hx
   exact app.WF_of_mem_tfun F_fun hx
 next
-  intros X Y F G _ _ F_fun G_fun x hx
+  intros X Y _ G _ _ _ G_fun x hx
   exact app.WF_of_mem_tfun G_fun hx
 next
   intros X Y F G _ _ F_fun G_fun ext
@@ -126,16 +127,18 @@ next
       rw [←tfun_dom_eq F_fun]
       exact mem_dom_of_pair_mem h
 
-    -- rw [ext _ hx]
-    -- exact app.pair_app_mem
-    admit
+    specialize ext hx
+    generalize_proofs wf_F wf_G at ext
+    rw [app.of_pair_iff ‹_›] at h ⊢
+    symm
+    rwa [h] at ext
   · have hx : x ∈ X := by
       rw [←tfun_dom_eq G_fun]
       exact mem_dom_of_pair_mem h
-
-    -- rw [←ext hx wf_F wf_G]
-    -- exact app.pair_app_mem
-    admit
+    specialize ext hx
+    generalize_proofs wf_F wf_G at ext
+    rw [app.of_pair_iff ‹_›] at h ⊢
+    rwa [h] at ext
 
 mch_discharger "specs/CounterMin.mch"
 next
@@ -176,3 +179,25 @@ assert_no_sorry CounterMin.Initialisation_0
 assert_no_sorry CounterMin.Initialisation_1
 assert_no_sorry CounterMin.Operation_inc_2
 assert_no_sorry CounterMin.Operation_inc_3
+
+mch_discharger "specs/Pixels.mch"
+next
+  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp ⟨x, y⟩ color _
+  exact fun h₁ h₂ => app.WF_of_mem_tfun hpp h₂
+next
+  rintro Colors Red Green Blue _ rfl rfl Colors_card
+  and_intros
+  · simp
+  · intros x y z hxy hxz
+    simp at hxy hxz
+    obtain ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ := hxy <;> {
+      obtain ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ := hxz
+      <;> rfl
+    }
+  · rintro x (rfl | rfl | rfl) <;> {
+      exists 0
+      simp
+    }
+next admit
+next admit
+next admit

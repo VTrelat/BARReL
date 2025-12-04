@@ -83,90 +83,6 @@ namespace B
       | throwError "No variable {x} found in context"
     return e.toExpr
 
-
-
-  -- variable (wfs : Array (Name × Expr))
-  -- variable (wfMVars : IO.Ref (Array Expr))
-
-  -- def findWFByConclusion (concl : Expr) : MetaM (Option (Array Expr × Array BinderInfo × Name × Expr)) := do
-  --   for ⟨v, t⟩ in wfs do
-  --     let ⟨ms, bs, body⟩ ← Meta.forallMetaTelescope t
-  --     trace[barrel.pog] "Checking whether {indentExpr concl}\nis the same as {indentExpr body}"
-  --     if ← Meta.isDefEq body concl then
-  --       return .some ⟨← ms.mapM instantiateMVars, bs, v, ← instantiateMVars body⟩
-  --   return .none
-
-
-  -- inductive WFQuantifier | all | ex
-
-  -- instance : ToString WFQuantifier where
-  --   toString | .all => "∀" | .ex => "∃"
-
-  -- def WFQuantifier.invert : WFQuantifier → WFQuantifier
-  --   | .all => .ex
-  --   | .ex => .all
-
-  -- structure WFHypotheses where
-  --   fvars : Array Expr
-  --   fvarsToThm : Std.HashMap Expr Expr
-  --   thmToFvars : Std.HashMap Expr Expr
-  -- variable (hyps : IO.Ref WFHypotheses)
-
-  -- private def newHypothesis (hyps : IO.Ref WFHypotheses) (h : Expr) (thm : Expr) : TermElabM PUnit := do
-  --   trace[barrel.pog] "Generating new WF hypothesis {h} : {thm}"
-
-  --   let hypsMap ← hyps.get
-  --   if hypsMap.1.contains h then throwError s!"Hypothesis {repr h} already exists"
-  --   let thm ← Meta.ensureHasType thm <| mkSort 0
-  --   hyps.set {
-  --     fvars := hypsMap.fvars.push h
-  --     fvarsToThm := hypsMap.fvarsToThm.insert h thm
-  --     thmToFvars := hypsMap.thmToFvars.insert thm h
-  --   }
-
-  -- private def makeWFHypothesis (hyps : IO.Ref WFHypotheses) (wf : Expr) (k : Expr → MetaM Expr) : TermElabM Expr := do
-  --   let hypsMap ← hyps.get
-  --   let h ←
-  --     if let .some var := hypsMap.2.get? wf then
-  --       pure var
-  --     else
-  --       let h ← mkFVar <$> mkFreshFVarId
-  --       newHypothesis hyps h wf
-  --       pure h
-  --   withLCtx ((← getLCtx).mkLocalDecl h.fvarId! `wf wf) (← getLocalInstances) do
-  --     k h
-
-  -- def checkpoint (tag : String) (quant : WFQuantifier)
-  --   (t : WFQuantifier → IO.Ref WFHypotheses → TermElabM Expr) (k : Expr → TermElabM Expr) :
-  --     TermElabM Expr := do
-  --   let rec mkWfHyps (g : Expr) : List (Expr × Expr) → TermElabM Expr
-  --     | [] => pure g
-  --     | ⟨x, t⟩ :: xs => do
-  --       let lctx := (← getLCtx).mkLocalDecl x.fvarId! `wf t
-  --       withLCtx lctx (← getLocalInstances) do
-  --         match quant with
-  --         | .ex => mkAppM ``Exists #[← liftMetaM ∘ mkLambdaFVars #[x] =<< mkWfHyps g xs]
-  --         | .all => liftMetaM ∘ mkForallFVars #[x] =<< mkWfHyps g xs
-
-  --   trace[barrel.checkpoints] m!"Checkpoint @{tag} (quant := {quant})!"
-
-  --   trace[barrel.checkpoints] m!"Checkpoint @{tag}!"
-
-  --   let wfHyps ← IO.mkRef ⟨∅, ∅, ∅⟩
-  --   let t' ← t quant wfHyps
-
-  --   let hypsMap ← wfHyps.get
-  --   let hasWF := !hypsMap.fvars.isEmpty
-
-  --   if hasWF then
-  --     trace[barrel.pog] m!"Inserting {(← wfHyps.get).fvars.size} WF hypotheses before {indentExpr t'}"
-
-  --   let t ← k =<< mkWfHyps t' (hypsMap.fvars.map λ v ↦ (v, hypsMap.fvarsToThm.get! v)).toList
-
-  --   if hasWF then
-  --     trace[barrel.pog] m!"  Finished term: {t}"
-  --   return t
-
   partial def _root_.Lean.Expr.getForallHeads : Lean.Expr → List Lean.Expr
     | .forallE _ t b _ => t :: b.getForallHeads
     | .mdata _ b => b.getForallHeads
@@ -283,14 +199,8 @@ namespace B
 
               let y ← mkFreshBinderName
               let lam ← withLocalDeclD y β fun y ↦ do
-                let F ← do
-                  -- NOTE: We need to checkpoint around `y = F[x̄/xs']`, not just `F[x̄/xs']`,
-                  -- in order to insert the `WF` hypotheses outside of `F`
-                  let F ← F.toExpr
-
-                  assignMVar β (← inferType F)
-
-                  liftMetaM <| mkEq y F
+                -- compute return type of F: this consumes F already
+                let _ ← assignMVar β (← inferType (← F.toExpr))
                 let β ← instantiateMVars β
 
                 let xs' ← do
@@ -301,7 +211,18 @@ namespace B
                 -- y = F[x̄/xs']
                 -- let eqF : Expr ← mkEq y F
                 -- x̄ = (xs', y) ∧ P[x̄/xs'] ∧ y = F[x̄/xs']
-                mkLambdaFVars #[y] <| mkAndN [eq, P, F]
+
+                let n₁ ← mkFreshUserName `h₁
+                let n₂ ← mkFreshUserName `h₂
+                let lam ← withLocalDeclD n₁ eq λ eq ↦
+                  liftMetaM ∘ mkLambdaFVars #[eq] =<< (
+                    withLocalDeclD n₂ P λ P ↦ do
+                      let eq' ← mkEq y (←F.toExpr) -- no other choice
+                      mkAppM ``Exists #[←liftMetaM <| mkLambdaFVars #[P] eq']
+                  )
+
+                mkLambdaFVars #[y] (← mkAppM ``Exists #[lam])
+                -- mkLambdaFVars #[y] <| mkAndN [eq, P, F]
               mkAppM ``Exists #[lam]
             | ⟨x, t⟩ :: xs => do
               let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y =>
