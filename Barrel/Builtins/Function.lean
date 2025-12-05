@@ -1,3 +1,4 @@
+import Barrel.Builtins.Init
 import Barrel.Builtins.Relation
 import Batteries.Tactic.GeneralizeProofs
 
@@ -237,4 +238,29 @@ namespace B.Builtins
           exact ⟨hy, x_dom⟩
 
   end Lemmas
+
+  section
+    open Lean
+
+    macro:289 "𝜆" "(" xs:ident,+ ")" " • " "(" P:term " | " F:term ")" : term => do
+      let xs : TSyntaxArray `ident := xs.getElems
+      let y : TSyntax `ident := Lean.mkCIdent `y
+      let tup : TSyntax `term ← xs[1:].foldlM (init := ← `(term| $(xs[0]!):ident)) λ acc x ↦ `(term| ($acc, $x:ident))
+      `({ ($tup, $y:ident) | $P ∧' $y:ident = $F })
+
+    @[app_unexpander setOf] meta def unexpandLambda : Lean.PrettyPrinter.Unexpander
+      | `($_ fun $z₁:ident => match $z₂:ident with | ($tup, $y₁:ident) => $P:term ∧' $y₂:ident = $F:term) => do
+        if z₁ == z₂ && y₁ == y₂ then
+          let rec getVars : TSyntax `term → Option (Array (TSyntax `ident))
+            | `(term| $x:ident) => .some #[x]
+            | `(term| ($t:term, $x:ident)) => getVars t |>.map (·.push x)
+            | _ => throw ()
+          if let .some vars := getVars tup then
+            `(𝜆 ($vars,*) • ($P | $F))
+          else
+            throw ()
+        else
+          throw ()
+      | _ => throw ()
+  end
 end B.Builtins
