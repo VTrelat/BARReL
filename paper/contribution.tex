@@ -2,8 +2,9 @@
 
 \todo[TODO]
 
-\paragraph{Encoding of partial B operators}
-Some operators of the B language are said to be partial, meaning that they are only defined when some well-formedness conditions are satisfied.
+\paragraph*{Encoding partial B operators}
+
+Some operators of the B language are said to be partial, meaning that they are only defined when some well-formedness (WF) conditions are satisfied.
 A typical example of such an operator is the minimum operator $min(S)$, which when given a set $S$ returns its smallest element, if it exists, and is undefined otherwise.
 These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
 That $P$ is satisfied by an element of $S$ is called the WF condition of the operator.
