@@ -1,17 +1,17 @@
 \section{Introduction}
 
-The B method \cite{Bmethod} and its associated toolsets, notably Atelier~B \cite{AtelierB}, have been used for decades in industrial developments where strong assurance arguments are required.
+The B method~\cite{Bmethod} and its associated toolsets, notably Atelier~B \cite{AtelierB}, have been used for decades in industrial developments where strong assurance arguments are required.
 B specifications are written as \emph{machines} with sets, constants, variables, invariants and operations; Atelier~B generates proof obligations (PO) that guarantee, for example, invariant preservation and refinement correctness, and ships with automated and interactive provers tailored to this logic.
 In many certified developments, these tools are trusted as part of the verification chain.
 
 In parallel, interactive theorem provers have seen rapid adoption, driven by their expressive type theories, powerful automation, and growing libraries of reusable mathematics and verification components.
-Lean~4 \cite{lean} in particular offers a small trusted kernel, a rich standard library, and a meta-programming framework that makes it attractive both as a programming language and a proof assistant.
-However, despite B’s long-standing industrial role, support for using modern interactive theorem provers as backends for Atelier~B remains very limited: some previous work targets Isabelle \cite{IsabelleHOL} but is either no longer maintained or provide specific support for Event-B \cite{Schmalz2012RodinIsabelle,Wolff2024EB_Isabelle}.
-There were also developments in Rocq, focussing primarily on formalizing the semantics of B rather than providing an integrated backend \cite{Bodeveix2002BtoPVS}, and Atelier~B’s own interactive prover is comparatively dated and lacks many modern features.
+Lean~4~\cite{lean} in particular offers a small trusted kernel, a rich standard library, and a meta-programming framework that makes it attractive both as a programming language and a proof assistant.
+However, despite B’s long-standing industrial role, support for using modern interactive theorem provers as backends for Atelier~B remains very limited: some previous work targets Isabelle~\cite{IsabelleHOL} but is either no longer maintained~\cite{Schmalz2012RodinIsabelle} or provides specific support~\cite{Wolff2024EB_Isabelle} for Event-B~\cite{AbrialEventB}.
+There were also developments in Rocq~\cite{Coq12}, focussing primarily on formalizing the semantics of B rather than providing an integrated backend~\cite{Bodeveix2002BtoPVS}, and Atelier~B’s own interactive prover is comparatively dated and lacks many modern features.
 
-This paper presents \emph{BARReL} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorems.
-Given either a B machine or a pre-generated proof obligation file, BARReL generates proof obligations if needed and translates each goal into a proper Lean theorem expressed over mathlib's set-theoretic primitives, preserving the original structures and notations as closely as possible.
-The library exposes two commands, \texttt{mch\_discharger} and \texttt{pog\_discharger}, which produce a sequence of Lean goals corresponding to the PO; users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
+This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorems.
+Given either a B machine or a pre-generated proof obligation file, \barrel generates proof obligations (PO) if needed and translates each goal into a proper Lean theorem expressed over mathlib's set-theoretic primitives, preserving the original structures and notations as closely as possible.
+The library exposes two commands, \texttt{mch\_discharger} and \texttt{pog\_discharger}, which produce a sequence of Lean goals corresponding to the PO;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, an XML POG reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs.
 
 A central challenge in this setting is the use of partial B operators.
@@ -24,5 +24,5 @@ From the user's perspective, the discharger presents a sequence of goals where W
 The implementation is written entirely inside Lean, using its elaboration and meta-programming facilities rather than a standalone translator, making it modular.
 The B fragment currently supported already covers many industrially relevant obligations.
 Extending this fragment---for example, to handle strings or real numbers---typically requires only adding new syntax constructors and encoding clauses in the existing framework.
-Finally, BARReL opens the door to using Lean as an independent backend in B-based workflows and suggests interesting extensions, such as an integrated proof obligation generator which can even be verified.
+Finally, \barrel opens the door to using Lean as an independent backend in B-based workflows and suggests interesting extensions, such as an integrated proof obligation generator which can even be verified.
 We do not discuss semantics or soundness of the encoding in this paper.

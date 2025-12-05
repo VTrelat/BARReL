@@ -1,3 +1,16 @@
 \section{Contribution}
 
 \todo[TODO]
+
+\paragraph{Encoding of partial B operators}
+Some operators of the B language are said to be partial, meaning that they are only defined when some well-formedness conditions are satisfied.
+A typical example of such an operator is the minimum operator $min(S)$, which when given a set $S$ returns its smallest element, if it exists, and is undefined otherwise.
+These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
+That $P$ is satisfied by an element of $S$ is called the WF condition of the operator.
+
+Atelier B handles this partiality by generating the WF conditions of each partial operator as side goals and assumes in the main goal that the partial operators are well-defined.
+However, one must trust that these WF conditions actually correspond to the WF conditions that are expected from the context of those partial operators, and there is no clear dependency (even after inspecting the generated POG file) between the main goal and the WF side goals.
+
+Our approach in \barrel is however quite different in that the dependency between the WF goals and the main goals is clear and explicit.
+We take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator) which explicitly depends on a proof that the predicate is satisfied by at least one element.
+This proof, which is the WF condition of the operator, is then generated as a side theorem which must be discharged for the main theorem to be fully proven (i.e.\@ not depend on the \texttt{sorryAx} axiom).
