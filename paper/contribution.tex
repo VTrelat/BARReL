@@ -30,7 +30,7 @@ scoped infixl:160 " ⩤ " => domSubtr
 \end{lstlisting}
 %
 Given these definitions, we then prove various laws of B in Lean, using the infrastructure and theorems of Mathlib.
-Both the definitions and theorems are readily available to end users when importing the tool in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
+Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
 
 
 \paragraph*{Encoding partial B operators}
@@ -64,7 +64,7 @@ abbrev min {α} [LinearOrder α] (S : Set α) (wf : min.WF S) : α :=
 structure app.WF {α β} (f : SetRel α β) (x : α) : Prop where
   isPartialFunction : f ∈ dom f  ⟶  ran f
   isInDomain : x ∈ dom f
-  
+
 noncomputable 
 abbrev app {α β} (f : SetRel α β) (x : α) (wf : app.WF f x) : β :=
   Classical.choose wf.isInDomain
