@@ -184,7 +184,7 @@ next
 next
   rintro Colors Red Green Blue _ rfl rfl Colors_card
   and_intros
-  · simp
+  · rintro x (rfl|rfl|rfl) <;> simp
   · intros x y z hxy hxz
     simp at hxy hxz
     obtain ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ := hxy <;> {

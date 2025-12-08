@@ -148,7 +148,7 @@ namespace B.Builtins
         ext x
         constructor <;> intro h
         · obtain ⟨_, hy⟩ := h
-          exact hf.1.1 _ hy |>.1
+          exact mem_of_pair_mem_rel hf.1.1 hy |>.1
         · obtain ⟨_, -, hy⟩ := hf.2 x h
           exact mem_dom_of_pair_mem hy
 
@@ -190,14 +190,14 @@ namespace B.Builtins
         obtain ⟨mem_f₁, notmem_f₂⟩ | mem_f₂ := hxy
         · and_intros
           · left
-            exact hf₁.1 _ mem_f₁ |>.1
+            exact mem_of_pair_mem_rel hf₁.1 mem_f₁ |>.1
           · left
-            exact hf₁.1 _ mem_f₁ |>.2
+            exact mem_of_pair_mem_rel hf₁.1 mem_f₁ |>.2
         · and_intros
           · right
-            exact hf₂.1 _ mem_f₂ |>.1
+            exact mem_of_pair_mem_rel hf₂.1 mem_f₂ |>.1
           · right
-            exact hf₂.1 _ mem_f₂ |>.2
+            exact mem_of_pair_mem_rel hf₂.1 mem_f₂ |>.2
       · intro x y z hxy hxz
         simp only [overload, Set.mem_setOf, not_exists] at hxy hxz
         obtain ⟨mem_f₁, notmem_f₂⟩ | mem_f₂ := hxy
@@ -226,14 +226,14 @@ namespace B.Builtins
       by_cases x_dom : x ∈ dom g
       · obtain ⟨y, hy⟩ := x_dom
         exists y, ?_ <;> right
-        · exact hg.1.1 _ hy |>.2
+        · exact mem_of_pair_mem_rel hg.1.1 hy |>.2
         · exact hy
       · rw [tfun_dom_eq hg] at x_dom
         replace hx := Or.resolve_right hx x_dom
         rw [←tfun_dom_eq hf] at hx
         obtain ⟨y, hy⟩ := hx
         exists y, ?_ <;> left
-        · exact hf.1.1 _ hy |>.2
+        · exact mem_of_pair_mem_rel hf.1.1 hy |>.2
         · rw [tfun_dom_eq hg]
           exact ⟨hy, x_dom⟩
 

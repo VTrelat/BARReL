@@ -2,7 +2,8 @@ import Mathlib.Data.Rel
 
 namespace B.Builtins
   abbrev rels {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
-    { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
+    𝒫 (A ×ˢ B)
+    -- { R : Set (α × β) | ∀ x ∈ R, x.1 ∈ A ∧ x.2 ∈ B }
   scoped infixl:125 " ⟷ " => rels
 
   abbrev id {α : Type _} (A : Set α) : SetRel α α :=
@@ -40,6 +41,11 @@ namespace B.Builtins
     @[grind →]
     theorem mem_dom_of_pair_mem {α β : Type _} {f : SetRel α β} {x : α} {y : β} (hxy : (x, y) ∈ f) :
       x ∈ dom f := ⟨y, hxy⟩
+
+    theorem mem_of_pair_mem_rel {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} {y : β} (hf : f ∈ A ⟷ B) (hxy : (x, y) ∈ f) :
+        x ∈ A ∧ y ∈ B := by
+      erw [Set.mem_powerset_iff] at hf
+      exact hf hxy
 
   end Lemmas
 end B.Builtins
