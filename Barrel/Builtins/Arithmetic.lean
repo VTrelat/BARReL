@@ -169,10 +169,12 @@ namespace B.Builtins
       obtain ⟨x, h⟩ := Finite.exists_max (@_root_.id ↑S)
       exact ⟨x, Subtype.coe_prop x, fun y hy ↦ h ⟨y, hy⟩⟩
 
+    @[grind .]
     theorem max.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : max.WF (lo..hi) := by
       exists hi
       and_intros <;> grind
 
+    @[grind .]
     theorem min.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : min.WF (lo..hi) := by
       exists lo
       and_intros <;> grind
@@ -212,6 +214,37 @@ namespace B.Builtins
       unfold max
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
+
+    @[grind ., simp]
+    theorem card.WF_of_empty {α : Type _} : card.WF (∅ : Set α) where
+      isFinite := Set.finite_empty
+
+    @[grind ., simp]
+    theorem card.WF_of_interval {lo hi : ℤ} : card.WF (lo .. hi) where
+      isFinite := interval.finite lo hi
+
+    @[grind ., simp]
+    theorem card.of_empty {α : Type _} : card (∅ : Set α) (card.WF_of_empty) = 0 := by
+      simp only [card, Set.toFinset_empty, Finset.card_empty, Nat.cast_zero]
+
+    @[grind ., simp]
+    theorem card.of_interval {lo hi : ℤ} :
+        card (lo .. hi) (card.WF_of_interval) = Max.max (hi + 1 - lo) 0 := by
+      simp only [card, Set.toFinset_Icc, Int.card_Icc, Int.ofNat_toNat]
+
+    @[grind .]
+    theorem card.WF_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
+        (hT : card.WF T) : card.WF S where
+      isFinite := Set.Finite.subset hT.isFinite hS
+
+    @[grind →]
+    theorem card.mono {α : Type _} {S T : Set α} (hS : S ⊆ T) (hT : card.WF T) :
+        card S (card.WF_of_subset hS hT) ≤ card T hT := by
+      rw [Int.ofNat_le]
+      apply Finset.card_le_card
+      have : Finite ↑S := (card.WF_of_subset hS hT).isFinite
+      have : Finite ↑T := hT.isFinite
+      exact @Set.toFinset_mono α S T (Fintype.ofFinite ↑S) (Fintype.ofFinite ↑T) hS
 
   end Lemmas
 end B.Builtins
