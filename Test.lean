@@ -179,7 +179,8 @@ assert_no_sorry CounterMin.Operation_inc_3
 
 mch_discharger "specs/Pixels.mch"
 next
-  rintro Colors Red Green Blue pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
+  rintro Colors Red Green Blue
+    pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
   exact app.WF_of_mem_tfun hpp h₂
 next
   rintro Colors Red Green Blue _ rfl rfl Colors_card
@@ -196,8 +197,12 @@ next
       simp
     }
 next admit
-next admit
-next admit
+next
+  simp_intro .. [*]
+  grind
+next
+  simp_intro .. [*]
+  grind
 
 mch_discharger "specs/Collect2.mch"
 next
