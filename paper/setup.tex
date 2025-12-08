@@ -5,3 +5,68 @@
 %%%% B operators 
 
 \newcommand\bmin[1]{\ensuremath{min(#1)}}
+\newcommand\bapp[2]{\ensuremath{#1(#2)}}
+
+\newcommand\pfun{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\to$\cr}}}
+\newcommand\ndres{\mathbin{\rlap{\raise.05ex\hbox{$-$}}{\lhd}}}
+
+%%%% Listings 
+
+\colorlet{keywordcolor}{blue!80!white}
+\colorlet{symbolcolor}{keywordcolor}
+\colorlet{sortcolor}{orange!85!black}
+\colorlet{tacticcolor}{keywordcolor}
+\colorlet{attributecolor}{black}
+\colorlet{commentcolor}{gray}
+\colorlet{stringcolor}{green!70!black}
+
+\lstset{
+	language=Lean,
+	% Spaces are not displayed as a special character
+	showstringspaces=false,
+	% keep spaces
+	% keepspaces=true,
+	% Size of tabulations
+	tabsize=2,
+	% Enables ASCII chars 128 to 255
+	extendedchars=false,
+	% Case sensitivity
+	sensitive=true,
+	% Automatic breaking of long lines
+	% breaklines=true,
+	% breakatwhitespace=true,
+	% Default style fors listingsred
+	% basicstyle=\ttfamily\scriptsize,
+	% Position of captions is bottom
+	% captionpos=b,
+	% Full flexible columns
+	% columns=[l]fullflexible,
+	% Style for (listings') identifiers
+	identifierstyle=\color{black},
+	% Note : highlighting of Coq identifiers is done through a new
+	% delimiter definition through an lstset at the beginning of the
+	% document. Don't know how to do better.
+	% Style for declaration keywords
+	keywordstyle=[1]{\color{keywordcolor}},
+	% Style for sorts
+	keywordstyle=[2]{\color{sortcolor}},
+	% Style for tactics keywords
+	keywordstyle=[3]{\color{tacticcolor}},
+	% Style for attributes
+	keywordstyle=[4]{\color{attributecolor}},
+	% Style for strings
+	stringstyle={\color{stringcolor}},
+	% Style for comments
+	commentstyle={\smaller\itshape\color{commentcolor}},
+	% --> We use `mdframed` for this instead <--
+	% backgroundcolor=\color{listingsbg},
+	% rulecolor=\color{listingsbg!70!black},
+	% frame=l,
+	% % frameround=tttt,
+	% % framextopmargin=10pt,
+	% % framexbottommargin=10pt,
+	% framerule=3pt,
+	% framesep=8pt,
+	% Automatically gobble based on first line
+	% autogobble=true,
+}
