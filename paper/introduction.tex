@@ -11,9 +11,10 @@ There were also developments in Rocq~\cite{Coq12}, focussing primarily on formal
 
 This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorems.
 Given either a B machine or a pre-generated proof obligation file, \barrel generates proof obligations (PO) if needed and translates each goal into a proper Lean theorem expressed over mathlib's set-theoretic primitives, preserving the original structures and notations as closely as possible.
-The library exposes two commands, \texttt{mch\_discharger} and \texttt{pog\_discharger}, which produce a sequence of Lean goals corresponding to the PO;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
+The library exposes two commands, \texttt{mch\_discharger} and \texttt{pog\_discharger}, which produce a sequence of Lean goals corresponding to the PO of respectively the given machine and proof obligation file;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, an XML POG reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs.
 
+\info[perhaps remove from here?]
 A central challenge in this setting is the use of partial B operators.
 Function application, the minimum and maximum of a set, and cardinality are all only defined under suitable well-formedness (WF) conditions.
 Atelier~B typically handles these via additional WF proof obligations, which are generated \emph{after} the main obligations, expecting that they will be later instantiated when needed.
