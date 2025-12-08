@@ -13,21 +13,24 @@ We leverage these typing annotations and ground our encoding (mostly) in typed h
 This still allows us to express every set used in B specifications since all sets in B are required to be homogeneous:\@ for example the set $\{0, "hi"\}$ must be considered ill-typed \fixme[ill-formed?] by implementations of the B method.
 
 We start by defining standard B operators directly in Lean, typing them appropriately in Lean so as not to restrict their use more than required \fixme[reformulate].
-Some examples (the set of relations, the set of partial functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
+Some examples (the set of relations, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
 %
 \begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}]
 abbrev rels {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
   𝒫 (A ×ˢ B)
 scoped infixl:125 "  ⟷  " => rels
 
-abbrev pfun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
-  { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
-scoped infixl:125 " ⇸ " => pfun
+abbrev injTFun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
+  A ⤔ B ∩ A  ⟶  B
+scoped infixl:125 " ↣ " => injTFun
 
 abbrev domSubtr {α β} (E : Set α) (R : SetRel α β) : SetRel α β :=
-  { z ∈ R | z.1 ∉ E }
+{ z ∈ R | z.1 ∉ E }
 scoped infixl:160 " ⩤ " => domSubtr
 \end{lstlisting}
+% abbrev pfun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
+%   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
+% scoped infixl:125 " ⇸ " => pfun
 %
 Given these definitions, we then prove various laws of B in Lean, using the infrastructure and theorems of Mathlib.
 Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
