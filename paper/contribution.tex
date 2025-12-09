@@ -6,13 +6,17 @@
 \paragraph*{Foundations of B in Lean}
 
 \noindent\info[Check where this belongs]
-The B method is grounded in set theory: everything is expressed as a set with some added properties.
-For example, functions are encoded as sets of pairs such that for every pairs $(x, y_1)$ and $(x, y_2)$ in the function $y_1 = y_2$.
-However, specifications written in B are still required to satisfy some typing predicates \fixme[perhaps let's not talk about ``typing'' B?]: every constant and variable must be given a ``parent set'' they belong to.
-We leverage these typing annotations and ground our encoding (mostly) in typed higher order logic instead by using Mathlib's \texttt{Set} and \texttt{SetRel} types (which are defined respectively as $\mathrm{Set}\ \alpha \triangleq \alpha \to \mathrm{Prop}$ and $\mathrm{SetRel}\ \alpha\ \beta \triangleq \mathrm{Set}(\alpha \times \beta)$) to represent sets and relations.
-This still allows us to express every set used in B specifications since all sets in B are required to be homogeneous:\@ for example the set $\{0, "hi"\}$ must be considered ill-typed \fixme[ill-formed?] by implementations of the B method.
+The B method is deeply rooted in classical set theory.
+That is, every value is a set that is constrained by some properties that define its shape.
+For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
+%
+However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deduced for every constant and variable of a specification (except for builtins such as \texttt{INTEGER} or \texttt{POW}) \fixme[weird sentence].
+We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types (which are defined respectively as $\mathrm{Set}\ \alpha \triangleq \alpha \to \mathrm{Prop}$ and $\mathrm{SetRel}\ \alpha\ \beta \triangleq \mathrm{Set}(\alpha \times \beta)$) to represent sets and relations.
+Since Lean is a dependently typed higher-order functional programming language, this is the natural choice, and this enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
+This representation allows us to express every kind of set used in B specifications since all sets in B are required to be \emph{homogeneous}, i.e.\@ restricted to a uniform shape of elements.
+For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementations of the B method.
 
-We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the PO to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
+We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the POs to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
 Some examples (the set of relations, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
 %
 \begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}]
@@ -25,23 +29,23 @@ abbrev injTFun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
 scoped infixl:125 " ↣ " => injTFun
 
 abbrev domSubtr {α β} (E : Set α) (R : SetRel α β) : SetRel α β :=
-{ z ∈ R | z.1 ∉ E }
+  { z ∈ R | z.1 ∉ E }
 scoped infixl:160 " ⩤ " => domSubtr
 \end{lstlisting}
+%
+We then provide proofs, using Mathlib's infrastructure and theorems, of various laws and theorems of B: for any total function $f \in A \longrightarrow B$ its domain $\bdom{f}$ equals $A$; assuming that $a \le b$, the minimum of $\binterval{a}{b}$ is $a$; etc.
+Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
+
 % abbrev pfun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
 %   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 % scoped infixl:125 " ⇸ " => pfun
-%
-Given these definitions, we then prove various laws of B in Lean, using the infrastructure and theorems of Mathlib.
-Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
-
 
 \paragraph*{Encoding partial B operators}
 
 Some operators of the B language are said to be partial, meaning that they are only defined when some well-formedness (WF) conditions are satisfied.
-A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element, if it exists, and is undefined otherwise.
+A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
 These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
-That $P$ is satisfied by (at least) an element of $S$ is called the \emph{WF condition} of the corresponding operator.
+The \emph{WF condition} of the corresponding operator is that $P$ is satisfied by (at least) an element of $S$.
 
 Atelier B handles this partiality by generating the WF conditions of each partial operator as side goals and assumes in the main goal that the partial operators are well-defined.
 However, one must trust that these WF conditions actually correspond to the WF conditions that are expected from the context of those partial operators, and there is no clear dependency---even after inspecting the generated POG file---between the main goal and the WF side goals.
