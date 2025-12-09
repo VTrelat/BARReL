@@ -2,6 +2,32 @@
 
 \todo[TODO]
 
+\begin{figure}[htb]
+	\caption{High-level picture of \barrel.}
+
+	\tikzset{
+		file/.style={chamfered rectangle, draw, chamfered rectangle corners=north west},
+		entity/.style={rectangle, draw}
+	}
+
+	\centering
+	\begin{tikzpicture}[
+			node distance=1.5cm and 1.5cm,
+			every node/.style={inner sep=6pt, align=center, minimum height=1.22cm, outer sep=0},
+			% start chain = going right,
+			arr/.style={->, shorten <=3pt, shorten >=3pt}
+		]
+		\node[file] (B mch) {.mch};
+		\node[file, right=of B mch] (B bxml) {.bxml};
+		\node[entity, right=of B bxml] (pos) {Proof\\obligations};
+		\node[entity, right=of pos] (thms) {Lean\\theorems};
+
+		\draw[arr] (B mch) -- node[above=-4mm, midway] {\scriptsize Parsing} (B bxml);
+		\draw[arr] (B bxml) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize generation} (pos);
+		\draw[arr] (pos) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize encoding} (thms);
+		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.5mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
+	\end{tikzpicture}
+\end{figure}
 
 \paragraph*{Foundations of B in Lean}
 
@@ -10,11 +36,12 @@ The B method is deeply rooted in classical set theory.
 That is, every value is a set that is constrained by some properties that define its shape.
 For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
 %
-However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deduced for every constant and variable of a specification (except for builtins such as \texttt{INTEGER} or \texttt{POW}) \fixme[weird sentence].
-We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types (which are defined respectively as $\mathrm{Set}\ \alpha \triangleq \alpha \to \mathrm{Prop}$ and $\mathrm{SetRel}\ \alpha\ \beta \triangleq \mathrm{Set}(\alpha \times \beta)$) to represent sets and relations.
-Since Lean is a dependently typed higher-order functional programming language, this is the natural choice, and this enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
-This representation allows us to express every kind of set used in B specifications since all sets in B are required to be \emph{homogeneous}, i.e.\@ restricted to a uniform shape of elements.
+However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification (except for intrinsics such as \texttt{INTEGER} or \texttt{POW}) \fixme[weird sentence].
+We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types\footnote{Which are defined respectively as $\mathtt{Set}\ \alpha \triangleq \alpha \to \mathtt{Prop}$ and $\mathtt{SetRel}\ \alpha\ \beta \triangleq \mathtt{Set}(\alpha \times \beta)$.} to represent sets and relations.
+This is a convenient representation since Mathlib comes batteries included with many definitions and theorems related to \texttt{Set} for us to use when proving the translated obligations in Lean.
+This representation also allows us to express every kind of set used in B specifications since all sets in B are required to be \emph{homogeneous}, i.e.\@ restricted to a uniform shape of elements.
 For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementations of the B method.
+% this also enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
 
 We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the POs to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
 Some examples (the set of relations, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
