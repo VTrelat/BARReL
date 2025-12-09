@@ -215,6 +215,21 @@ namespace B.Builtins
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
 
+    @[grind .]
+    theorem max.ge_min {α : Type _} [LinearOrder α] {S : Set α}
+        (hmax : max.WF S) (hmin : min.WF S) :
+        max S hmax ≥ min S hmin := by
+      unfold max min
+      generalize_proofs hmax hmin
+      obtain ⟨-, is_max⟩ := Classical.choose_spec hmax
+      obtain ⟨min_def, -⟩ := Classical.choose_spec hmin
+      exact is_max (choose hmin) min_def
+
+    @[grind .]
+    theorem min.le_max {α : Type _} [LinearOrder α] {S : Set α}
+      (hmin : min.WF S) (hmax : max.WF S) :
+        min S hmin ≤ max S hmax := max.ge_min hmax hmin
+
     @[grind ., simp]
     theorem card.WF_of_empty {α : Type _} : card.WF (∅ : Set α) where
       isFinite := Set.finite_empty
@@ -232,10 +247,29 @@ namespace B.Builtins
         card (lo .. hi) (card.WF_of_interval) = Max.max (hi + 1 - lo) 0 := by
       simp only [card, Set.toFinset_Icc, Int.card_Icc, Int.ofNat_toNat]
 
+    @[grind ., simp]
+    theorem card.of_interval' {lo hi : ℤ} (h : lo ≤ hi) :
+        card (lo .. hi) (card.WF_of_interval) = hi - lo + 1 := by
+      simp only [of_interval]
+      rw [Int.max_eq_left]
+      · symm
+        exact sub_add_eq_add_sub hi lo 1
+      · rw [Int.sub_nonneg]
+        exact Int.le_add_one h
+
+
     @[grind .]
     theorem card.WF_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
         (hT : card.WF T) : card.WF S where
       isFinite := Set.Finite.subset hT.isFinite hS
+
+    theorem card.WF_of_finite {α : Type _} {S A : Set α} (h : S ∈ FIN A) :
+        card.WF S where
+      isFinite := h.2
+
+    theorem card.WF_of_finite' {α : Type _} {S A : Set α} (h : S ∈ FIN₁ A) :
+        card.WF S where
+      isFinite := h.1.2
 
     @[grind →]
     theorem card.mono {α : Type _} {S T : Set α} (hS : S ⊆ T) (hT : card.WF T) :
