@@ -4,6 +4,7 @@ import Mathlib.Util.WhatsNew
 import Barrel.Encoder
 import POGReader.Basic
 import Barrel.Meta
+import Barrel.Tactics
 
 open Lean Elab Term Command
 
@@ -27,6 +28,14 @@ private def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Opt
     name
     goals
   }
+
+private def findWF (g : Expr) (wfs : Array (Name × String × Expr)) (wfs' : Array (Name × String × Expr × Bool)) : TermElabM (Option Name) := do
+  if let .some (n, _, _) ← wfs.findM? λ (_, _, g') ↦ Meta.isDefEq g g' then
+    return n
+  else if let .some (n, _, _, _) ← wfs'.findM? λ (_, _, g', _) ↦ Meta.isDefEq g g' then
+    return n
+  else
+    return .none
 
 private def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserResult := do
   let atelierBDir := System.FilePath.mk <| (← getOptions).getString `barrel.atelierb
@@ -77,27 +86,67 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
     let (declName, reason, g', wfs') ← liftTermElabM do
       let (g', wfs'') ← g.toExpr
 
-      let mut wfs' : Array (Name × String × Expr) := #[]
+      let mut wfs' : Array (Name × String × Expr × Bool) := #[]
       let mut j := 0
       for ⟨g', mvar⟩ in wfs'' do
         let n_wf := declName.str s!"wf_{j}"
         j := j + 1
 
-        if let .some (n, _, _) ← (wfs ++ wfs').findM? λ (_, _, g'') ↦ Meta.isDefEq g' g'' then
+        if let .some n ← findWF g' wfs wfs' then -- ← (wfs ++ wfs'.map λ (a, b, c, d) ↦ ((a : Name), (b : String), (c : Expr))).findM? λ (_, _, g'') ↦ Meta.isDefEq g' g'' then
           trace[barrel.wf] "Found duplicated WF theorem: using {n} instead"
           mvar.assign (.const n [])
         else do
           mvar.assign (.const n_wf [])
           let g' ← instantiateMVars g'
-          wfs' := wfs'.push (n_wf, "Assertion is well-defined", g')
+          wfs' := wfs'.push (n_wf, "Assertion is well-defined", g', true)
 
       let g' ← instantiateMVars g'
       trace[barrel] "Generated theorem: {g'}"
 
       pure (declName, g.reason, g', wfs')
 
-    res := res.push (declName, reason, g')
-    wfs := wfs ++ wfs'
+    let try_discharge := wfs'.push (declName, reason, g', false)
+
+    -- NOTE: Now try and solve it automatically...if possible
+    for (declName, reason, g, isWf) in try_discharge do
+      let gOrWf : _ ⊕ _ ← liftTermElabM do -- <| withOptions (Elab.async.set · false) do
+        try
+          trace[barrel.solve] m!"Trying to solve theorem {declName} (isWf: {isWf}):{indentExpr g}"
+          let e ← withoutErrToSorry do
+            Meta.check g
+            instantiateMVars =<< elabTermAndSynthesize (← `(term| by barrel_solve)) (.some g)
+
+          trace[barrel.solve] m!"{Lean.checkEmoji} Success!"
+
+          let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
+
+          let decl : Declaration := .thmDecl {
+            name := declName
+            levelParams := levelParams.toList
+            type := g
+            value := e
+          }
+
+          addDecl decl false
+
+          Lean.addDocStringOf false declName .missing
+            (mkNode ``Parser.Command.docComment #[
+              mkAtom "/--",
+              mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {reason} -/"
+            ])
+
+          pure <| .inl PUnit.unit
+        catch ex =>
+          trace[barrel.solve] m!"{Lean.crossEmoji} Failed!\n{ex.toMessageData}"
+
+          pure <| .inr (declName, reason, g, isWf)
+
+      match gOrWf with
+      | .inl _ => pure ()
+      | .inr (declName, reason, g, isWf) =>
+        let goal := (declName, reason, g)
+        if isWf then wfs := wfs.push goal else res := res.push goal
+
     i := i + 1
 
   modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name path)
@@ -119,7 +168,7 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
         if (← getOptions).getBool `barrel.show_goal_names true then
           logInfoAt tk m!"{declName}: {r_reason}"
 
-        liftTermElabM <| withOptions (Elab.async.set · false) do
+        liftTermElabM do -- <| withOptions (Elab.async.set · false) do
           let g' ← instantiateMVars g'
           if g'.hasExprMVar then
             throwError "Resulting expression contains metavariables{indentExpr g'}"

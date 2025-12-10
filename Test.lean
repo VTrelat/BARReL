@@ -11,15 +11,15 @@ open B.Builtins
 
 import machine Counter from "specs/"
 prove_obligations_of Counter
-next
-  grind
-next
-  grind
-next
-  rintro x ⟨_, _⟩ _ _
-  grind
-next
-  grind
+-- next
+--   grind
+-- next
+--   grind
+-- next
+--   rintro x ⟨_, _⟩ _ _
+--   grind
+-- next
+--   grind
 
 import machine Eval from "specs/"
 prove_obligations_of Eval
@@ -30,26 +30,26 @@ next
 
 import machine Finite from "specs/"
 prove_obligations_of Finite
-next
-  intros
-  exact interval.FIN_mem
+-- next
+--   intros
+--   exact interval.FIN_mem
 
 import machine Nat from "specs/"
 prove_obligations_of Nat
-next
-  rintro _ ⟨_, _⟩
-  assumption
+-- next
+--   rintro _ ⟨_, _⟩
+--   assumption
 
 import machine Collect from "specs/"
 prove_obligations_of Collect
-next
-  simp
+-- next
+--   simp
 
 import machine Forall from "specs/"
 prove_obligations_of Forall
-next
-  rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
-  assumption
+-- next
+--   rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
+--   assumption
 
 import machine Exists from "specs/"
 prove_obligations_of Exists
@@ -106,8 +106,8 @@ next
 
 import machine Demo from "specs/"
 prove_obligations_of Demo
-next
-  exact fun _ => id
+-- next
+--   exact fun _ => id
 next
   intro s₀ hs₀
   apply FIN.of_inter
@@ -219,8 +219,8 @@ next
 
 import machine Collect2 from "specs/"
 prove_obligations_of Collect2
-next
-  grind
+-- next
+--   grind
 
 import machine Lambda from "specs/"
 prove_obligations_of Lambda

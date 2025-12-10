@@ -11,7 +11,7 @@ open B.Builtins
 
 import machine JobQueue from "specs/"
 prove_obligations_of JobQueue
-next exact fun _ _ _ _ _ _ _ _ _ _ => card.WF_of_empty
+-- next exact fun _ _ _ _ _ _ _ _ _ _ => card.WF_of_empty
 next exact fun _ _ _ _ _ _ h _ => card.WF_of_finite h
 next
   intros JOB _ _ deadline _ _ Ready_fin deadline_tfun _ Ready_nemp

@@ -7,6 +7,7 @@ initialize registerTraceClass `barrel
 initialize registerTraceClass `barrel.pog
 initialize registerTraceClass `barrel.cache
 initialize registerTraceClass `barrel.wf
+initialize registerTraceClass `barrel.solve
 
 initialize
   nameFromPath : EnvExtension (Lean.PersistentHashMap String System.FilePath)
