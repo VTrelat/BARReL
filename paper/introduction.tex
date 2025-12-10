@@ -22,11 +22,11 @@ Lean, on the other hand, has no built-in notion of partiality and must therefore
 This also means that one cannot construct a term depending on a partial operator without providing a proof that it is well-formed.
 From the user's perspective, the discharger presents a sequence of goals where WF obligations appear explicitly, ahead of the original PO, and all of them can be proved using the usual tactic language and existing library lemmas.
 
-The implementation is written entirely inside Lean, using its elaboration and meta-programming facilities rather than a standalone translator, making it modular.
+The implementation is written entirely inside Lean using its elaboration and meta-programming facilities rather than a standalone translator.
 The B fragment currently supported already covers many industrially relevant obligations.
 Extending this fragment---for example, to handle strings or real numbers---typically requires only adding new syntax constructors and encoding clauses in the existing framework.
 Finally, \barrel opens the door to using Lean as an independent backend in B-based workflows and suggests interesting extensions, such as an integrated proof obligation generator which can even be verified.
-We do not discuss semantics or soundness of the encoding in this paper.
+% We do not discuss semantics or soundness of the encoding in this paper.
 
 The rest of this paper is organised as follows.\todo[Check structure]
 We first recall the necessary background on the B method, proof obligations, and the Lean~4 metaprogramming framework.
