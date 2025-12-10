@@ -11,16 +11,16 @@ open B.Builtins
 
 mch_discharger "specs/JobQueue.mch"
 next exact fun _ _ _ _ _ _ _ _ _ _ => card.WF_of_empty
-next exact fun _ _ _ _ _ _ _ h _ => card.WF_of_finite h
+next exact fun _ _ _ _ _ _ h _ => card.WF_of_finite h
 next
-  intros JOB _ _ Ready deadline _ _ Ready_fin deadline_tfun _ Ready_nemp
+  intros JOB _ _ deadline _ _ Ready_fin deadline_tfun _ Ready_nemp
   exact min.WF_of_finite_image_tfun deadline_tfun ⟨Ready_fin, Set.nonempty_iff_ne_empty.mpr Ready_nemp⟩
 next
-  intros JOB _ _ Ready deadline _ _ Ready_fin deadline_tfun _ Ready_nemp _
+  intros JOB _ _ deadline _ _ Ready_fin deadline_tfun _ Ready_nemp _
   exact max.WF_of_finite_image_tfun deadline_tfun ⟨Ready_fin, Set.nonempty_iff_ne_empty.mpr Ready_nemp⟩
-next exact fun _ Limit MaxDeadline _ _ j h h' h'' _ _ _ _ _ _ _ =>
-  JobQueue.Operation_enqueue_2.wf_0 _ Limit MaxDeadline _ _ j h h' h''
-next exact fun _ _ _ _ _ _ _ _ h _ _ _ _ _ h' _ _ => app.WF_of_mem_tfun h h'
+next exact fun JOB Limit MaxDeadline Ready deadline _ h h' _ _ _ _ _ _ _ =>
+  JobQueue.Operation_enqueue_2.wf_0 JOB Limit Limit Ready deadline Limit h h'
+next exact fun _ _ _ _ _ _ _ h _ _ _ _ _ h' _ _ => app.WF_of_mem_tfun h h'
 next
   intros
   generalize_proofs at *
@@ -42,12 +42,8 @@ next
     | assumption
     | apply FIN₁.of_insert <;> assumption
   }
-next exact
-  fun JOB Limit MaxDeadline Ready deadline j h h_10 h_11 h_12 _ _ _ _ _ h_18 =>
-  app.WF_of_mem_tfun h_11 (h h_18)
-next
-  exact fun JOB Limit MaxDeadline Ready deadline j h h_1 h_2 h_3 _ _ _ _ _ h_9 =>
-    min.WF_of_finite_image_tfun h_2 ⟨h_1, Set.nonempty_of_mem h_9⟩
+next exact fun _ _ _ _ _ _ h h' _ _ _ _ _ _ h'' ↦ app.WF_of_mem_tfun h' (h.1 h'')
+next exact fun _ _ _ _ _ _ h h' _ _ _ _ _ _ h'' ↦ min.WF_of_finite_image_tfun h' ⟨h, Set.nonempty_of_mem h''⟩
 next
   intros
   generalize_proofs at *
@@ -57,12 +53,12 @@ next
   intros
   expose_names
   apply min.WF_of_finite_image_tfun <;> try assumption
-  exact ⟨FIN.of_sub h_1 Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_11⟩
+  exact ⟨FIN.of_sub h Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_10⟩
 next
   intros
   expose_names
   apply max.WF_of_finite_image_tfun <;> try assumption
-  exact ⟨FIN.of_sub h_1 Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_11⟩
+  exact ⟨FIN.of_sub h Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_10⟩
 next
   intros
   exact FIN.of_empty
@@ -73,20 +69,14 @@ next
 next
   intros
   expose_names
-  rintro i (hi | rfl)
-  · exact h hi
-  · exact h_8
-next
-  intros
-  expose_names
   rw [Set.union_singleton]
-  exact FIN.of_insert h_8 h_1
+  exact FIN.of_insert h_7 h
 next
   intros
   expose_names
   generalize_proofs at *
   simp
-  rwa [card.of_insert _ ‹_›, ite_cond_eq_false _ _ (eq_false h_9)]
+  rwa [card.of_insert _ ‹_›, ite_cond_eq_false _ _ (eq_false h_8)]
 next
   intros
   expose_names
@@ -97,7 +87,7 @@ next
       intro x hx
       simp only [SetRel.mem_image] at hx
       obtain ⟨j', _, hj⟩ := hx
-      exact h_2.1.1 hj |>.2
+      exact h_1.1.1 hj |>.2
     exact this (min.mem min_wf_insert)
   assumption
 next
@@ -106,22 +96,22 @@ next
   simp only [Set.union_singleton]
   generalize_proofs _ min_wf max_wf max_wf_insert at *
 
-  have app_wf_j : app.WF deadline j := app.WF_of_mem_tfun h_2 h_8
+  have app_wf_j : app.WF deadline j := app.WF_of_mem_tfun h_1 h_7
   have : deadline[insert j Ready] = insert (deadline(j)'app_wf_j) (deadline[Ready]) := by
     simp only [SetRel.image_insert, B.Builtins.app.image_singleton_eq_of_wf app_wf_j,
       Set.singleton_union]
   simp [this]
   by_cases Ready_nemp : Ready.Nonempty
   · specialize min_wf (Set.nonempty_iff_ne_empty.mp Ready_nemp)
-    specialize h_4 (Set.nonempty_iff_ne_empty.mp Ready_nemp)
-    obtain ⟨min_ge_one, max_le_maxDeadline⟩ := h_4
+    specialize h_3 (Set.nonempty_iff_ne_empty.mp Ready_nemp)
+    obtain ⟨min_ge_one, max_le_maxDeadline⟩ := h_3
 
     have max_wf : max.WF (deadline[Ready]) :=
       max_wf (Set.nonempty_iff_ne_empty.mp Ready_nemp) min_ge_one
 
     rw [max.of_insert _ max_wf]
     split_ifs with deadline_j_le_max
-    · exact h_11
+    · exact h_10
     · exact max_le_maxDeadline
   · rw [Set.not_nonempty_iff_eq_empty] at Ready_nemp
     subst Ready
@@ -129,22 +119,15 @@ next
 next
   intros
   expose_names
-  simp
-  trans JOB
-  · assumption
-  · exact Set.subset_insert j JOB
-next
-  intros
-  expose_names
-  exact FIN.of_sub (A := JOB) h_1 Set.diff_subset
+  exact FIN.of_sub (A := JOB) h Set.diff_subset
 next
   intros
   expose_names
   generalize_proofs at *
-  rw [card.of_diff_singleton _ ‹_›, ite_cond_eq_true _ _ (eq_true h_9)]
+  rw [card.of_diff_singleton _ ‹_›, ite_cond_eq_true _ _ (eq_true h_8)]
   rw [tsub_le_iff_right]
   trans Limit
-  · exact h_3
+  · exact h_2
   · exact Int.le_add_one (Int.le_refl Limit)
 next
   intros
@@ -155,11 +138,11 @@ next
   have := min.mem (S := deadline[Ready \ {j}]) ‹_›
   simp at this
   obtain ⟨_, _, this⟩ := this
-  exact h_2.1.1 this |>.2
+  exact h_1.1.1 this |>.2
 next
   intros
   expose_names
-  obtain ⟨min_ge, max_le⟩ := h_4 h_8
+  obtain ⟨min_ge, max_le⟩ := h_3 h_7
   generalize_proofs at *
   trans B.Builtins.max (deadline[Ready]) ‹_›
   · apply max.mono

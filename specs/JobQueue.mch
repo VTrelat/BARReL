@@ -9,7 +9,7 @@ VARIABLES
   Ready, deadline
 INVARIANT
   /* abstract set + finiteness */
-  Ready ⊆ JOB ∧ Ready ∈ FIN(JOB) ∧
+  Ready ∈ FIN(JOB) ∧
   deadline ∈ JOB → NAT1 ∧
   card(Ready) ≤ Limit ∧
   (Ready ≠ ∅ ⇒
