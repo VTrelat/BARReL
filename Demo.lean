@@ -9,7 +9,8 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
-mch_discharger "specs/JobQueue.mch"
+import machine JobQueue from "specs/"
+prove_obligations_of JobQueue
 next exact fun _ _ _ _ _ _ _ _ _ _ => card.WF_of_empty
 next exact fun _ _ _ _ _ _ h _ => card.WF_of_finite h
 next

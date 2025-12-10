@@ -5,69 +5,72 @@ import Barrel.Encoder
 import POGReader.Basic
 import Barrel.Meta
 
-open Lean Parser Elab Term Command
+open Lean Elab Term Command
 
 declare_syntax_cat discharger_command
-syntax withPosition("next " Tactic.tacticSeqIndentGt) : discharger_command
+syntax withPosition("next " Parser.Tactic.tacticSeqIndentGt) : discharger_command
 
 private structure ParserResult where
+  path : System.FilePath
   name : String
   goals : Array B.POG.Goal
 
-def pog2goals (pogPath : System.FilePath) (mch : Option (System.FilePath × UInt64) := .none) : CommandElabM ParserResult := do
-  let .some pogName := pogPath.fileStem | throwError "what?"
+private def nameOf (mchPath : System.FilePath) : String :=
+  mchPath.fileStem.get!
 
+def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Option System.FilePath := .none) : CommandElabM ParserResult := do
   let pog : String ← IO.FS.readFile pogPath
-  let pogHash : UInt64 := hash pog
+  -- let pogHash : UInt64 := hash pog
 
-  if let .some pogHash' ← getPogHash pogPath then
-    if pogHash = pogHash' then
-      let .some goals ← getGoals pogHash | unreachable!
-      return {
-        name := pogName
-        goals
-      }
+  -- if let .some pogHash' ← getPogHash pogPath then
+  --   if pogHash = pogHash' then
+  --     let .some goals ← getGoals pogHash | unreachable!
+  --     return {
+  --       name := pogName
+  --       goals
+  --     }
 
   let goals ← B.POG.extractGoals <$> B.POG.parse' pog
 
-  if let .some (mchPath, mchHash) := mch then
-    trace[barrel.cache] "Caching new machine file {mchPath}"
-    registerFile mchPath pogPath mchHash pogHash goals
-  else
-    trace[barrel.cache] "Caching new POG file {pogPath}"
-    registerFile "" pogPath 0 pogHash goals
+  -- if let .some (mchPath, mchHash) := mch then
+  --   trace[barrel.cache] "Caching new machine file {mchPath}"
+  --   registerFile mchPath pogPath mchHash pogHash goals
+  -- else
+  --   trace[barrel.cache] "Caching new POG file {pogPath}"
+  --   registerFile "" pogPath 0 pogHash goals
 
   return {
-    name := pogName
+    path := match mchPath with | .some p => p | .none => pogPath
+    name
     goals
   }
 
-def mch2goals (mchPath : System.FilePath) : CommandElabM ParserResult := do
+def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserResult := do
   let atelierBDir := System.FilePath.mk <| (← getOptions).getString `barrel.atelierb
 
-  let .some mchName := mchPath.fileName | throwError "what?"
-  let mchHash : UInt64 ← hash <$> IO.FS.readFile mchPath
+  let mchName := nameOf mchPath
+  -- let mchHash : UInt64 ← hash <$> IO.FS.readFile mchPath
 
-  if let .some mchHash' ← getMchHash mchPath then
-    if mchHash = mchHash' then
-      -- Do not reparse the machine and POG
-      let .some pogPath ← getPogPath mchPath | unreachable!
-      let .some pogHash ← getPogHash pogPath | unreachable!
-      let .some goals ← getGoals pogHash | unreachable!
+  -- if let .some mchHash' ← getMchHash mchPath then
+  --   if mchHash = mchHash' then
+  --     -- Do not reparse the machine and POG
+  --     let .some pogPath ← getPogPath mchPath | unreachable!
+  --     let .some pogHash ← getPogHash pogPath | unreachable!
+  --     let .some goals ← getGoals pogHash | unreachable!
 
-      trace[barrel.cache] "Found entry in cache!"
+  --     trace[barrel.cache] "Found entry in cache!"
 
-      return {
-        name := mchName
-        goals
-      }
+  --     return {
+  --       name := mchName
+  --       goals
+  --     }
 
   -- Parse the machine, generate the POG
   let stdout ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"bxml").toString, args := #["-a", mchPath.toString]
   }
   let tmp ← IO.FS.createTempDir
-  let bxml := tmp/System.FilePath.withExtension mchName "bxml"
+  let bxml := tmp/System.FilePath.addExtension mchName "bxml"
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"pog").toString,
@@ -88,11 +91,10 @@ def mch2goals (mchPath : System.FilePath) : CommandElabM ParserResult := do
   }
 
   -- Then parse the POG and generate the goals
-  pog2goals (mch := (mchPath, mchHash)) <| bxml.withExtension "pog"
+  pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
-def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
-  -- TODO: check how we can also replay the proofs that we already have
-  let ⟨name, goals⟩ := res
+def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
+  let ⟨path, name, goals⟩ := res
 
   let ns ← getCurrNamespace
 
@@ -130,9 +132,20 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
     wfs := wfs ++ wfs'
     i := i + 1
 
-  let goals := wfs ++ res
+  modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name path)
+  modifyEnv (cache.modifyState · λ map ↦ map.insert path (wfs ++ res))
+
+
+def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
+  let env ← getEnv
+  let .some path := nameFromPath.getState env |>.find? name
+    | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import_mch` or `import_pog`."
+  let .some goals := cache.getState env |>.find? path
+    | throwError "Impossible!"
   let mut proofs_missing := 0
-  i := 0
+  let mut i := 0
+
+  -- TODO: check how we can also replay the proofs that we already have
   for ⟨declName, r_reason, g'⟩ in goals do
     if let .some (step : TSyntax `discharger_command) := steps[i]? then
       if let `(discharger_command| next%$tk $tac:tacticSeq) := step then
@@ -161,9 +174,9 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
           addDecl decl false
 
           Lean.addDocStringOf false declName .missing
-            (mkNode ``docComment #[
-              mkAtom SourceInfo.none "/--",
-              mkAtom SourceInfo.none s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
+            (mkNode ``Parser.Command.docComment #[
+              mkAtom "/--",
+              mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
             ])
     else
       proofs_missing := proofs_missing + 1
@@ -177,11 +190,26 @@ def pog2obligations (res : ParserResult) (steps : TSyntaxArray `discharger_comma
     let `(discharger_command| next%$tk $_) := steps[i]! | unreachable!
     throwErrorAt tk "There are no more goals to discharge."
 
+declare_syntax_cat import_kind
+syntax "machine" : import_kind
+syntax "system" : import_kind
+syntax "pog" : import_kind
 
--- @[incremental]
-elab "mch_discharger " path:str ppSpace steps:withPosition((colEq discharger_command)*) : command => do
-  pog2obligations (← mch2goals (System.FilePath.mk <| Lean.TSyntax.getString ⟨path⟩)) steps
+def extFromKind : TSyntax `import_kind → MacroM String
+  | `(import_kind| machine) => pure "mch"
+  | `(import_kind| system) => pure "sys"
+  | `(import_kind| pog) => pure "pog"
+  | _ => Macro.throwUnsupported
 
--- @[incremental]
-elab "pog_discharger " path:str ppSpace steps:withPosition((colEq discharger_command)*) : command => do
-  pog2obligations (← pog2goals (System.FilePath.mk <| Lean.TSyntax.getString ⟨path⟩)) steps
+@[incremental]
+elab "import " kind:import_kind ppSpace name:ident " from " path:str : command => do
+  let name := name.getId.getString!
+  let ext ← liftMacroM <| extFromKind kind
+  let path := System.FilePath.mk path.getString/System.FilePath.addExtension name ext
+  -- TODO: verify a snapshot etc, so that the files are only re-generated/re-parsed when changed or the first time
+  pog2obligations =<< match ext with
+    | "pog" => pog2goals name path
+    | _ => mch2goals name path
+
+elab "prove_obligations_of " name:ident ppLine steps:withPosition((colEq discharger_command)*) : command => do
+  obligations2theorems name.getId.getString! steps

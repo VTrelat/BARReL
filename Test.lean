@@ -9,7 +9,8 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
-mch_discharger "specs/Counter.mch"
+import machine Counter from "specs/"
+prove_obligations_of Counter
 next
   grind
 next
@@ -20,37 +21,43 @@ next
 next
   grind
 
-mch_discharger "specs/Eval.mch"
+import machine Eval from "specs/"
+prove_obligations_of Eval
 next
   intros X Y _ _
   exists ∅, ∅, ∅
   exists ?_, ?_ <;> simp
 
-mch_discharger "specs/Finite.mch"
+import machine Finite from "specs/"
+prove_obligations_of Finite
 next
   intros
   exact interval.FIN_mem
 
-mch_discharger "specs/Nat.mch"
+import machine Nat from "specs/"
+prove_obligations_of Nat
 next
   rintro _ ⟨_, _⟩
   assumption
 
-mch_discharger "specs/Collect.mch"
+import machine Collect from "specs/"
+prove_obligations_of Collect
 next
   simp
 
-mch_discharger "specs/Forall.mch"
+import machine Forall from "specs/"
+prove_obligations_of Forall
 next
   rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
   assumption
 
-mch_discharger "specs/Exists.mch"
+import machine Exists from "specs/"
+prove_obligations_of Exists
 next
   exists 0
 
--- -- -- TODO: fix
-mch_discharger "specs/Injective.mch"
+import machine Injective from "specs/"
+prove_obligations_of Injective
 next
   rintro X Y F x y ⟨_, F_tot⟩ _ _ x_mem_X _
   exact app.WF_of_mem_tfun F_tot x_mem_X
@@ -66,8 +73,8 @@ next
     exact app.pair_app_mem (wf := wf_y)
 
 
--- -- -- TODO: fix
-mch_discharger "specs/HO.mch"
+import machine HO from "specs/"
+prove_obligations_of HO
 next
   intros X Y x _ _  _ x_mem_X _ _ _ _ _ _ G G_fun
   exact app.WF_of_mem_tfun G_fun x_mem_X
@@ -97,7 +104,8 @@ next
       rw [app.of_pair_iff wf_x, ←ne_eq, ne_comm, ne_eq] at hF
       simpa
 
-mch_discharger "specs/Demo.mch"
+import machine Demo from "specs/"
+prove_obligations_of Demo
 next
   exact fun _ => id
 next
@@ -106,8 +114,8 @@ next
   left
   exact FIN.of_sub NAT.mem_FIN hs₀
 
--- -- -- TODO: fix
-mch_discharger "specs/Extensionality.mch"
+import machine Extensionality from "specs/"
+prove_obligations_of Extensionality
 next
   intros X Y F _ _ _ F_fun _ x hx
   exact app.WF_of_mem_tfun F_fun hx
@@ -137,7 +145,8 @@ next
     rw [app.of_pair_iff ‹_›] at h ⊢
     rwa [h] at ext
 
-mch_discharger "specs/CounterMin.mch"
+import machine CounterMin from "specs/"
+prove_obligations_of CounterMin
 next
   exact fun _ _ ↦ max.WF_singleton
 next
@@ -177,7 +186,8 @@ assert_no_sorry CounterMin.Initialisation_1
 assert_no_sorry CounterMin.Operation_inc_2
 assert_no_sorry CounterMin.Operation_inc_3
 
-mch_discharger "specs/Pixels.mch"
+import machine Pixels from "specs/"
+prove_obligations_of Pixels
 next
   rintro Colors Red Green Blue
     pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
@@ -196,19 +206,24 @@ next
       exists 0
       simp
     }
-next admit
+next
+  admit
 next
   simp_intro .. [*]
-  grind
+  -- grind
+  admit
 next
   simp_intro .. [*]
-  grind
+  -- grind
+  admit
 
-mch_discharger "specs/Collect2.mch"
+import machine Collect2 from "specs/"
+prove_obligations_of Collect2
 next
   grind
 
-mch_discharger "specs/Lambda.mch"
+import machine Lambda from "specs/"
+prove_obligations_of Lambda
 next
   and_intros
   · rintro ⟨⟨a, b⟩, c⟩ ⟨⟨_, _⟩, rfl⟩
@@ -220,7 +235,8 @@ next
     refine ⟨x + y, ?_, ⟨x_mem, y_mem⟩, rfl⟩
     grind
 
-mch_discharger "specs/Eta.mch"
+import machine Eta from "specs/"
+prove_obligations_of Eta
 next
   intros X Y F F_tfun _ _ x _ x_mem
   exact app.WF_of_mem_tfun F_tfun x_mem

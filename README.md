@@ -14,7 +14,8 @@ BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the 
 ## Prerequisites
 - Lean 4 (see [`lean-toolchain`](lean-toolchain) for version).
 - Mathlib (pulled automatically by Lake).
-- For `mch_discharger`: an Atelier B installation with `bin/bxml` and `bin/pog` available. Point BARReL to it with `set_option barrel.atelierb "<path-to-atelierb-root>"` (the directory that contains `bin/` and `include/`).
+- For `import machine`: an Atelier B installation with `bin/bxml` and `bin/pog` available. 
+  Point BARReL to it with `set_option barrel.atelierb "<path-to-atelierb-root>"` (the directory that contains `bin/` and `include/`).
 
 ## Quick start
 ### Setting up the environment
@@ -59,7 +60,8 @@ import Barrel.Discharger
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-mch_discharger "specs/CounterMin.mch"
+import machine CounterMin from "specs/"
+prove_obligations_of CounterMin
 next
   exact fun _ _ ↦ max.WF_singleton
 next
@@ -99,10 +101,10 @@ next
 ## Using the discharger
 Two commands are provided to discharge proof obligations from B machines:
 
-- `pog_discharger "<path.pog>"` — consume an existing POG file.
-- `mch_discharger "<path.mch>"` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it.
+- `import (machine|system|pog) <name> from "<directory>` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it.
+- `prove_obligations_of <name>` — discharge all proof obligations generated.
 
-Each command expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:
+`prove_obligations_of` expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:
 
 ```lean
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
@@ -110,12 +112,8 @@ set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2
 open B.Builtins
 
 -- Work directly from a machine
-mch_discharger "specs/Counter.mch"
-next
-  ...
-
--- Work from a pre-generated POG file
-pog_discharger "specs/Forall.pog"
+import machine Counter from "specs/"
+prove_obligations_of Counter
 next
   ...
 ```
