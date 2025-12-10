@@ -44,8 +44,16 @@ namespace B.Builtins
 
     theorem mem_of_pair_mem_rel {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} {y : β} (hf : f ∈ A ⟷ B) (hxy : (x, y) ∈ f) :
         x ∈ A ∧ y ∈ B := by
-      erw [Set.mem_powerset_iff] at hf
+      rw [Set.mem_powerset_iff] at hf
       exact hf hxy
+
+    @[simp]
+    theorem dom.of_empty {α β : Type _} : dom (∅ : SetRel α β) = ∅ := by
+      simp only [dom, Set.mem_empty_iff_false, exists_false, Set.setOf_false]
+
+    @[simp]
+    theorem ran.of_empty {α β : Type _} : ran (∅ : SetRel α β) = ∅ := by
+      simp only [ran, Set.mem_empty_iff_false, exists_false, Set.setOf_false]
 
   end Lemmas
 end B.Builtins

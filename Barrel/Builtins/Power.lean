@@ -11,6 +11,10 @@ namespace B.Builtins
   abbrev FIN₁ {α : Type _} (A : Set α) : Set (Set α) := { S ∈ FIN A | S.Nonempty }
 
   section Lemmas
+    theorem FIN.of_empty {α : Type _} {A : Set α} : ∅ ∈ FIN A := by
+      and_intros
+      · exact Set.empty_subset A
+      · exact Set.finite_empty
 
     @[grind .]
     theorem FIN.of_finite_self {α : Type _} {A : Set α} (hA : A.Finite) : A ∈ FIN A :=
@@ -51,6 +55,21 @@ namespace B.Builtins
       obtain h | h := h
         <;> [ skip ; rw [Set.inter_comm] ]
         <;> exact FIN.of_sub (Set.mem_of_mem_inter_left h) Set.inter_subset_left
+
+    @[grind .]
+    theorem FIN.of_insert {α : Type _} {S A : Set α} {a : α} (ha : a ∈ A)
+        (hS : S ∈ FIN A) : insert a S ∈ FIN A := by
+      and_intros
+      · intro x h
+        rw [Set.mem_insert_iff] at h
+        rcases h with rfl | hSx
+        · exact ha
+        · exact hS.1 hSx
+      · simpa only [Set.finite_insert] using hS.2
+
+    @[grind .]
+    theorem FIN₁.of_insert {α : Type _} {S A : Set α} {a : α} (ha : a ∈ A)
+      (hS : S ∈ FIN A) : insert a S ∈ FIN₁ A := ⟨FIN.of_insert ha hS, Set.insert_nonempty a S⟩
 
   end Lemmas
 end B.Builtins

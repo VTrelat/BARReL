@@ -237,6 +237,28 @@ namespace B.Builtins
         · rw [tfun_dom_eq hg]
           exact ⟨hy, x_dom⟩
 
+  @[grind =, simp]
+  theorem app.image_singleton_eq_of_wf {α β : Type _} {f : SetRel α β} {a : α} (wf : WF f a) :
+      f[{a}] = {f(a)'wf} := by
+    ext y
+    simp only [SetRel.mem_image, Set.mem_singleton_iff, exists_eq_left]
+    constructor
+    · intro h
+      symm
+      exact of_pair_eq wf h
+    · rintro rfl
+      exact pair_app_mem
+
+  @[simp]
+  theorem app.image_singleton_eq_of_tfun {α β : Type _} {A : Set α} {B : Set β}
+    {f : SetRel α β} {a : α} (hf : f ∈ A ⟶ B) (ha : a ∈ A) :
+      f[{a}] = {f(a)'(WF_of_mem_tfun hf ha)} := app.image_singleton_eq_of_wf _
+
+  @[simp]
+  theorem app.image_singleton_eq_of_pfun_mem_dom {α β : Type _} {A : Set α} {B : Set β}
+    {f : SetRel α β} {a : α} (hf : f ∈ A ⇸ B) (ha : a ∈ dom f) :
+      f[{a}] = {f(a)'(WF_of_mem_dom_pfun hf ha)} := app.image_singleton_eq_of_wf _
+
   end Lemmas
 
   section
