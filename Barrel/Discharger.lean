@@ -18,26 +18,9 @@ private structure ParserResult where
 private def nameOf (mchPath : System.FilePath) : String :=
   mchPath.fileStem.get!
 
-def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Option System.FilePath := .none) : CommandElabM ParserResult := do
+private def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Option System.FilePath := .none) : CommandElabM ParserResult := do
   let pog : String ← IO.FS.readFile pogPath
-  -- let pogHash : UInt64 := hash pog
-
-  -- if let .some pogHash' ← getPogHash pogPath then
-  --   if pogHash = pogHash' then
-  --     let .some goals ← getGoals pogHash | unreachable!
-  --     return {
-  --       name := pogName
-  --       goals
-  --     }
-
   let goals ← B.POG.extractGoals <$> B.POG.parse' pog
-
-  -- if let .some (mchPath, mchHash) := mch then
-  --   trace[barrel.cache] "Caching new machine file {mchPath}"
-  --   registerFile mchPath pogPath mchHash pogHash goals
-  -- else
-  --   trace[barrel.cache] "Caching new POG file {pogPath}"
-  --   registerFile "" pogPath 0 pogHash goals
 
   return {
     path := match mchPath with | .some p => p | .none => pogPath
@@ -45,25 +28,10 @@ def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Option Syst
     goals
   }
 
-def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserResult := do
+private def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserResult := do
   let atelierBDir := System.FilePath.mk <| (← getOptions).getString `barrel.atelierb
 
   let mchName := nameOf mchPath
-  -- let mchHash : UInt64 ← hash <$> IO.FS.readFile mchPath
-
-  -- if let .some mchHash' ← getMchHash mchPath then
-  --   if mchHash = mchHash' then
-  --     -- Do not reparse the machine and POG
-  --     let .some pogPath ← getPogPath mchPath | unreachable!
-  --     let .some pogHash ← getPogHash pogPath | unreachable!
-  --     let .some goals ← getGoals pogHash | unreachable!
-
-  --     trace[barrel.cache] "Found entry in cache!"
-
-  --     return {
-  --       name := mchName
-  --       goals
-  --     }
 
   -- Parse the machine, generate the POG
   let stdout ← IO.Process.run {
@@ -93,7 +61,7 @@ def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserR
   -- Then parse the POG and generate the goals
   pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
-def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
+private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   let ⟨path, name, goals⟩ := res
 
   let ns ← getCurrNamespace
@@ -135,8 +103,7 @@ def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name path)
   modifyEnv (cache.modifyState · λ map ↦ map.insert path (wfs ++ res))
 
-
-def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
+private def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   let env ← getEnv
   let .some path := nameFromPath.getState env |>.find? name
     | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import_mch` or `import_pog`."
@@ -186,7 +153,6 @@ def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_comma
   if proofs_missing > 0 then
     throwError s!"There still {if proofs_missing = 1 then "is" else "are"} {proofs_missing} goal{if proofs_missing = 1 then "" else "s"} to discharge."
   else if steps.size > goals.size then
-    dbg_trace s!"i: {i}, goals.size: {goals.size}, steps.size: {steps.size}"
     let `(discharger_command| next%$tk $_) := steps[i]! | unreachable!
     throwErrorAt tk "There are no more goals to discharge."
 
@@ -195,12 +161,15 @@ syntax "machine" : import_kind
 syntax "system" : import_kind
 syntax "pog" : import_kind
 
-def extFromKind : TSyntax `import_kind → MacroM String
+private def extFromKind : TSyntax `import_kind → MacroM String
   | `(import_kind| machine) => pure "mch"
   | `(import_kind| system) => pure "sys"
   | `(import_kind| pog) => pure "pog"
   | _ => Macro.throwUnsupported
 
+/--
+  Process a B machine/system/pog and add the theorems to be discharged into the environment.
+-/
 @[incremental]
 elab "import " kind:import_kind ppSpace name:ident " from " path:str : command => do
   let name := name.getId.getString!
@@ -211,5 +180,8 @@ elab "import " kind:import_kind ppSpace name:ident " from " path:str : command =
     | "pog" => pog2goals name path
     | _ => mch2goals name path
 
+/--
+  Provide the proofs for the theorems generated from a given machine.
+-/
 elab "prove_obligations_of " name:ident ppLine steps:withPosition((colEq discharger_command)*) : command => do
   obligations2theorems name.getId.getString! steps
