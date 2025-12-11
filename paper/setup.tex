@@ -22,7 +22,7 @@
 
 \colorlet{keywordcolor}{blue!80!white}
 \colorlet{symbolcolor}{keywordcolor}
-\colorlet{sortcolor}{orange!85!black}
+\colorlet{sortcolor}{orange!90!black}
 \colorlet{tacticcolor}{keywordcolor}
 \colorlet{attributecolor}{black}
 \colorlet{commentcolor}{gray}
@@ -50,22 +50,22 @@
 	% Full flexible columns
 	% columns=[l]fullflexible,
 	% Style for (listings') identifiers
-	identifierstyle=\color{black},
+	identifierstyle=\textcolor{black},
 	% Note : highlighting of Coq identifiers is done through a new
 	% delimiter definition through an lstset at the beginning of the
 	% document. Don't know how to do better.
 	% Style for declaration keywords
-	keywordstyle=[1]{\color{keywordcolor}},
+	keywordstyle=[1]{\textcolor{keywordcolor}},
 	% Style for sorts
-	keywordstyle=[2]{\color{sortcolor}},
+	keywordstyle=[2]{\textcolor{sortcolor}},
 	% Style for tactics keywords
-	keywordstyle=[3]{\color{tacticcolor}},
+	keywordstyle=[3]{\textcolor{tacticcolor}},
 	% Style for attributes
-	keywordstyle=[4]{\color{attributecolor}},
+	keywordstyle=[4]{\textcolor{attributecolor}},
 	% Style for strings
-	stringstyle={\color{stringcolor}},
+	stringstyle={\textcolor{stringcolor}},
 	% Style for comments
-	commentstyle={\smaller\itshape\color{commentcolor}},
+	commentstyle={\smaller\itshape\textcolor{commentcolor}},
 	% --> We use `mdframed` for this instead <--
 	% backgroundcolor=\color{listingsbg},
 	% rulecolor=\color{listingsbg!70!black},
@@ -77,4 +77,52 @@
 	% framesep=8pt,
 	% Automatically gobble based on first line
 	% autogobble=true,
+}
+
+\lstdefinelanguage{b} {
+  morekeywords=[1]{MACHINE, SETS, CONSTANTS, VARIABLES, PROPERTIES, INVARIANT, OPERATIONS, PRE, THEN, END, INITIALISATION, ANY, WHERE},
+  morekeywords=[2]{NATURAL, NAT, NATURAL1, NAT1, INTEGER, INT, BOOL, BOOL, POW, POW1, FIN, FIN1, card, min, max},
+  morecomment=[l]{//},
+  showstringspaces=false,
+  mathescape=true,
+  keepspaces=true,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny\textcolor{black},
+  % basicstyle=\small\ttfamily,
+  keywordstyle=[1]\small\itshape\textcolor{keywordcolor},
+  keywordstyle=[2]\small\textcolor{sortcolor},
+  commentstyle=\textcolor{commentcolor},
+  identifierstyle={\ttfamily\textcolor{black}},
+  numbersep=6pt,
+  % frame=single,
+  columns=[l]fullflexible,
+  % framerule=.7pt,
+  % rulecolor=\color{black},
+  % columns=[l]fullflexible,
+  % framerule=0pt,
+  % backgroundcolor=\color{black!5},
+  % frame=shadowbox,
+  % rulesepcolor=\color{black!30},
+  % xleftmargin=1ex,
+  % xrightmargin=1em,
+	literate=
+	{∈}{{\ensuremath{\in}}}1
+	{∉}{{\ensuremath{\notin}}}1
+	{∧}{{\ensuremath{\land}}}1
+	{∨}{{\ensuremath{\lor}}}1
+	{¬}{{\ensuremath{\lnot}}}1
+	{⇒}{{\ensuremath{\implies}}}1
+	{⇔}{{\ensuremath{\iff}}}1
+	{≠}{{\ensuremath{\neq}}}1
+	{≤}{{\ensuremath{\leq}}}1
+	{≥}{{\ensuremath{\geq}}}1
+	{→}{{\ensuremath{\to}}}1
+	{↔}{{\ensuremath{\leftrightarrow}}}1
+	{∅}{{\ensuremath{\varnothing}}}1
+	{∪}{{\ensuremath{\cup}}}1
+	{∩}{{\ensuremath{\cap}}}1
+	{⊆}{{\ensuremath{\subseteq}}}1
+	{⊂}{{\ensuremath{\subset}}}1,
+  extendedchars=true
 }

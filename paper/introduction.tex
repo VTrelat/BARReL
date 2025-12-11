@@ -11,20 +11,8 @@ There were also developments in Rocq~\cite{Coq12}, focussing primarily on formal
 
 This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorems.
 Given either a B machine or a pre-generated proof obligation file, \barrel generates proof obligations (PO) if needed and translates each goal into a proper Lean theorem expressed over Mathlib~\cite{mathlib4}'s set-theoretic primitives, preserving the original structures and notations as closely as possible.
-The library exposes two commands, \texttt{mch\_discharger} and \texttt{pog\_discharger}, which produce a sequence of Lean goals corresponding to the PO of respectively the given machine and proof obligation file;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
+The library provides several commands \fixme[detail?] which produce a sequence of Lean goals corresponding to the PO of respectively the given machine and proof obligation file;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, an XML POG reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs.
-
-\info[perhaps remove from here?]
-A central challenge in this setting is the use of partial B operators.
-Function application, the minimum and maximum of a set, and cardinality are all only defined under suitable well-formedness (WF) conditions.
-Atelier~B typically handles these via additional WF proof obligations, which are generated \emph{after} the main obligations, expecting that they will be later instantiated when needed.
-Lean, on the other hand, has no built-in notion of partiality and must therefore exhibit WF conditions as explicit proof parameters of the relevant functions.
-This also means that one cannot construct a term depending on a partial operator without providing a proof that it is well-formed.
-From the user's perspective, the discharger presents a sequence of goals where WF obligations appear explicitly, ahead of the original PO, and all of them can be proved using the usual tactic language and existing library lemmas.
-
-The implementation is written entirely inside Lean using its elaboration and meta-programming facilities rather than a standalone translator.
-The B fragment currently supported already covers many industrially relevant obligations.
-Extending this fragment---for example, to handle strings or real numbers---typically requires only adding new syntax constructors and encoding clauses in the existing framework.
 Finally, \barrel opens the door to using Lean as an independent backend in B-based workflows and suggests interesting extensions, such as an integrated proof obligation generator which can even be verified.
 % We do not discuss semantics or soundness of the encoding in this paper.
 

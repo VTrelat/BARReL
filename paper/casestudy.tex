@@ -1,3 +1,95 @@
-\section{Case study}
+\section{Case study: a bounded job queue}
 
-\todo[TODO]
+\def\JOB{\ifmmode\mathtt{JOB}\else\texttt{JOB}\xspace\fi}
+\def\Limit{\ifmmode\mathtt{Limit}\else\texttt{Limit}\xspace\fi}
+\def\MaxDeadline{\ifmmode\mathtt{MaxDeadline}\else\texttt{MaxDeadline}\xspace\fi}
+\def\Ready{\ifmmode\mathtt{Ready}\else\texttt{Ready}\xspace\fi}
+\def\deadline{\ifmmode\mathtt{deadline}\else\texttt{deadline}\xspace\fi}
+\def\FIN{\ifmmode\mathtt{FIN}\else\texttt{FIN}\xspace\fi}
+\def\card{\ifmmode\mathtt{card}\else\texttt{card}\xspace\fi}
+\def\enqueue{\ifmmode\mathtt{enqueue}\else\texttt{enqueue}\xspace\fi}
+\def\dequeue{\ifmmode\mathtt{dequeue}\else\texttt{dequeue}\xspace\fi}
+\def\Z{\ifmmode\mathbb{Z}\else\ensuremath{\mathbb{Z}}\fi}
+
+To illustrate the intended workflow and the kind of obligations \barrel can handle, we consider a small B machine modelling a bounded queue of jobs with deadlines, shown in Listing~\ref{lst:jobqueue}.
+Jobs are represented by an abstract set \JOB; \Limit bounds the number of jobs that may be queued, and \MaxDeadline is a global upper bound on deadlines.
+The state of the machine consists of a set \Ready of jobs that are ready to run and a total function \deadline associating each job with a positive integer deadline.
+
+\begin{lstlisting}[language=b, caption={A bounded job queue in B}, label={lst:jobqueue}]
+MACHINE JobQueue
+SETS JOB
+CONSTANTS Limit, MaxDeadline
+PROPERTIES
+  Limit ∈ NAT1 ∧ MaxDeadline ∈ NAT1
+VARIABLES Ready, deadline
+INVARIANT
+  Ready ⊆ JOB ∧ Ready ∈ FIN(JOB) ∧ deadline ∈ JOB → NAT1 ∧
+  card(Ready) ≤ Limit ∧
+  (Ready ≠ ∅ ⇒
+     min(deadline[Ready]) ≥ 1 ∧
+     max(deadline[Ready]) ≤ MaxDeadline)
+INITIALISATION
+  Ready := ∅ || deadline :∈ JOB → NAT1
+OPERATIONS
+  enqueue(j) =
+    PRE j ∈ JOB ∧ j ∉ Ready ∧ card(Ready) < Limit ∧ deadline(j) ≤ MaxDeadline
+    THEN
+      Ready := Ready ∪ {j}
+    END
+END
+\end{lstlisting}
+
+This example showcases multiple features of \barrel:
+\begin{itemize}
+  \item natural translation of POs ensuring readability of the generated goals,
+  \item partial operators (\texttt{min}, \texttt{max}, and \texttt{card}) truly depending on well-formedness conditions,
+  \item benefit from Lean's rich reasoning infrastructure and automation
+\end{itemize}
+
+We start by importing the machine \texttt{JobQueue} to Lean with the following command:
+\begin{lstlisting}[language=lean]
+import machine JobQueue from "specs/"
+\end{lstlisting}
+Should it be a system---resp.\@ a POG file---we would replace \texttt{machine} with \texttt{system} instead---resp.\@ \texttt{pog}---.
+This command encodes each proof obligation as a Lean statement stored in the local environment.
+Then, we invoke the following command to generate all corresponding theorems, left as interactive goals to be discharged by the user:
+\begin{lstlisting}[language=lean]
+prove_obligations_of JobQueue
+\end{lstlisting}
+For \texttt{JobQueue} we obtain 15 goals, presented in the order of the POG tags, 9 of which consist of WF obligations for every contextual occurrence of \texttt{card}, \texttt{min}, \texttt{max}, and application of \texttt{deadline}; the remaining 6 goals correspond to the usual initialization and invariant-preservation proof obligations for the \texttt{enqueue} operation.
+Each goal is discharged by providing a \texttt{next} block with a tactic script and corresponds to a theorem declaration named after the original POG tag.
+
+\paragraph*{Well-formedness goals}
+The first two WF goals correspond to the occurrence of \texttt{card} in the invariant, which has to be proved well-formed both in the initial state and any other reachable state:
+
+\begin{description}
+  \item[\texttt{JobQueue.Initialisation.wf\_0}:] $\mathtt{card.WF}(\varnothing)$
+    
+  \item[\texttt{JobQueue.Operation\_enqueue\_2.wf\_0}:] $\forall\, \Ready \in \FIN(\JOB), \mathtt{card.WF}(\Ready)$
+\end{description}
+
+Both goals can be easily discharged by applying helper lemmas \texttt{card.WF\_of\_empty} and \texttt{card.WF\_of\_finite} respectively.
+Other WF obligations are proved similarly, picking appropriate lemmas from our library of helper lemmas or previously proved WF goals.
+This illustrates how BARReL exposes WF obligations as ordinary Lean lemmas and how they can be discharged using reusable library facts.
+
+\subsection*{Invariant preservation for \texttt{enqueue}}
+
+The more interesting goals are the invariant-preservation obligations for the operation \texttt{enqueue}.
+\barrel generates a goal asserting that if the invariant holds in a given state, if the precondition of
+\texttt{enqueue(j)} is satisfied, and if we set $\texttt{Ready}$ to $\texttt{Ready} \cup \{j\}$,
+then the invariant still holds in the new state.
+The proof splits according to the different conjuncts of the invariant.
+We only show here the proof corresponding to the deadline upper bound. The corresponding goal in Lean is:
+\begin{description}
+  \item[\texttt{JobQueue.Operation\_enqueue\_5}]
+  \begin{align*}
+    \forall j &\in \JOB, \Ready \in \FIN(\JOB) \to (\deadline \in \JOB \longrightarrow \mathbb{N}_1) \\
+    & \to (\Ready \ne \varnothing \to\\
+    & \qquad 1 \le \min(\deadline[\Ready]) \cdots \land \max (\deadline[\Ready]) \cdots \le \MaxDeadline) \\
+    &\to j \notin \Ready \to \deadline(j)'\cdots \le \MaxDeadline \to \Ready \cup \{j\} \ne \varnothing \\
+    &\to \max (\deadline[\Ready \cup \{j\}]) \cdots \le \MaxDeadline
+    \end{align*}
+\end{description}
+where partial operators depend on their well-formedness proofs (omitted here for readability and written as \texttt{$\cdots$}, just like in Lean).
+Intuitively here, we distinguish whether \Ready is empty or not and use the invariant with the appropriate simplification lemmas to conclude the proof.
+The important point is that there is an explicit dependency between the main goal and the WF goals corresponding to the partial operators used in this goal.
