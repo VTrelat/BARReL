@@ -37,20 +37,21 @@ private def findWF (g : Expr) (wfs : Array (Name × String × Expr)) (wfs' : Arr
   else
     return .none
 
-private def mch2goals (name : String) (mchPath : System.FilePath) : CommandElabM ParserResult := do
+private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandElabM ParserResult := do
   let atelierBDir := System.FilePath.mk <| (← getOptions).getString `barrel.atelierb
 
   let mchName := nameOf mchPath
 
   -- Parse the machine, generate the POG
   let stdout ← IO.Process.run {
-    cmd := (atelierBDir/"bin"/"bxml").toString, args := #["-a", mchPath.toString]
+    cmd := (atelierBDir/"bin"/"bxml").toString
+    args := #["-I", dir.toString, "-a", mchPath.toString]
   }
   let tmp ← IO.FS.createTempDir
   let bxml := tmp/System.FilePath.addExtension mchName "bxml"
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {
-    cmd := (atelierBDir/"bin"/"pog").toString,
+    cmd := (atelierBDir/"bin"/"pog").toString
     /-
       Although `pog` can generate the WF conditions for us (with the `-w` flag), we will not be using these.
 
@@ -149,13 +150,14 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
 
     i := i + 1
 
-  modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name path)
-  modifyEnv (cache.modifyState · λ map ↦ map.insert path (wfs ++ res))
+  let absPath ← IO.FS.realPath path
+  modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name absPath)
+  modifyEnv (cache.modifyState · λ map ↦ map.insert absPath (wfs ++ res))
 
 private def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   let env ← getEnv
   let .some path := nameFromPath.getState env |>.find? name
-    | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import_mch` or `import_pog`."
+    | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import`."
   let .some goals := cache.getState env |>.find? path
     | throwError "Impossible!"
   let mut proofs_missing := 0
@@ -209,9 +211,11 @@ declare_syntax_cat import_kind
 syntax "machine" : import_kind
 syntax "system" : import_kind
 syntax "pog" : import_kind
+syntax "refinement" : import_kind
 
 private def extFromKind : TSyntax `import_kind → MacroM String
   | `(import_kind| machine) => pure "mch"
+  | `(import_kind| refinement) => pure "ref"
   | `(import_kind| system) => pure "sys"
   | `(import_kind| pog) => pure "pog"
   | _ => Macro.throwUnsupported
@@ -223,11 +227,12 @@ private def extFromKind : TSyntax `import_kind → MacroM String
 elab "import " kind:import_kind ppSpace name:ident " from " path:str : command => do
   let name := name.getId.getString!
   let ext ← liftMacroM <| extFromKind kind
-  let path := System.FilePath.mk path.getString/System.FilePath.addExtension name ext
+  let path := System.FilePath.mk path.getString
+  let filePath := path/System.FilePath.addExtension name ext
   -- TODO: verify a snapshot etc, so that the files are only re-generated/re-parsed when changed or the first time
   pog2obligations =<< match ext with
-    | "pog" => pog2goals name path
-    | _ => mch2goals name path
+    | "pog" => pog2goals name filePath
+    | _ => mch2goals name path filePath
 
 /--
   Provide the proofs for the theorems generated from a given machine.
