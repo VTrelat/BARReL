@@ -23,14 +23,14 @@ OPERATIONS
     THEN
       Ready := Ready ∪ {j}
     END;
-  dequeue =
-    PRE Ready ≠ ∅
-    THEN
-      ANY j WHERE
-        j ∈ Ready ∧
-        deadline(j) = min(deadline[Ready])
-      THEN
-        Ready := Ready - {j}
-      END
-    END
+  // dequeue =
+  //   PRE Ready ≠ ∅
+  //   THEN
+  //     ANY j WHERE
+  //       j ∈ Ready ∧
+  //       deadline(j) = min(deadline[Ready])
+  //     THEN
+  //       Ready := Ready - {j}
+  //     END
+  //   END
 END
