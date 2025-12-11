@@ -70,6 +70,7 @@ namespace B.Syntax
     | domSubtr (R E : Term)
     | codomRestr (R E : Term)
     | codomSubtr (R E : Term)
+    | overload (R T : Term)
     -- functions
     | dom (f : Term)
     | ran (f : Term)
@@ -146,6 +147,7 @@ namespace B.Syntax
     | .domSubtr R E => «infixl» Term.pretty 160 "⩤" R E
     | .codomRestr R E => «infixl» Term.pretty 160 "▷" R E
     | .codomSubtr R E => «infixl» Term.pretty 160 "⩥" R E
+    | .overload R T => «infixl» Term.pretty 160 "<+" R T
     | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)

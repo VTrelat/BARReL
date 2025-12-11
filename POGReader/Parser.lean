@@ -146,7 +146,7 @@ namespace B.POG
     | "/\\" => return .inter
     | "/|\\" => panic! "TODO"
     | ";" => panic! "TODO"
-    | "<+" => panic! "TODO"
+    | "<+" => return .overload
     | "<->" => return .rel
     | "<-" => panic! "TODO"
     | "<|" => return .domRestr

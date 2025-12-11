@@ -101,6 +101,7 @@ namespace B.POG
     | .codomRestr t₁ t₂ => .codomRestr t₁.normalize t₂.normalize
     | .domSubtr t₁ t₂ => .domSubtr t₁.normalize t₂.normalize
     | .domRestr t₁ t₂ => .domRestr t₁.normalize t₂.normalize
+    | .overload t₁ t₂ => .overload t₁.normalize t₂.normalize
 
   def extractGoals (pos : Schema.ProofObligations) : Array Goal :=
     pos.obligations.flatMap λ obligation ↦
