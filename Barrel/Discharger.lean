@@ -88,6 +88,8 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   -- let mut wfs := #[]
   let mut res := #[]
   let mut wfs : Array (Name × String × Expr) := #[]
+  let mut autoDischarged := 0
+  let mut nbGoals := goals.size
   let mut i := 0
 
   for g in goals do
@@ -115,6 +117,7 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
 
       pure (declName, g.reason, g', wfs')
 
+    nbGoals := nbGoals + wfs'.size
     let try_discharge := wfs'.push (declName, reason, g', false)
 
     -- NOTE: Now try and solve it automatically...if possible
@@ -152,16 +155,20 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
           pure <| .inr (declName, reason, g, isWf)
 
       match gOrWf with
-      | .inl _ => pure ()
+      | .inl _ => autoDischarged := autoDischarged + 1
       | .inr (declName, reason, g, isWf) =>
         let goal := (declName, reason, g)
         if isWf then wfs := wfs.push goal else res := res.push goal
 
     i := i + 1
 
+  let goals := wfs ++ res
+  if (← getOptions).getBool `barrel.show_auto_solved && autoDischarged > 0 then
+    logInfo s!"🎉 Automatically solved {autoDischarged} out of {nbGoals} subgoals!"
+
   let absPath ← IO.FS.realPath path
   modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name absPath)
-  modifyEnv (cache.modifyState · λ map ↦ map.insert absPath (wfs ++ res))
+  modifyEnv (cache.modifyState · λ map ↦ map.insert absPath goals)
 
 private def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
   let env ← getEnv
