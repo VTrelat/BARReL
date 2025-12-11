@@ -4,6 +4,7 @@ import Mathlib.Util.AssertNoSorry
 -- set_option trace.barrel true
 -- set_option trace.barrel.cache true
 -- set_option trace.barrel.wf true
+-- set_option trace.barrel.wf true
 -- set_option trace.barrel.checkpoints true
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
@@ -43,23 +44,6 @@ next
     | assumption
     | apply FIN₁.of_insert <;> assumption
   }
-next exact fun _ _ _ _ _ _ h h' _ _ _ _ _ _ h'' ↦ app.WF_of_mem_tfun h' (h.1 h'')
-next exact fun _ _ _ _ _ _ h h' _ _ _ _ _ _ h'' ↦ min.WF_of_finite_image_tfun h' ⟨h, Set.nonempty_of_mem h''⟩
-next
-  intros
-  generalize_proofs at *
-  apply card.WF_of_sdiff
-  assumption
-next
-  intros
-  expose_names
-  apply min.WF_of_finite_image_tfun <;> try assumption
-  exact ⟨FIN.of_sub h Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_10⟩
-next
-  intros
-  expose_names
-  apply max.WF_of_finite_image_tfun <;> try assumption
-  exact ⟨FIN.of_sub h Set.diff_subset, Set.nonempty_iff_ne_empty.mpr h_10⟩
 next
   intros
   exact FIN.of_empty
@@ -117,38 +101,7 @@ next
   · rw [Set.not_nonempty_iff_eq_empty] at Ready_nemp
     subst Ready
     simpa
-next
-  intros
-  expose_names
-  exact FIN.of_sub (A := JOB) h Set.diff_subset
-next
-  intros
-  expose_names
-  generalize_proofs at *
-  rw [card.of_diff_singleton _ ‹_›, ite_cond_eq_true _ _ (eq_true h_8)]
-  rw [tsub_le_iff_right]
-  trans Limit
-  · exact h_2
-  · exact Int.le_add_one (Int.le_refl Limit)
-next
-  intros
-  expose_names
-  generalize_proofs at *
-  suffices B.Builtins.min (deadline[Ready \ {j}]) ‹_› ∈ NAT₁ by
-    exact this.1
-  have := min.mem (S := deadline[Ready \ {j}]) ‹_›
-  simp at this
-  obtain ⟨_, _, this⟩ := this
-  exact h_1.1.1 this |>.2
-next
-  intros
-  expose_names
-  obtain ⟨min_ge, max_le⟩ := h_3 h_7
-  generalize_proofs at *
-  trans B.Builtins.max (deadline[Ready]) ‹_›
-  · apply max.mono
-    intro z hz
-    simp only [SetRel.mem_image, Set.mem_diff, Set.mem_singleton_iff] at hz
-    obtain ⟨w, ⟨_, _⟩, _⟩ := hz
-    exists w
-  · exact max_le
+
+-- set_option trace.barrel.solve true
+import refinement mm2 from "/Users/vtrelat/Documents/phd-b2smt/B/Mery"
+prove_obligations_of mm2
