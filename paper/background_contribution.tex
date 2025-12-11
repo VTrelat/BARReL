@@ -2,7 +2,7 @@
 
 \subsection{Background}
 \noindent\info[Check where this belongs]
-The B method is deeply rooted in classical set theory.
+Set theory lies at the core of the B method.
 That is, every value is a set that is constrained by some properties that define its shape.
 For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
 However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification (except for intrinsics such as \texttt{INTEGER} or \texttt{POW}) \fixme[weird sentence].
@@ -12,13 +12,10 @@ However, specifications written in the B method are still required to satisfy so
 \begin{figure}[htb]
 	\caption{High-level picture of \barrel.}
 
-	\tikzset{
-		file/.style={chamfered rectangle, draw, chamfered rectangle corners=north west},
-		entity/.style={rectangle, draw}
-	}
-
 	\centering
 	\begin{tikzpicture}[
+			file/.style={chamfered rectangle, draw, chamfered rectangle corners=north west},
+			entity/.style={rectangle, draw},
 			node distance=1.5cm and 1.5cm,
 			every node/.style={inner sep=6pt, align=center, minimum height=1.22cm, outer sep=0},
 			% start chain = going right,
