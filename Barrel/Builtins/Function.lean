@@ -264,25 +264,37 @@ namespace B.Builtins
   section
     open Lean
 
-    macro:289 "𝜆" "(" xs:ident,+ ")" " • " "(" P:term " | " F:term ")" : term => do
+    macro:289 "𝜆" "(" xs:ident,+ ")" " • " "(" h:(binderIdent " : ")? P:term " | " F:term ")" : term => do
       let xs : TSyntaxArray `ident := xs.getElems
       let y : TSyntax `ident := Lean.mkCIdent `y
       let tup : TSyntax `term ← xs[1:].foldlM (init := ← `(term| $(xs[0]!):ident)) λ acc x ↦ `(term| ($acc, $x:ident))
-      `({ ($tup, $y:ident) | $P ∧' $y:ident = $F })
+      match h with
+      | .none => `({ ($tup, $y:ident) | $P ∧' $y:ident = $F })
+      | .some h =>
+        let h : TSyntax ``binderIdent := ⟨h.raw[0]⟩
+        `({ ($tup, $y:ident) | ($h : $P) ∧' $y:ident = $F })
 
     @[app_unexpander setOf] meta def unexpandLambda : Lean.PrettyPrinter.Unexpander
       | `($_ fun $z₁:ident => match $z₂:ident with | ($tup, $y₁:ident) => $P:term ∧' $y₂:ident = $F:term) => do
+        go z₁ z₂ y₁ y₂ tup .none P F
+      | `($_ fun $z₁:ident => match $z₂:ident with | ($tup, $y₁:ident) => ($h:binderIdent : $P:term) ∧' $y₂:ident = $F:term) => do
+        go z₁ z₂ y₁ y₂ tup (.some h) P F
+      | _ => throw ()
+    where
+      getVars : TSyntax `term → Option (Array (TSyntax `ident))
+        | `(term| $x:ident) => .some #[x]
+        | `(term| ($t:term, $x:ident)) => getVars t |>.map (·.push x)
+        | _ => throw ()
+
+      go z₁ z₂ y₁ y₂ tup (h : Option (TSyntax ``binderIdent)) P F := do
         if z₁ == z₂ && y₁ == y₂ then
-          let rec getVars : TSyntax `term → Option (Array (TSyntax `ident))
-            | `(term| $x:ident) => .some #[x]
-            | `(term| ($t:term, $x:ident)) => getVars t |>.map (·.push x)
-            | _ => throw ()
           if let .some vars := getVars tup then
-            `(𝜆 ($vars,*) • ($P | $F))
+            match h with
+            | .none => `(𝜆 ($vars,*) • ($P:term | $F))
+            | .some h => `(𝜆 ($vars,*) • ($h : $P:term | $F))
           else
             throw ()
         else
           throw ()
-      | _ => throw ()
   end
 end B.Builtins
