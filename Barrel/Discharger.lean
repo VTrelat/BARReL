@@ -47,7 +47,16 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
     cmd := (atelierBDir/"bin"/"bxml").toString
     args := #["-I", dir.toString, "-a", mchPath.toString]
   }
-  let tmp ← IO.FS.createTempDir
+  let cacheDir := (← getOptions).getString `barrel.cache_dir
+  let tmp ← do
+    if cacheDir.isEmpty then
+      IO.FS.createDirAll (dir/".barrel")
+      pure <| dir/".barrel"
+    else if ←System.FilePath.pathExists (System.FilePath.mk cacheDir) then
+      pure (System.FilePath.mk cacheDir)
+    else
+      IO.FS.createDirAll (System.FilePath.mk cacheDir)
+      pure (System.FilePath.mk cacheDir)
   let bxml := tmp/System.FilePath.addExtension mchName "bxml"
   IO.FS.writeFile bxml stdout
   let _ ← IO.Process.run {

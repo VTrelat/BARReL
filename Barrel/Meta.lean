@@ -26,4 +26,9 @@ register_option barrel.show_goal_names : Bool := {
   descr := "Show the goal name on `next`"
 }
 
+register_option barrel.cache_dir : String := {
+  defValue := ""
+  descr := "Path to the cache directory for storing parsed POGs"
+}
+
 -----------
