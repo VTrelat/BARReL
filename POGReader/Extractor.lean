@@ -106,8 +106,8 @@ namespace B.POG
   def extractGoals (pos : Schema.ProofObligations) : Array Goal :=
     pos.obligations.flatMap λ obligation ↦
       let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
-      let (sets, hyps₁) := extractSetsAndHyps uses
-      let hyps₂ := sets.map λ set ↦
+      let (sets, hyps₂) := extractSetsAndHyps uses
+      let hyps₁ := sets.map λ set ↦
         if set.values.isEmpty then
           .mem (.var set.name) <| .fin₁ .ℤ
         else
