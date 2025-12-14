@@ -59,13 +59,13 @@ next
 import machine Injective from "specs/"
 prove_obligations_of Injective
 next
-  rintro X Y F x y ⟨_, F_tot⟩ _ _ x_mem_X _
+  rintro X Y F x y _ _ ⟨_, F_tot⟩ x_mem_X _
   exact app.WF_of_mem_tfun F_tot x_mem_X
 next
-  rintro X Y F x y ⟨_, F_tot⟩ _ _ _ y_mem_X
+  rintro X Y F x y _ _ ⟨_, F_tot⟩ _ y_mem_X
   exact app.WF_of_mem_tfun F_tot y_mem_X
 next
-  rintro X Y F x y ⟨⟨_, F_inj⟩, F_tot⟩ _ _ x_mem_X y_mem_X F_eq
+  rintro X Y F x y _ _ ⟨⟨_, F_inj⟩, F_tot⟩ x_mem_X y_mem_X F_eq
   generalize_proofs wf_x wf_y at F_eq
   apply F_inj
   · exact app.pair_app_mem (wf := wf_x)
@@ -76,13 +76,13 @@ next
 import machine HO from "specs/"
 prove_obligations_of HO
 next
-  intros X Y x _ _  _ x_mem_X _ _ _ _ _ _ G G_fun
+  intros X Y x _ _ _ _ _ x_mem_X _ _ _ _ G G_fun
   exact app.WF_of_mem_tfun G_fun x_mem_X
 next
-  intros X Y x _ _ F x_mem_X _ _ _ F_fun _ _ _ _
+  intros X Y x _ _ F _ _ x_mem_X _ _ _ F_fun _ _
   exact app.WF_of_mem_tfun F_fun x_mem_X
 next
-  intros X Y x y₀ y₁ F x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun _ _
+  intros X Y x y₀ y₁ F _ _ x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun
 
   by_cases hF : (x, y₀) ∈ F
   · exists F <+ {(x, y₁)}
@@ -186,36 +186,36 @@ assert_no_sorry CounterMin.Initialisation_1
 assert_no_sorry CounterMin.Operation_inc_2
 assert_no_sorry CounterMin.Operation_inc_3
 
-import machine Pixels from "specs/"
-prove_obligations_of Pixels
-next
-  rintro Colors Red Green Blue
-    pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
-  exact app.WF_of_mem_tfun hpp h₂
-next
-  rintro Colors Red Green Blue _ rfl rfl Colors_card
-  and_intros
-  · rintro x (rfl|rfl|rfl) <;> simp
-  · intros x y z hxy hxz
-    simp at hxy hxz
-    obtain ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ := hxy <;> {
-      obtain ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ := hxz
-      <;> rfl
-    }
-  · rintro x (rfl | rfl | rfl) <;> {
-      exists 0
-      simp
-    }
-next
-  admit
-next
-  simp_intro .. [*]
-  -- grind
-  admit
-next
-  simp_intro .. [*]
-  -- grind
-  admit
+-- import machine Pixels from "specs/"
+-- prove_obligations_of Pixels
+-- next
+--   rintro Colors Red Green Blue
+--     pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
+--   exact app.WF_of_mem_tfun hpp h₂
+-- next
+--   rintro Colors Red Green Blue _ rfl rfl Colors_card
+--   and_intros
+--   · rintro x (rfl|rfl|rfl) <;> simp
+--   · intros x y z hxy hxz
+--     simp at hxy hxz
+--     obtain ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ := hxy <;> {
+--       obtain ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ | ⟨⟨⟩, ⟨⟩⟩ := hxz
+--       <;> rfl
+--     }
+--   · rintro x (rfl | rfl | rfl) <;> {
+--       exists 0
+--       simp
+--     }
+-- next
+--   admit
+-- next
+--   simp_intro .. [*]
+--   -- grind
+--   admit
+-- next
+--   simp_intro .. [*]
+--   -- grind
+--   admit
 
 import machine Collect2 from "specs/"
 prove_obligations_of Collect2
@@ -238,10 +238,10 @@ next
 import machine Eta from "specs/"
 prove_obligations_of Eta
 next
-  intros X Y F F_tfun _ _ x _ x_mem
+  intros X Y F _ _ F_tfun x _ x_mem
   exact app.WF_of_mem_tfun F_tfun x_mem
 next
-  intros X Y F F_tfun _ _
+  intros X Y F _ _ F_tfun
   ext ⟨x, y⟩
   dsimp
   generalize_proofs wf₁

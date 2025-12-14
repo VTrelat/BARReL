@@ -14,7 +14,7 @@ namespace B.POG.Schema
     | ctx | seext | inv | ass
     | lprp | inprp | inext | cst | sets | mchcst
     | aprp | abs | imlprp | imprp | imext
-    deriving BEq, Hashable, Repr
+    deriving BEq, Hashable, Repr, ReflBEq, LawfulBEq
 
   inductive Define : DefineType → Type _
     | ctx : Array Set → Array Term → Define .ctx
@@ -33,6 +33,24 @@ namespace B.POG.Schema
     | imprp : Array Set → Array Term → Define .imprp
     | imext : Array Term → Define .imext
   deriving Repr
+
+  instance {k} : Inhabited (Define k) := ⟨match k with
+      | .ctx => .ctx #[] #[]
+      | .seext => .seext #[]
+      | .inv => .inv #[]
+      | .ass => .ass #[]
+      | .lprp => .lprp #[] #[]
+      | .inprp => .inprp #[] #[]
+      | .inext => .inext #[]
+      | .cst => .cst #[]
+      | .sets => .sets #[]
+      | .mchcst => .mchcst #[]
+      | .aprp => .aprp #[] #[]
+      | .abs => .abs #[]
+      | .imlprp => .imlprp #[] #[]
+      | .imprp => .imprp #[] #[]
+      | .imext => .imext #[]
+    ⟩
 
   structure SimpleGoal : Type _ where
     name : String

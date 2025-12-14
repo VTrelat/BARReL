@@ -1,6 +1,7 @@
 name = "Barrel"
 version = "0.1.0"
 defaultTargets = ["Barrel"]
+buildType = "debug"
 
 [[require]]
 name = "mathlib"

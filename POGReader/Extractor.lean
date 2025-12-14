@@ -12,23 +12,23 @@ namespace B.POG
     goal : Syntax.Term
   deriving Inhabited
 
-  private def extractSetsAndHyps (defs : Std.DHashMap Schema.DefineType Schema.Define) : Array Schema.Set × Array Syntax.Term :=
-    defs.fold (init := (#[], #[])) λ (sets, terms) ↦ λ
-      | .ctx, .ctx ss ts
-      | .lprp, .lprp ss ts
-      | .aprp, .aprp ss ts
-      | .imlprp, .imlprp ss ts
-      | .imprp, .imprp ss ts
-      | .inprp, .inprp ss ts => (sets ++ ss, terms ++ ts)
-      | .seext, .seext ts
-      | .inv, .inv ts
-      | .inext, .inext ts
-      | .cst, .cst ts
-      | .mchcst, .mchcst ts
-      | .abs, .abs ts
-      | .imext, .imext ts
-      | .ass, .ass ts => (sets, terms ++ ts)
-      | .sets, .sets ss => (sets ++ ss, terms)
+  private def extractSetsAndHyps (defs : Array (Σ k, Schema.Define k)) : Array Schema.Set × Array Syntax.Term :=
+    defs.foldl (init := (#[], #[])) λ (sets, terms) ↦ λ
+      | ⟨.ctx, .ctx ss ts⟩
+      | ⟨.lprp, .lprp ss ts⟩
+      | ⟨.aprp, .aprp ss ts⟩
+      | ⟨.imlprp, .imlprp ss ts⟩
+      | ⟨.imprp, .imprp ss ts⟩
+      | ⟨.inprp, .inprp ss ts⟩ => (sets ++ ss, terms ++ ts)
+      | ⟨.seext, .seext ts⟩
+      | ⟨.inv, .inv ts⟩
+      | ⟨.inext, .inext ts⟩
+      | ⟨.cst, .cst ts⟩
+      | ⟨.mchcst, .mchcst ts⟩
+      | ⟨.abs, .abs ts⟩
+      | ⟨.imext, .imext ts⟩
+      | ⟨.ass, .ass ts⟩ => (sets, terms ++ ts)
+      | ⟨.sets, .sets ss⟩ => (sets ++ ss, terms)
 
   private def _root_.B.Syntax.Term.splitAnds : Syntax.Term → Array Syntax.Term
     | .and t₁ t₂ => t₁.splitAnds ++ t₂.splitAnds
@@ -105,7 +105,8 @@ namespace B.POG
 
   def extractGoals (pos : Schema.ProofObligations) : Array Goal :=
     pos.obligations.flatMap λ obligation ↦
-      let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
+      let uses : Array (Σ k, Schema.Define k) := obligation.uses.map λ k ↦ ⟨k, pos.defines.get! k⟩
+      -- let uses := pos.defines.filter λ k _ ↦ obligation.uses.contains k
       let (sets, hyps₂) := extractSetsAndHyps uses
       let hyps₁ := sets.map λ set ↦
         if set.values.isEmpty then
