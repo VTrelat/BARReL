@@ -1,6 +1,7 @@
 import Barrel.Builtins.Init
 import Barrel.Builtins.Relation
 import Batteries.Tactic.GeneralizeProofs
+import Barrel.Tactics
 
 namespace B.Builtins
   abbrev pfun {α β : Type _} (A : Set α) (B : Set β) : Set (SetRel α β) :=
@@ -82,6 +83,7 @@ namespace B.Builtins
         obtain ⟨rfl, rfl⟩ := hxz
         rfl
 
+    @[wf_app]
     theorem app.WF_of_mem_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hA : A ⊆ dom f) (hx : x ∈ A) :
       app.WF f x where
       isPartialFunction := by
@@ -99,6 +101,7 @@ namespace B.Builtins
           exists x
       isInDomain := hA hx
 
+    @[wf_app]
     theorem app.WF_of_mem_dom_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hx : x ∈ dom f) :
       app.WF f x where
       isPartialFunction := by
@@ -116,6 +119,7 @@ namespace B.Builtins
           exists x
       isInDomain := hx
 
+    @[wf_app]
     theorem app.WF_of_mem_tfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α}
       (hf : f ∈ A ⟶ B) (hx : x ∈ A) :
         app.WF f x := by
@@ -191,7 +195,7 @@ namespace B.Builtins
 
     @[mono]
     theorem tfun.range_mono {α β : Type _} {A : Set α} {B C : Set β}
-        (hBC : B ⊆ C) : A ⟶ B ⊆ A ⟶ C := by
+        (hBC : B ⊆ C) : tfun A B ⊆ tfun A C := by
       intro f hf
       constructor
       · exact pfun.mono (subset_refl _) hBC (Set.mem_of_mem_inter_left hf)
@@ -279,6 +283,7 @@ namespace B.Builtins
           · nomatch notmem_f₂' _ mem_f₂
           · exact hf₂.2 mem_f₂ mem_f₂'
 
+    @[wf_app]
     theorem app.WF_of_overload {α β : Type _} {A C : Set α} {B D : Set β} {f₁ f₂ : SetRel α β}
       {x : α} (hf₁ : f₁ ∈ A ⇸ B) (hf₂ : f₂ ∈ C ⇸ D) (hx : x ∈ dom f₁ ∨ x ∈ dom f₂) :
         app.WF (f₁ <+ f₂) x := by

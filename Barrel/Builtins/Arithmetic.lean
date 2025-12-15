@@ -8,6 +8,7 @@ import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Data.Int.Interval
 import Mathlib.Order.Interval.Finset.Defs
+import Barrel.Tactics
 namespace B.Builtins
   open Classical
 
@@ -157,7 +158,7 @@ namespace B.Builtins
       rw [eq_interval]
       apply interval.finite
 
-    @[grind., simp]
+    @[grind., simp, wf_min]
     theorem min.WF_NATURAL : min.WF NATURAL := by
       exists 0
       and_intros
@@ -165,6 +166,7 @@ namespace B.Builtins
       · intro y hy
         rwa [Set.mem_setOf] at hy
 
+    @[wf_min]
     theorem min.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
         min.WF S := by
       let fin := Set.Finite.to_subtype h.1.2
@@ -172,6 +174,7 @@ namespace B.Builtins
       obtain ⟨x, h⟩ := Finite.exists_min (@_root_.id ↑S)
       exact ⟨x, Subtype.coe_prop x, fun y hy ↦ h ⟨y, hy⟩⟩
 
+    @[wf_max]
     theorem max.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
         max.WF S := by
       let fin := Set.Finite.to_subtype h.1.2
@@ -179,12 +182,12 @@ namespace B.Builtins
       obtain ⟨x, h⟩ := Finite.exists_max (@_root_.id ↑S)
       exact ⟨x, Subtype.coe_prop x, fun y hy ↦ h ⟨y, hy⟩⟩
 
-    @[grind .]
+    @[grind ., wf_max]
     theorem max.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : max.WF (lo..hi) := by
       exists hi
       and_intros <;> grind
 
-    @[grind .]
+    @[grind ., wf_min]
     theorem min.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : min.WF (lo..hi) := by
       exists lo
       and_intros <;> grind
@@ -197,7 +200,7 @@ namespace B.Builtins
     theorem max.mem {α : Type _} [PartialOrder α] {S : Set α} (wf : max.WF S) :
         max S wf ∈ S := (Classical.choose_spec wf.isBoundedAbove).1
 
-    @[grind .]
+    @[grind ., wf_min]
     theorem min.WF_of_union {α : Type _} [LinearOrder α] {S T : Set α}
         (hS : min.WF S) (hT : min.WF T) : min.WF (S ∪ T) := by
       obtain ⟨s_min, s_min_mem, s_min_bnd⟩ := hS
@@ -219,7 +222,7 @@ namespace B.Builtins
           · exact le_trans hm (t_min_bnd y hy)
           · exact t_min_bnd y hy
 
-    @[grind .]
+    @[grind ., wf_max]
     theorem max.WF_of_union {α : Type _} [LinearOrder α] {S T : Set α}
         (hS : max.WF S) (hT : max.WF T) : max.WF (S ∪ T) := by
       obtain ⟨s_max, s_max_mem, s_max_bnd⟩ := hS
@@ -259,11 +262,11 @@ namespace B.Builtins
       obtain ⟨m_def, m_is_max⟩ := Classical.choose_spec hm
       exact le_antisymm m_def.2 (m_is_max _ (Set.right_mem_Icc.mpr h))
 
-    @[grind .]
+    @[grind ., wf_min]
     theorem min.WF_singleton {α : Type _} [PartialOrder α] {a : α} : min.WF {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ ge_of_eq⟩
 
-    @[grind .]
+    @[grind ., wf_max]
     theorem max.WF_singleton {α : Type _} [PartialOrder α] {a : α} : max.WF {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ le_of_eq⟩
 
@@ -274,7 +277,7 @@ namespace B.Builtins
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
 
-    @[grind .]
+    @[grind ., wf_min]
     theorem min.WF_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
         (hS : min.WF S) : min.WF (insert a S) := by
       obtain ⟨s_min, s_min_mem, s_min_bnd⟩ := hS
@@ -330,7 +333,7 @@ namespace B.Builtins
             (s_min_is_min _ (Set.mem_insert_of_mem a m_def))
             (m_is_min s_min s_min_in)
 
-    @[grind .]
+    @[grind ., wf_max]
     theorem max.WF_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
         (hS : max.WF S) : max.WF (insert a S) := by
       obtain ⟨s_max, s_max_mem, s_max_bnd⟩ := hS
@@ -408,6 +411,7 @@ namespace B.Builtins
       (hmin : min.WF S) (hmax : max.WF S) :
         min S hmin ≤ max S hmax := max.ge_min hmax hmin
 
+    @[wf_min]
     theorem min.WF_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⇸ B) (hS : S ∈ FIN₁ (dom f)) :
         min.WF (f[S]) := by
@@ -452,12 +456,14 @@ namespace B.Builtins
         obtain ⟨w, hw⟩ := sub_dom hs
         exists w, s
 
+    @[wf_min]
     theorem min.WF_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⟶ B) (hS : S ∈ FIN₁ A) :
         min.WF (f[S]) := by
       apply min.WF_of_finite_image_pfun (Set.mem_of_mem_inter_left hf)
       rwa [tfun_dom_eq hf]
 
+    @[wf_max]
     theorem max.WF_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⇸ B) (hS : S ∈ FIN₁ (dom f)) :
         max.WF (f[S]) := by
@@ -502,6 +508,7 @@ namespace B.Builtins
         obtain ⟨w, hw⟩ := sub_dom hs
         exists w, s
 
+    @[wf_max]
     theorem max.WF_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⟶ B) (hS : S ∈ FIN₁ A) :
         max.WF (f[S]) := by
@@ -522,11 +529,11 @@ namespace B.Builtins
           (choose hS.isBoundedAbove)
           (hsub (choose_spec hS.isBoundedAbove).left)
 
-    @[grind ., simp]
+    @[grind ., simp, wf_card]
     theorem card.WF_of_empty {α : Type _} : card.WF (∅ : Set α) where
       isFinite := Set.finite_empty
 
-    @[grind ., simp]
+    @[grind ., simp, wf_card]
     theorem card.WF_of_interval {lo hi : ℤ} : card.WF (lo .. hi) where
       isFinite := interval.finite lo hi
 
@@ -549,20 +556,22 @@ namespace B.Builtins
       · rw [Int.sub_nonneg]
         exact Int.le_add_one h
 
-    @[grind <=]
+    @[grind <=, wf_card]
     theorem card.WF_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
         (hT : card.WF T) : card.WF S where
       isFinite := Set.Finite.subset hT.isFinite hS
 
+    @[wf_card]
     theorem card.WF_of_finite {α : Type _} {S A : Set α} (h : S ∈ FIN A) :
         card.WF S where
       isFinite := h.2
 
+    @[wf_card]
     theorem card.WF_of_finite' {α : Type _} {S A : Set α} (h : S ∈ FIN₁ A) :
         card.WF S where
       isFinite := h.1.2
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_singleton {α : Type _} {a : α} : card.WF {a} where
       isFinite := Set.finite_singleton a
 
@@ -580,7 +589,7 @@ namespace B.Builtins
       have : Finite ↑T := hT.isFinite
       exact @Set.toFinset_mono α S T (Fintype.ofFinite ↑S) (Fintype.ofFinite ↑T) hS
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_inter {α : Type _} {S T : Set α} (h : card.WF S ∨ card.WF T) :
         card.WF (S ∩ T) where
       isFinite := by
@@ -588,17 +597,17 @@ namespace B.Builtins
         · exact Set.Finite.inter_of_left hS.isFinite _
         · exact Set.Finite.inter_of_right hT.isFinite _
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_union {α : Type _} {S T : Set α} (hS : card.WF S) (hT : card.WF T) :
         card.WF (S ∪ T) where
       isFinite := Set.Finite.union hS.isFinite hT.isFinite
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_insert {α : Type _} {S : Set α} (a : α)
         (hS : card.WF S) : card.WF (insert a S) where
       isFinite := Set.Finite.insert a hS.isFinite
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_insert' {α : Type _} {S : Set α} (a : α)
         (hS : card.WF S) : card.WF (S ∪ {a}) where
       isFinite := by simpa only [Set.union_singleton, Set.finite_insert] using hS.isFinite
@@ -618,7 +627,7 @@ namespace B.Builtins
         · simp only [Set.toFinset_card, Nat.cast_add, Nat.cast_one]
         · rwa [Set.mem_toFinset]
 
-    @[grind .]
+    @[grind ., wf_card]
     theorem card.WF_of_sdiff {α : Type _} {S T : Set α} (hS : card.WF S) : card.WF (S \ T) where
       isFinite := Set.Finite.diff hS.isFinite
 

@@ -6,20 +6,11 @@ set_option barrel.show_auto_solved true
 
 open B.Builtins
 
-import machine MinSearch from "specs/case_study"
-import refinement MinSearch_r1 from "specs/case_study"
-import refinement MinSearch_r2 from "specs/case_study"
+import machine MinSearch from "specs/case_study"        -- 🎉 Automatically solved 4 out of 8 subgoals!
+import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically solved 52 out of 61 subgoals!
+import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 49 out of 93 subgoals!
 
 prove_obligations_of MinSearch
-next
-  intros
-  exact min.WF_singleton
-next
-  intros
-  exact min.WF_of_finite ‹_›
-next
-  intros
-  apply min.WF_of_union <;> exact (min.WF_of_finite ‹_›)
 next
   simp only [Set.sep_setOf, Set.subset_univ, true_and, Set.mem_setOf_eq,
     Set.singleton_subset_iff, Set.finite_singleton, and_true, Set.singleton_nonempty, imp_self,
@@ -37,134 +28,57 @@ next
   exact this (min.mem min_wf)
 
 prove_obligations_of MinSearch_r1
-next exact fun SS done1 mm1 done mm xx mi mi1 h h_2 =>
-  MinSearch.Initialisation_1.wf_0 SS SS mm1 xx SS h h_2
-next exact fun SS done1 mm1 done mm xx mi mi1 h h_3 h_4 =>
-  MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_3 h_4
-next exact fun SS done1 mm1 done mm xx mi mi1 h h_8 h_9 h_10 h_11 h_12 h_13 h_14 =>
-  MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_8 h_9
-next
-  intros
-  expose_names
-  exact min.WF_of_union
-    (MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_1 h_2)
-    min.WF_singleton
-next
-  intros
-  expose_names
-  subst_eqs
-  exact min.WF_of_union
-    (MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_1 h_2)
-    (min.WF_of_finite h_13)
 next grind
 next
   intros
-  expose_names
-  subst_eqs
-  exact min.WF_of_union
-    (MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_1 h_2)
-    min.WF_singleton
-next
-  intros
-  expose_names
-  subst_eqs
-  exact min.WF_of_union
-    (MinSearch.Operation_step_2.wf_0 SS done1 mm1 mm1 SS h h_1 h_2)
-    (min.WF_of_finite h_13)
-next grind
-next grind
-next
-  intros
-  expose_names
-  exact MinSearch.Initialisation_0 SS xx h h_1
-next
-  intros
-  expose_names
-  exact MinSearch.Initialisation_1 SS SS mm1 xx SS h h_1
-next grind
-next
-  intros
-  expose_names
-  subst_eqs
-  exact FIN₁.of_union h_1 (FIN₁.singleton_mem (Set.mem_of_mem_inter_left h_10))
-next grind
-next
-  intros
-  expose_names
-  subst_eqs
-  simp only [Set.union_singleton]
-  generalize_proofs min_wf at h_3
-  rw [min.of_insert _ min_wf]
-  split_ifs with hlt
-  · rfl
-  · rw [←h_3, not_le] at hlt
-    nomatch lt_irrefl _ (lt_trans hlt h_11)
-next
-  intros
-  expose_names
-  subst_eqs
-  use {xx}, ?_, rfl, ?_
-  · exact FIN₁.singleton_mem h_10
-  · generalize_proofs min_wf at h_3
-    simp only [Set.union_singleton]
-    rw [min.of_insert _ min_wf]
-    split_ifs with hlt
-    · rfl
-    · rw [←h_3, not_le] at hlt
-      nomatch lt_irrefl _ (lt_trans hlt h_11)
-next grind
-next grind
-next grind
-next grind
-next
-  intros
-  expose_names
-  subst_eqs
-  simp only [Set.union_singleton]
-  generalize_proofs min_wf at h_3
-  rw [min.of_insert _ min_wf]
-  split_ifs with hlt
-  · rfl
-  · rw [←h_3, not_le] at hlt
-    nomatch lt_irrefl _ (lt_trans hlt h_11)
+  apply_rules [MinSearch.Initialisation_1]
 next
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   exact FIN₁.of_insert (Set.mem_of_mem_inter_left h_10) (Set.mem_of_mem_inter_left h_1)
+next grind
 next
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
-  generalize_proofs min_wf at h_3
-  rw [min.of_insert _ min_wf]
-  split_ifs with hlt
-  · exact le_antisymm (Int.not_lt.mp h_11) (le_of_le_of_eq hlt h_3.symm)
-  · exact h_3
+  rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
 next
   intros
   expose_names
   subst_eqs
-  use {xx}, ?_, rfl, ?_
-  · exact FIN₁.singleton_mem h_10
-  · generalize_proofs min_wf at h_3
-    simp only [Set.union_singleton]
-    rw [min.of_insert _ min_wf]
-    split_ifs with hlt
-    · exact le_antisymm (le_of_le_of_eq hlt h_3.symm) (Int.not_lt.mp h_11)
-    · rw [h_3]
-next grind
-next grind
-next grind
-next grind
-
-prove_obligations_of MinSearch_r2
+  exists {xx}, FIN₁.singleton_mem h_10, rfl
+  simp only [Set.union_singleton]
+  rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
 next
   intros
   expose_names
-  exact card.WF_of_finite' h
+  subst_eqs
+  simp only [Set.union_singleton]
+  grind
+next
+  intros
+  expose_names
+  subst_eqs
+  simp only [Set.union_singleton]
+  rw [Int.not_lt, Int.le_iff_lt_or_eq] at h_11
+  obtain hle | rfl := h_11
+  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
+  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
+next
+  intros
+  expose_names
+  subst_eqs
+  exists {xx}, FIN₁.singleton_mem h_10, rfl
+  simp only [Set.union_singleton]
+  rw [Int.not_lt, Int.le_iff_lt_or_eq] at h_11
+  obtain hle | rfl := h_11
+  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
+  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
+
+prove_obligations_of MinSearch_r2
 next
   intros
   expose_names
@@ -182,16 +96,6 @@ next
   simp only [Set.Icc_self, Set.mem_singleton_iff] at h_6
   subst jj
   exact app.WF_of_mem_tfun h_4.2 ⟨Int.le_refl 1, h_2.1⟩
-next
-  intros
-  expose_names
-  subst_eqs
-  exact min.WF_of_finite h_6
-next
-  intros
-  expose_names
-  subst_eqs
-  exact min.WF_of_finite h_6
 next
   intros
   expose_names
