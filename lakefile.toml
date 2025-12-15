@@ -1,4 +1,4 @@
-name = "Barrel"
+name = "BARReL"
 version = "0.1.0"
 defaultTargets = ["Barrel"]
 buildType = "debug"
@@ -19,3 +19,6 @@ name = "B"
 
 [[lean_lib]]
 name = "POGReader"
+
+[[lean_lib]]
+name = "BARReL"
