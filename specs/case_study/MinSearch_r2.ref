@@ -1,0 +1,42 @@
+REFINEMENT MinSearch_r2
+REFINES MinSearch_r1
+
+CONSTANTS
+  nn, tab
+
+PROPERTIES
+  SS : FIN1(INTEGER) &
+  nn : NAT1 &
+  nn = card(SS) &
+  tab : 1..nn >-> SS &
+  ran(tab) = SS
+
+VARIABLES
+  ii, mmc
+
+INVARIANT
+  ii : 1..nn &
+  mmc : SS &
+  done = tab[1..ii] &
+  mm = mmc &
+  mmc : tab[1..ii] &
+  !jj.(jj : 1..ii => mmc <= tab(jj))
+
+INITIALISATION
+  ii := 1 ||
+  mmc := tab(1)
+
+OPERATIONS
+  mi <-- search_min =
+    PRE ii = nn THEN
+      mi := mmc
+    END;
+
+  step =
+    IF ii < nn THEN
+      ii := ii + 1;
+      IF tab(ii) < mmc THEN
+        mmc := tab(ii)
+      END
+    END
+END
