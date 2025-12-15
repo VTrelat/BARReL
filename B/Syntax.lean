@@ -82,6 +82,9 @@ namespace B.Syntax
     | bijfun (A B : Term) (isPartial := true)
     | min (S : Term) -- could be extended to minᵢ, minᵣ, etc.
     | max (S : Term)
+    -- sequences
+    | seq (A : Term)
+    | size (A : Term)
     -- quantifiers
     | all (vs : Array (String × Typ)) (P : Term)
     | exists (vs : Array (String × Typ)) (P : Term)
@@ -148,6 +151,8 @@ namespace B.Syntax
     | .codomRestr R E => «infixl» Term.pretty 160 "▷" R E
     | .codomSubtr R E => «infixl» Term.pretty 160 "⩥" R E
     | .overload R T => «infixl» Term.pretty 160 "<+" R T
+    | .seq E => fun _ ↦ Term.pretty (.var "seq") 300 ++ .paren (Term.pretty E 0)
+    | .size s => λ _ => "|" ++ Term.pretty s 0 ++ "|"
     | .dom f => fun _ ↦ Term.pretty (.var "dom") 300 ++ .paren (Term.pretty f 0)
     | .ran f => fun _ ↦ Term.pretty (.var "ran") 300 ++ .paren (Term.pretty f 0)
     | .fin S => fun _ ↦ Term.pretty (.var "fin") 300 ++ .paren (Term.pretty S 0)

@@ -75,13 +75,13 @@ namespace B.POG
     | "FIN1" => return .fin₁
     | "union" => panic! "TODO: union"
     | "inter" => panic! "TODO: inter"
-    | "seq" => panic! "TODO: seq"
+    | "seq" => return .seq
     | "seq1" => panic! "TODO: seq1"
     | "iseq" => panic! "TODO: iseq"
     | "iseq1" => panic! "TODO: iseq1"
     | "-" | "-i" | "-r" => return .uminus
     | "~" => return .inv
-    | "size" => panic! "TODO: size"
+    | "size" => return .size
     | "perm" => panic! "TODO: perm"
     | "first" => panic! "TODO: first"
     | "last" => panic! "TODO: last"

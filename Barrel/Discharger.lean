@@ -228,10 +228,12 @@ syntax "machine" : import_kind
 syntax "system" : import_kind
 syntax "pog" : import_kind
 syntax "refinement" : import_kind
+syntax "implementation" : import_kind
 
 private def extFromKind : TSyntax `import_kind → MacroM String
   | `(import_kind| machine) => pure "mch"
   | `(import_kind| refinement) => pure "ref"
+  | `(import_kind| implementation) => pure "imp"
   | `(import_kind| system) => pure "sys"
   | `(import_kind| pog) => pure "pog"
   | _ => Macro.throwUnsupported

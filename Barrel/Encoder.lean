@@ -231,6 +231,7 @@ namespace B
       | .codomRestr R E => makeBinary ``B.Builtins.codomRestr R E
       | .codomSubtr R E => makeBinary ``B.Builtins.codomSubtr R E
       | .overload R T => makeBinary ``B.Builtins.overload R T
+      | .seq E => makeUnary ``B.Builtins.seq E
       | .fun A B isPartial =>
         makeBinary (if isPartial then ``B.Builtins.pfun else ``B.Builtins.tfun) A B
       | .injfun A B isPartial => do
@@ -252,6 +253,10 @@ namespace B
         let x ← x.toExpr
         let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.app.WF #[f, x]
         mkAppM ``B.Builtins.app #[f, x, wfMVar]
+      | .size E => do
+        let E ← E.toExpr
+        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.size.WF #[E]
+        mkAppM ``B.Builtins.size #[E, wfMVar]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => do

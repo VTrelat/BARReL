@@ -24,6 +24,7 @@ namespace B.Builtins
     theorem FIN₁.of_finite_nonempty_self {α : Type _} {A : Set α} (h : A.Finite) (h' : A.Nonempty) :
       A ∈ FIN₁ A := ⟨⟨subset_refl _, h⟩, h'⟩
 
+    @[grind .]
     theorem FIN₁.singleton_mem {α : Type _} {a : α} {A : Set α} (ha : a ∈ A) :
         {a} ∈ FIN₁ A := by
       simpa
@@ -71,5 +72,25 @@ namespace B.Builtins
     theorem FIN₁.of_insert {α : Type _} {S A : Set α} {a : α} (ha : a ∈ A)
       (hS : S ∈ FIN A) : insert a S ∈ FIN₁ A := ⟨FIN.of_insert ha hS, Set.insert_nonempty a S⟩
 
+    theorem FIN.of_union {α : Type _} {A B S : Set α} (hA : A ∈ FIN S) (hB : B ∈ FIN S) :
+        A ∪ B ∈ FIN S := by
+      and_intros
+      · intro x h
+        rw [Set.mem_union] at h
+        obtain h | h := h
+        · exact hA.1 h
+        · exact hB.1 h
+      · exact Set.Finite.union hA.2 hB.2
+
+    theorem FIN₁.of_union {α : Type _} {A B S : Set α} (hA : A ∈ FIN₁ S) (hB : B ∈ FIN₁ S) :
+      A ∪ B ∈ FIN₁ S := ⟨FIN.of_union hA.1 hB.1, Set.Nonempty.inl hA.2⟩
+
+    @[grind ., mono]
+    theorem FIN.mono {α : Type _} {A S T : Set α} (h : S ⊆ T) (hA : A ∈ FIN S) :
+        A ∈ FIN T := ⟨subset_trans hA.left h, hA.2⟩
+
+    @[grind ., mono]
+    theorem FIN₁.mono {α : Type _} {A S T : Set α} (h : S ⊆ T) (hA : A ∈ FIN₁ S) :
+        A ∈ FIN₁ T := ⟨FIN.mono h hA.1, hA.2⟩
   end Lemmas
 end B.Builtins

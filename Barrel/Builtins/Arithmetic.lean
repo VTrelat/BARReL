@@ -63,6 +63,15 @@ namespace B.Builtins
     theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) : lo .. hi ∈ FIN₁ INTEGER :=
       ⟨FIN_mem, interval.nonempty h⟩
 
+    @[grind =]
+    theorem interval.empty_eq {lo hi : ℤ} (h : hi < lo) : (lo .. hi) = ∅ := by
+      ext z
+      constructor
+      · rintro ⟨_, _⟩
+        grind only
+      · intro hfalse
+        grind only [= Set.mem_Icc, = Set.mem_empty_iff_false]
+
 
     @[grind .]
     theorem NAT.Finite : NAT.Finite := by
@@ -250,9 +259,11 @@ namespace B.Builtins
       obtain ⟨m_def, m_is_max⟩ := Classical.choose_spec hm
       exact le_antisymm m_def.2 (m_is_max _ (Set.right_mem_Icc.mpr h))
 
+    @[grind .]
     theorem min.WF_singleton {α : Type _} [PartialOrder α] {a : α} : min.WF {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ ge_of_eq⟩
 
+    @[grind .]
     theorem max.WF_singleton {α : Type _} [PartialOrder α] {a : α} : max.WF {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ le_of_eq⟩
 
@@ -523,12 +534,12 @@ namespace B.Builtins
     theorem card.of_empty {α : Type _} : card (∅ : Set α) (card.WF_of_empty) = 0 := by
       simp only [card, Set.toFinset_empty, Finset.card_empty, Nat.cast_zero]
 
-    @[grind ., simp]
+    @[grind =_, simp]
     theorem card.of_interval {lo hi : ℤ} :
         card (lo .. hi) (card.WF_of_interval) = Max.max (hi + 1 - lo) 0 := by
       simp only [card, Set.toFinset_Icc, Int.card_Icc, Int.ofNat_toNat]
 
-    @[grind ., simp]
+    @[grind =_, simp]
     theorem card.of_interval' {lo hi : ℤ} (h : lo ≤ hi) :
         card (lo .. hi) (card.WF_of_interval) = hi - lo + 1 := by
       simp only [of_interval]
@@ -538,7 +549,7 @@ namespace B.Builtins
       · rw [Int.sub_nonneg]
         exact Int.le_add_one h
 
-    @[grind .]
+    @[grind <=]
     theorem card.WF_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
         (hT : card.WF T) : card.WF S where
       isFinite := Set.Finite.subset hT.isFinite hS
@@ -560,7 +571,7 @@ namespace B.Builtins
         card {a} WF_of_singleton = 1 := by
       simp only [card, Set.toFinset_singleton, Finset.card_singleton, Nat.cast_one]
 
-    @[grind →]
+    @[mono]
     theorem card.mono {α : Type _} {S T : Set α} (hS : S ⊆ T) (hT : card.WF T) :
         card S (card.WF_of_subset hS hT) ≤ card T hT := by
       rw [Int.ofNat_le]

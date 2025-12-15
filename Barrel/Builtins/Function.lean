@@ -67,7 +67,7 @@ namespace B.Builtins
       · rintro _ rfl
         exists b
 
-    @[grind .]
+    @[grind <=]
     theorem pfun_singleton {α β : Type _} {a : α} {b : β} {A : Set α} {B : Set β}
       (ha : a ∈ A) (hb : b ∈ B) :
         {(a, b)} ∈ A ⇸ B := by
@@ -133,7 +133,7 @@ namespace B.Builtins
     theorem app.pair_app_mem {α β : Type _} {f : SetRel α β} {x : α} {wf : WF f x} :
       (x, f(x)'wf) ∈ f := Classical.choose_spec wf.isInDomain
 
-    @[grind =, simp]
+    @[grind =>, simp]
     theorem app.of_pair_iff {α β : Type _} {f : SetRel α β} {x : α} {y : β}
       (wf : WF f x) :
         (x, y) ∈ f ↔ app f x wf = y where
@@ -151,6 +151,77 @@ namespace B.Builtins
           exact mem_of_pair_mem_rel hf.1.1 hy |>.1
         · obtain ⟨_, -, hy⟩ := hf.2 x h
           exact mem_dom_of_pair_mem hy
+
+    theorem pfun.dom_subset {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⇸ B) : dom f ⊆ A := by
+      intro x ⟨y, hy⟩
+      exact hf.1 hy |>.1
+
+    theorem tfun.of_pfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⇸ B) : f ∈ dom f ⟶ ran f := by
+      constructor
+      · constructor
+        · grind only [→ app.of_pair_eq, = Set.subset_def, = Set.mem_powerset_iff, = Set.mem_prod,
+          = Set.setOf_true, → app.pair_app_mem, = app.of_pair_iff, usr Set.mem_setOf_eq,
+          = Set.setOf_false, → mem_dom_of_pair_mem, cases eager Prod]
+        · exact hf.2
+      · rintro x ⟨y, hy⟩
+        exists y
+        and_intros
+        · exists x
+        · exact hy
+
+    @[mono]
+    theorem rel.mono {α β : Type _} {A C : Set α} {B D : Set β}
+        (hAC : A ⊆ C) (hBD : B ⊆ D) : A ⟷ B ⊆ C ⟷ D := by
+      rintro f hf ⟨x, y⟩ hxy
+      and_intros
+      · exact hf hxy |>.1 |> hAC
+      · exact hf hxy |>.2 |> hBD
+
+    @[mono]
+    theorem pfun.mono {α β : Type _} {A C : Set α} {B D : Set β}
+        (hAC : A ⊆ C) (hBD : B ⊆ D) : A ⇸ B ⊆ C ⇸ D :=
+      fun _ ↦ And.imp (fun x ↦ rel.mono hAC hBD x) _root_.id
+
+    theorem tfun.ran_subset {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⟶ B) : ran f ⊆ B := by
+      intro y ⟨x, hx⟩
+      exact hf.1.1 hx |>.2
+
+    @[mono]
+    theorem tfun.range_mono {α β : Type _} {A : Set α} {B C : Set β}
+        (hBC : B ⊆ C) : A ⟶ B ⊆ A ⟶ C := by
+      intro f hf
+      constructor
+      · exact pfun.mono (subset_refl _) hBC (Set.mem_of_mem_inter_left hf)
+      · intro x hx
+        obtain ⟨y, hy, mem_f⟩ := hf.2 x hx
+        use y, hBC hy, mem_f
+
+    theorem tfun_iff {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β} :
+        f ∈ A ⟶ B ↔ f ∈ A ⟷ B ∧ ∀ x ∈ A, ∃! y ∈ B, (x, y) ∈ f := by
+      constructor
+      · rintro ⟨⟨rel, isfunc⟩, tfun⟩
+        and_intros
+        · exact rel
+        · intro x hx
+          obtain ⟨y, hy, mem_f⟩ := tfun x hx
+          exists y
+          constructor
+          · exact ⟨hy, mem_f⟩
+          · rintro z ⟨hz, mem_f'⟩
+            exact isfunc mem_f' mem_f
+      · rintro ⟨rel, h⟩
+        and_intros
+        · exact rel
+        · intro x y z hxy hxz
+          apply h x (rel hxy).1 |>.unique
+          · exact ⟨(rel hxy).2, hxy⟩
+          · exact ⟨(rel hxz).2, hxz⟩
+        · intro x hx
+          obtain ⟨y, ⟨hy, mem_f⟩, unq⟩ := h x hx
+          exists y
 
     @[simp]
     theorem overload_dom_eq {α β : Type _} {R₁ R₂ : SetRel α β} :
@@ -249,6 +320,14 @@ namespace B.Builtins
     · rintro rfl
       exact pair_app_mem
 
+  @[grind =>, mono]
+  theorem image_mono {α β : Type _} {f : SetRel α β} {A C : Set α}
+    (hAC : A ⊆ C) : f[A] ⊆ f[C] := by
+      intro y hy
+      rw [SetRel.mem_image] at hy
+      obtain ⟨x, hxA, hyf⟩ := hy
+      exists x, hAC hxA
+
   @[simp]
   theorem app.image_singleton_eq_of_tfun {α β : Type _} {A : Set α} {B : Set β}
     {f : SetRel α β} {a : α} (hf : f ∈ A ⟶ B) (ha : a ∈ A) :
@@ -258,6 +337,21 @@ namespace B.Builtins
   theorem app.image_singleton_eq_of_pfun_mem_dom {α β : Type _} {A : Set α} {B : Set β}
     {f : SetRel α β} {a : α} (hf : f ∈ A ⇸ B) (ha : a ∈ dom f) :
       f[{a}] = {f(a)'(WF_of_mem_dom_pfun hf ha)} := app.image_singleton_eq_of_wf _
+
+  @[grind →]
+  theorem app.mem_ran {α β : Type _} {f : SetRel α β} {x : α} (hx : WF f x) : f(x)'hx ∈ ran f :=
+    ⟨x, pair_app_mem⟩
+
+  theorem tfun.ran_eq {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+    (hf : f ∈ A ⟶ B) :
+      ran f = f[A] := by
+    ext y
+    constructor <;> intro h
+    · obtain ⟨x, hx⟩ := h
+      exists x, hf.1.1 hx |>.1
+    · rw [SetRel.mem_image] at h
+      obtain ⟨x, hx, mem_f⟩ := h
+      exists x
 
   end Lemmas
 

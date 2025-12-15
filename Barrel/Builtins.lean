@@ -1,5 +1,6 @@
 import Barrel.Builtins.Relation
 import Barrel.Builtins.Function
+import Barrel.Builtins.Sequence
 import Barrel.Builtins.Power
 import Barrel.Builtins.Arithmetic
 
