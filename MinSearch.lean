@@ -8,7 +8,7 @@ open B.Builtins
 
 import machine MinSearch from "specs/case_study"        -- 🎉 Automatically solved 4 out of 8 subgoals!
 import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically solved 52 out of 61 subgoals!
-import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 49 out of 93 subgoals!
+import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 100 out of 121 subgoals!
 
 prove_obligations_of MinSearch
 next
