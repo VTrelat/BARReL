@@ -7,6 +7,32 @@ namespace Barrel.Tactics
   register_label_attr wf_app
   register_label_attr wf_card
 
+  register_label_attr pfun
+  register_label_attr tfun
+
+  syntax (name := pfun) "pfun" : tactic
+  syntax (name := tfun) "tfun" : tactic
+
+  set_option hygiene false in
+  macro "pfun" : tactic => `(tactic| (
+    intros
+    subst_eqs
+    generalize_proofs at *
+    first
+    | sorry_if_sorry
+    | assumption
+    | solve_by_elim using pfun, tfun))
+
+  set_option hygiene false in
+  macro "tfun" : tactic => `(tactic| (
+    intros
+    subst_eqs
+    generalize_proofs at *
+    first
+    | sorry_if_sorry
+    | assumption
+    | solve_by_elim using tfun))
+
   syntax (name := wf_min) "wf_min" : tactic
   syntax (name := wf_max) "wf_max" : tactic
   syntax (name := wf_app) "wf_app" : tactic
@@ -14,6 +40,7 @@ namespace Barrel.Tactics
 
   set_option hygiene false in
   macro "wf_min" : tactic => `(tactic| (
+    intros
     subst_eqs
     generalize_proofs at *
     first
@@ -22,6 +49,7 @@ namespace Barrel.Tactics
 
   set_option hygiene false in
   macro "wf_max" : tactic => `(tactic| (
+    intros
     subst_eqs
     generalize_proofs at *
     first
@@ -30,14 +58,26 @@ namespace Barrel.Tactics
 
   set_option hygiene false in
   macro "wf_app" : tactic => `(tactic| (
+    intros
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
+    | (
+        apply app.WF_of_mem_tfun
+        · tfun
+        · and_intros <;> grind
+      )
+    | (
+        apply app.WF_of_mem_pfun
+        · pfun
+        · and_intros <;> grind
+      )
     | solve_by_elim using wf_app))
 
   set_option hygiene false in
   macro "wf_card" : tactic => `(tactic| (
+    intros
     subst_eqs
     generalize_proofs at *
     first

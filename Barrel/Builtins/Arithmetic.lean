@@ -45,6 +45,33 @@ namespace B.Builtins
     @[grind =, simp]
     theorem INT.eq_interval : INT = (MININT .. MAXINT) := rfl
 
+    @[grind =, simp]
+    theorem NATURAL.mem_iff (n : Int) : n ∈ NATURAL ↔ 0 ≤ n := by
+      rw [NATURAL, Set.mem_setOf_eq]
+
+    @[grind =, simp]
+    theorem NATURAL₁.mem_iff (n : Int) : n ∈ NATURAL₁ ↔ 1 ≤ n := by
+      rw [NATURAL₁, Set.mem_setOf_eq]
+
+    @[grind =, simp]
+    theorem INTEGER.mem_iff (n : Int) : n ∈ INTEGER ↔ True := Iff.rfl
+
+    @[grind =, simp]
+    theorem NAT.mem_iff (n : Int) : n ∈ NAT ↔ 0 ≤ n ∧ n ≤ MAXINT := by
+      rw [NAT, Set.mem_setOf_eq]
+
+    @[grind =, simp]
+    theorem NAT₁.mem_iff (n : Int) : n ∈ NAT₁ ↔ 1 ≤ n ∧ n ≤ MAXINT := by
+      rw [NAT₁, Set.mem_setOf_eq]
+
+    @[grind =, simp]
+    theorem INT.mem_iff (n : Int) : n ∈ INT ↔ MININT ≤ n ∧ n ≤ MAXINT := by
+      rw [INT, Set.mem_setOf_eq]
+
+    @[grind =, simp]
+    theorem interval.mem_iff {lo hi : ℤ} (z : ℤ) : z ∈ (lo .. hi) ↔ lo ≤ z ∧ z ≤ hi :=
+      Set.mem_Icc
+
     @[grind=, simp]
     theorem interval.of_singleton_eq (a : ℤ) : (a .. a) = {a} :=
       Set.Icc_self a

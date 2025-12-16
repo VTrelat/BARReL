@@ -46,7 +46,7 @@ namespace B.Builtins
 
   section Lemmas
 
-    @[grind .]
+    @[grind ., pfun]
     theorem pfun_of_singleton {α β : Type _} {a : α} {b : β} :
         {(a, b)} ∈ {a} ⇸ {b} := by
       and_intros
@@ -60,7 +60,7 @@ namespace B.Builtins
         obtain ⟨rfl, rfl⟩ := hxz
         rfl
 
-    @[grind .]
+    @[grind ., tfun]
     theorem tfun_of_singleton {α β : Type _} {a : α} {b : β} :
         {(a, b)} ∈ {a} ⟶ {b} := by
       constructor
@@ -68,7 +68,7 @@ namespace B.Builtins
       · rintro _ rfl
         exists b
 
-    @[grind <=]
+    @[grind <=, pfun]
     theorem pfun_singleton {α β : Type _} {a : α} {b : β} {A : Set α} {B : Set β}
       (ha : a ∈ A) (hb : b ∈ B) :
         {(a, b)} ∈ A ⇸ B := by
@@ -82,6 +82,29 @@ namespace B.Builtins
         obtain ⟨rfl, rfl⟩ := hxy
         obtain ⟨rfl, rfl⟩ := hxz
         rfl
+
+    @[pfun]
+    theorem pfun.of_tfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⟶ B) : f ∈ A ⇸ B := hf.1
+    @[pfun]
+    theorem pfun.of_injpfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⤔ B) : f ∈ A ⇸ B := hf.1
+    @[pfun]
+    theorem pfun.of_surjpfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⤀ B) : f ∈ A ⇸ B := hf.1
+    @[pfun]
+    theorem pfun.of_bijpfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⤗ B) : f ∈ A ⇸ B := hf.1.1
+
+    @[tfun]
+    theorem tfun.of_injtfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ↣ B) : f ∈ A ⟶ B := hf.2
+    @[tfun]
+    theorem tfun.of_surjtfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ↠ B) : f ∈ A ⟶ B := hf.2
+    @[tfun]
+    theorem tfun.of_bijtfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
+      (hf : f ∈ A ⤖ B) : f ∈ A ⟶ B := hf.1.2
 
     @[wf_app]
     theorem app.WF_of_mem_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hA : A ⊆ dom f) (hx : x ∈ A) :
@@ -161,6 +184,7 @@ namespace B.Builtins
       intro x ⟨y, hy⟩
       exact hf.1 hy |>.1
 
+    @[tfun]
     theorem tfun.of_pfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
       (hf : f ∈ A ⇸ B) : f ∈ dom f ⟶ ran f := by
       constructor
@@ -256,6 +280,7 @@ namespace B.Builtins
             · simpa [Set.mem_setOf_eq, not_exists] using hx
           · nomatch hx h
 
+    @[pfun]
     theorem pfun_of_overload {α β : Type _} {A C : Set α} {B D : Set β} {f₁ f₂ : SetRel α β}
       (hf₁ : f₁ ∈ A ⇸ B) (hf₂ : f₂ ∈ C ⇸ D) :
         f₁ <+ f₂ ∈ (A ∪ C) ⇸ (B ∪ D) := by
@@ -294,6 +319,7 @@ namespace B.Builtins
           grind
       }
 
+    @[tfun]
     theorem tfun_of_overload {α β : Type _} {A C : Set α} {B D : Set β} {f g : SetRel α β}
       (hf : f ∈ A ⟶ B) (hg : g ∈ C ⟶ D) :
         f <+ g ∈ (A ∪ C) ⟶ (B ∪ D) := by

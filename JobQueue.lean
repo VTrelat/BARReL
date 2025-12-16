@@ -9,9 +9,6 @@ open B.Builtins
 import machine JobQueue from "specs/"
 
 prove_obligations_of JobQueue
-next exact fun _ _ _ _ _ _ _ _ _ _ => card.WF_of_empty
-next exact fun JOB Limit MaxDeadline Ready deadline j h h_3 h_4 h h_5 =>
-  card.WF_of_finite h
 next
   intros
   expose_names
@@ -25,11 +22,7 @@ next exact fun JOB Limit MaxDeadline Ready deadline j h h_9 h_10 h_11 h_12 h_13 
 next exact
   fun JOB Limit MaxDeadline Ready deadline j h h_10 h_11 h_12 h_13 h_14 h_15 h_16 h_17 h_18 =>
   app.WF_of_mem_tfun h_13 h_16
-next
-  intros
-  generalize_proofs at *
-  apply card.WF_of_insert'
-  assumption
+next barrel_solve
 next
   intros
   rw [Set.union_singleton]

@@ -16,10 +16,10 @@ INVARIANT
 
 INITIALISATION
   ANY xx WHERE
-      xx : SS
+    xx : SS
   THEN
-      done := {xx} ||
-      mm := xx
+    done := {xx} ||
+    mm := xx
   END
 
 OPERATIONS
@@ -31,10 +31,10 @@ OPERATIONS
   step =
     IF done /= SS THEN
       ANY add WHERE
-          add : FIN1(SS - done)
+        add : FIN1(SS - done)
       THEN
-          done := done \/ add ||
-          mm := min(done \/ add)
+        done := done \/ add ||
+        mm := min(done \/ add)
       END
     END
 END
