@@ -19,9 +19,7 @@ next
   exact max.WF_of_finite_image_tfun h_4 ⟨h_3, Set.nonempty_iff_ne_empty.mpr h_6⟩
 next exact fun JOB Limit MaxDeadline Ready deadline j h h_9 h_10 h_11 h_12 h_13 h_14 h_15 h_16 =>
   JobQueue.Operation_enqueue_2.wf_0 JOB Limit Limit Ready deadline Limit h h_9 h_9 h_11 h_12
-next exact
-  fun JOB Limit MaxDeadline Ready deadline j h h_10 h_11 h_12 h_13 h_14 h_15 h_16 h_17 h_18 =>
-  app.WF_of_mem_tfun h_13 h_16
+next barrel_solve
 next barrel_solve
 next
   intros
