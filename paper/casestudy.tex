@@ -1,95 +1,190 @@
-\section{Case study: a bounded job queue}
 
-\def\JOB{\ifmmode\mathtt{JOB}\else\texttt{JOB}\xspace\fi}
-\def\Limit{\ifmmode\mathtt{Limit}\else\texttt{Limit}\xspace\fi}
-\def\MaxDeadline{\ifmmode\mathtt{MaxDeadline}\else\texttt{MaxDeadline}\xspace\fi}
-\def\Ready{\ifmmode\mathtt{Ready}\else\texttt{Ready}\xspace\fi}
-\def\deadline{\ifmmode\mathtt{deadline}\else\texttt{deadline}\xspace\fi}
-\def\FIN{\ifmmode\mathtt{FIN}\else\texttt{FIN}\xspace\fi}
-\def\card{\ifmmode\mathtt{card}\else\texttt{card}\xspace\fi}
-\def\enqueue{\ifmmode\mathtt{enqueue}\else\texttt{enqueue}\xspace\fi}
-\def\dequeue{\ifmmode\mathtt{dequeue}\else\texttt{dequeue}\xspace\fi}
-\def\Z{\ifmmode\mathbb{Z}\else\ensuremath{\mathbb{Z}}\fi}
+\section{Case study: a refinement chain for minimum search}
+\label{sec:case-study}
 
-To illustrate the intended workflow and the kind of obligations \barrel can handle, we consider a small B machine modelling a bounded queue of jobs with deadlines, shown in Listing~\ref{lst:jobqueue}.
-Jobs are represented by an abstract set \JOB; \Limit bounds the number of jobs that may be queued, and \MaxDeadline is a global upper bound on deadlines.
-The state of the machine consists of a set \Ready of jobs that are ready to run and a total function \deadline associating each job with a positive integer deadline.
+This section evaluates \barrel on a small example with a specification and two levels of refinement, fully carried out with \barrel in Lean and compared to Atelier~B's own interactive prover.
+The development computes the minimum of a non-empty finite set of integers and is progressively refined into an indexed-based traversal of an array,
+therefore demonstrating \barrel's support for Atelier~B's refinement pipeline---down to implementation\footnote{Not shown in this development.}---while correctly generating and exposing WD conditions needed for partial B operators at each level.
+% Its role in this paper is \emph{not} to demonstrate Lean as a proof assistant: the proofs are largely routine and are not interesting in themselves.
 
-\begin{lstlisting}[language=b, caption={A bounded job queue in B}, label={lst:jobqueue}]
-MACHINE JobQueue
-SETS JOB
-CONSTANTS Limit, MaxDeadline
+The development consists of:
+\texttt{MinSearch.mch} (specification),
+\texttt{MinSearch\_r1.ref} (first refinement),
+\texttt{MinSearch\_r2.ref} (second refinement),
+together with a Lean script \texttt{MinSearch.lean} containing the proofs of all generated POs.
+
+
+\subsection{A refinement chain: from sets to tables}
+
+\paragraph*{Abstract specification.}
+The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset $\texttt{S} \in \texttt{FIN1(INTEGER)}$ and maintains a set $\texttt{done}$ of already explored elements of \texttt{S} together with a candidate $\texttt{m}$ satisfying $\texttt{m} = \min(\texttt{done})$.
+The operation \texttt{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \texttt{search\_min} returns the candidate once all elements have been processed.
+
+\begin{figure}[t]
+  \centering
+  \captionsetup{type=lstlisting}
+  \begin{minipage}[t]{0.48\linewidth}
+    \begin{lstlisting}[language=b]
+MACHINE MinSearch
+CONSTANTS
+  S
 PROPERTIES
-  Limit ∈ NAT1 ∧ MaxDeadline ∈ NAT1
-VARIABLES Ready, deadline
+  S ∈ FIN1(INTEGER)
+VARIABLES done, m
 INVARIANT
-  Ready ⊆ JOB ∧ Ready ∈ FIN(JOB) ∧ deadline ∈ JOB → NAT1 ∧
-  card(Ready) ≤ Limit ∧
-  (Ready ≠ ∅ ⇒
-     min(deadline[Ready]) ≥ 1 ∧
-     max(deadline[Ready]) ≤ MaxDeadline)
+  done ∈ FIN1(S) ∧
+  m ∈ S          ∧
+  m = min(done)
 INITIALISATION
-  Ready := ∅ || deadline :∈ JOB → NAT1
+  ANY x WHERE x ∈ S
+  THEN
+    done := {x} || m := x
+  END
+\end{lstlisting}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \begin{lstlisting}[language=b,firstnumber=last]
 OPERATIONS
-  enqueue(j) =
-    PRE j ∈ JOB ∧ j ∉ Ready ∧ card(Ready) < Limit ∧ deadline(j) ≤ MaxDeadline
-    THEN
-      Ready := Ready ∪ {j}
+  mi <-- search_min =
+    PRE done = S THEN
+      mi := m
+    END;
+  step =
+    IF done ≠ S THEN
+      ANY add WHERE
+        add ∈ FIN1(S - done)
+      THEN
+        done := done ∪ add ||
+        m := min(done ∪ add)
+      END
     END
 END
 \end{lstlisting}
+  \end{minipage}
+  \caption{Specification \texttt{MinSearch.mch}.}
+  \label{lst:minsearch-mch}
+\end{figure}
 
-This example showcases multiple features of \barrel:
-\begin{itemize}
-  \item natural translation of POs ensuring readability of the generated goals,
-  \item partial operators (\texttt{min}, \texttt{max}, and \texttt{card}) truly depending on well-formedness conditions,
-  \item benefit from Lean's rich reasoning infrastructure and automation
-\end{itemize}
+This level already showcases \barrel's handling of partial operators: $\min(S)$ is well-defined only for non-empty finite sets, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
+Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
-We start by importing the machine \texttt{JobQueue} to Lean with the following command:
-\begin{lstlisting}[language=lean]
-import machine JobQueue from "specs/"
+\paragraph*{First refinement: reducing non-determinism.}
+The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
+\begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}]
+step =
+  IF done ≠ S THEN
+    ANY x WHERE x ∈ S - done THEN
+      done := done ∪ {x} ||
+      IF x < m THEN m := x END
+    END
+  END
 \end{lstlisting}
-Should it be a system---resp.\@ a POG file---we would replace \texttt{machine} with \texttt{system} instead---resp.\@ \texttt{pog}---.
-This command encodes each proof obligation as a Lean statement stored in the local environment.
-Then, we invoke the following command to generate all corresponding theorems, left as interactive goals to be discharged by the user:
-\begin{lstlisting}[language=lean]
-prove_obligations_of JobQueue
+
+Although the concrete update avoids recomputing \texttt{min}, refinement of the operation and invariant preservation still relate $\texttt{m}$ to $\min(\texttt{done})$, so WD facts about \texttt{min} remain part of the proof landscape.
+All 52 WD conditions are again automatically discharged by \barrel, while the remaining 9 POs correspond to standard refinement obligations.
+
+\paragraph*{Second refinement: scanning an explicit table.}
+The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch-r2} introduces an explicit enumeration and refines set exploration into a traversal using an index $\texttt{i}$ and a current minimum candidate $\texttt{mc}$.
+A gluing invariant links the abstract set $\texttt{done}$ with the image $\texttt{tab[1..i]}$ and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
+
+\begin{figure}[t]
+  \centering
+  \captionsetup{type=lstlisting}
+  \begin{minipage}[t]{0.48\linewidth}
+    \begin{lstlisting}[language=b]
+REFINEMENT MinSearch_r2
+REFINES MinSearch_r1
+CONSTANTS n, tab
+PROPERTIES
+  S ∈ FIN1(INTEGER) ∧
+  tab ∈ 1..n ↣ S   ∧
+  n = card(S)       ∧
+  ran(tab) = S
+VARIABLES i, mc
+INVARIANT
+  i ∈ 1..n          ∧
+  m = mc            ∧
+  done = tab[1..i]  ∧
+  mc ∈ tab[1..i]    ∧
+  ∀jj.(jj : 1..i ⇒ mc ≤ tab(jj))
 \end{lstlisting}
-For \texttt{JobQueue} we obtain 15 goals, presented in the order of the POG tags, 9 of which consist of WF obligations for every contextual occurrence of \texttt{card}, \texttt{min}, \texttt{max}, and application of \texttt{deadline}; the remaining 6 goals correspond to the usual initialization and invariant-preservation proof obligations for the \texttt{enqueue} operation.
-Each goal is discharged by providing a \texttt{next} block with a tactic script and corresponds to a theorem declaration named after the original POG tag.
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \begin{lstlisting}[language=b,firstnumber=last]
+INITIALISATION
+  i := 1 || mc := tab(1)
+OPERATIONS
+  mi <-- search_min =
+    PRE i = n THEN
+      mi := mc
+    END;
+  step =
+    IF i < n THEN
+      i := i + 1;
+      IF tab(i) < mc THEN
+        mc := tab(i)
+      END
+    END
+END
+\end{lstlisting}
+  \end{minipage}
+  \caption{Refinement \texttt{MinSearch\_r2.ref}.}
+  \label{lst:minsearch-r2}
+\end{figure}
 
-\paragraph*{Well-formedness goals}
-The first two WF goals correspond to the occurrence of \texttt{card} in the invariant, which has to be proved well-formed both in the initial state and any other reachable state:
+This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and application of \texttt{tab(i)}.
+Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 72 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
 
-\begin{description}
-  \item[\texttt{JobQueue.Initialisation.wf\_0}:] $\mathtt{card.WF}(\varnothing)$
-    
-  \item[\texttt{JobQueue.Operation\_enqueue\_2.wf\_0}:] $\forall\, \Ready \in \FIN(\JOB), \mathtt{card.WF}(\Ready)$
-\end{description}
+\paragraph*{Discharging refinement POs inside Lean}
 
-Both goals can be easily discharged by applying helper lemmas \texttt{card.WF\_of\_empty} and \texttt{card.WF\_of\_finite} respectively.
-Other WF obligations are proved similarly, picking appropriate lemmas from our library of helper lemmas or previously proved WF goals.
-This illustrates how BARReL exposes WF obligations as ordinary Lean lemmas and how they can be discharged using reusable library facts.
+\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
+import machine    MinSearch    from "specs/case_study"
+import refinement MinSearch_r1 from "specs/case_study"
+import refinement MinSearch_r2 from "specs/case_study"
 
-\subsection*{Invariant preservation for \texttt{enqueue}}
+prove_obligations_of MinSearch
+next ...  -- 4 remaining goals
 
-The more interesting goals are the invariant-preservation obligations for the operation \texttt{enqueue}.
-\barrel generates a goal asserting that if the invariant holds in a given state, if the precondition of
-\texttt{enqueue(j)} is satisfied, and if we set $\texttt{Ready}$ to $\texttt{Ready} \cup \{j\}$,
-then the invariant still holds in the new state.
-The proof splits according to the different conjuncts of the invariant.
-We only show here the proof corresponding to the deadline upper bound. The corresponding goal in Lean is:
-\begin{description}
-  \item[\texttt{JobQueue.Operation\_enqueue\_5}]
-  \begin{align*}
-    \forall j &\in \JOB, \Ready \in \FIN(\JOB) \to (\deadline \in \JOB \longrightarrow \mathbb{N}_1) \\
-    & \to (\Ready \ne \varnothing \to\\
-    & \qquad 1 \le \min(\deadline[\Ready]) \cdots \land \max (\deadline[\Ready]) \cdots \le \MaxDeadline) \\
-    &\to j \notin \Ready \to \deadline(j)'\cdots \le \MaxDeadline \to \Ready \cup \{j\} \ne \varnothing \\
-    &\to \max (\deadline[\Ready \cup \{j\}]) \cdots \le \MaxDeadline
-    \end{align*}
-\end{description}
-where partial operators depend on their well-formedness proofs (omitted here for readability and written as \texttt{$\cdots$}, just like in Lean).
-Intuitively here, we distinguish whether \Ready is empty or not and use the invariant with the appropriate simplification lemmas to conclude the proof.
-The important point is that there is an explicit dependency between the main goal and the WF goals corresponding to the partial operators used in this goal.
+prove_obligations_of MinSearch_r1
+next ...  -- 9 remaining goals
+
+prove_obligations_of MinSearch_ r2
+next ...  -- 21 remaining goals
+\end{lstlisting}
+
+Working with \barrel involves standard Lean workflow: B files are imported and generate POs as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
+
+\begin{table}[t]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.05}
+  \caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
+  ``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
+  ``Auto'' counts obligations discharged without user interaction (Atelier~B: Force 1; Lean: \barrel default automation). Recall that \barrel's automation is primarily designed to discharge WD conditions.}
+  \label{tab:case-study-stats}
+  \begin{tabular}{l|cc|cc|cc|cc}
+    & \multicolumn{2}{c|}{\#PO (Atelier~B)} & \multicolumn{2}{c|}{\#PO (Lean)}
+    & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (Lean)} \\
+    \hline
+    File & Total & Auto & Total & Auto & Total & Auto & Total & Auto \\
+    \hline
+    \texttt{MinSearch}        & 4  & 3 
+                              & 4  & 0
+                              & 4  & 4
+                              & 4  & 4  \\
+    \texttt{MinSearch\_r1}    & 19 & 17
+                              & 19 & 10
+                              & 2 & 2
+                              & 42 & 42 \\
+    \texttt{MinSearch\_r2}    & 21 & 9
+                              & 21 & 0
+                              & 9 & 9
+                              & 72 & 49 \\
+  \end{tabular}
+\end{table}
+
+In total for this case study, \barrel produces 190 goals across the three levels, 156 of which are WD conditions that are all automatically discharged using \barrel's underlying automation. The remaining 34 goals correspond to the expected proof obligations and are discharged with straightforward Lean proofs.
+Table \ref{tab:case-study-stats} summarizes the size and proof obligation statistics of each artifact.
+As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
+Fortunately, \barrel's automation should be able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
