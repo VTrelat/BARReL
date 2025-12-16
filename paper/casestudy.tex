@@ -1,10 +1,10 @@
-
 \section{Case study: a refinement chain for minimum search}
 \label{sec:case-study}
 
 This section evaluates \barrel on a small example with a specification and two levels of refinement, fully carried out with \barrel in Lean and compared to Atelier~B's own interactive prover.
-The development computes the minimum of a non-empty finite set of integers and is progressively refined into an indexed-based traversal of an array,
-therefore demonstrating \barrel's support for Atelier~B's refinement pipeline---down to implementation\footnote{Not shown in this development.}---while correctly generating and exposing WD conditions needed for partial B operators at each level.
+The development computes the minimum of a non-empty finite set of integers and is progressively refined into an index-based traversal of an array,
+therefore demonstrating \barrel's support for Atelier~B's refinement pipeline\footnote{Down to implementation, but this is not shown in this development.}
+while correctly generating and exposing WD conditions needed for partial B operators at each level.
 % Its role in this paper is \emph{not} to demonstrate Lean as a proof assistant: the proofs are largely routine and are not interesting in themselves.
 
 The development consists of:
@@ -65,7 +65,7 @@ END
   \label{lst:minsearch-mch}
 \end{figure}
 
-This level already showcases \barrel's handling of partial operators: $\min(S)$ is well-defined only for non-empty finite sets, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
+This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only for non-empty finite sets, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
 \paragraph*{First refinement: reducing non-determinism.}
@@ -148,7 +148,7 @@ next ...  -- 4 remaining goals
 prove_obligations_of MinSearch_r1
 next ...  -- 9 remaining goals
 
-prove_obligations_of MinSearch_ r2
+prove_obligations_of MinSearch_r2
 next ...  -- 21 remaining goals
 \end{lstlisting}
 
@@ -180,7 +180,7 @@ Working with \barrel involves standard Lean workflow: B files are imported and g
     \texttt{MinSearch\_r2}    & 21 & 9
                               & 21 & 0
                               & 9 & 9
-                              & 72 & 49 \\
+                              & 100 & 100 \\
   \end{tabular}
 \end{table}
 
