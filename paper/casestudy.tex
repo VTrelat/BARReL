@@ -2,7 +2,7 @@
 \label{sec:case-study}
 
 This section evaluates \barrel on a small example with a specification and two levels of refinement, fully carried out with \barrel in Lean and compared to Atelier~B's own interactive prover.
-The development computes the minimum of a non-empty finite set of integers and is progressively refined into an index-based traversal of an array,
+The development computes the minimum of a non-empty finite set of integers and is progressively refined into an index-based traversal of a table,
 therefore demonstrating \barrel's support for Atelier~B's refinement pipeline\footnote{Down to implementation, but this is not shown in this development.}
 while correctly generating and exposing WD conditions needed for partial B operators at each level.
 % Its role in this paper is \emph{not} to demonstrate Lean as a proof assistant: the proofs are largely routine and are not interesting in themselves.
@@ -12,7 +12,7 @@ The development consists of:
 \texttt{MinSearch\_r1.ref} (first refinement),
 \texttt{MinSearch\_r2.ref} (second refinement),
 together with a Lean script \texttt{MinSearch.lean} containing the proofs of all generated POs.
-
+This chain exercises both data refinement and partial operators (\texttt{min}, \texttt{card}, and application), making it a compact stress-test for BARReL’s WD generation and automation.
 
 \subsection{A refinement chain: from sets to tables}
 
@@ -68,8 +68,9 @@ END
 This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
-\paragraph*{First refinement: reducingon-determinism.}
+\paragraph*{First refinement: reducing non-determinism.}
 The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
+
 \begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}]
 step =
   IF done ≠ S THEN
@@ -152,34 +153,34 @@ prove_obligations_of MinSearch_r2
 next ...  -- 21 remaining goals
 \end{lstlisting}
 
-Working with \barrel involves standard Lean workflow: B files are imported and generate POs as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
+Working with \barrel involves standard Lean workflow: B files are imported and POs are generated as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
 
 \begin{table}[t]
   \centering
   \small
   \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.05}
+  % \renewcommand{\arraystretch}{1.05}
   \caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
   ``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
-  ``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation). Recall that \barrel's automation is primarily designed to discharge WD conditions.}
+  ``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).}
   \label{tab:case-study-stats}
-  \begin{tabular}{l|cc|cc|cc|cc}
-    & \multicolumn{2}{c|}{\#PO (Atelier~B)} & \multicolumn{2}{c|}{\#PO (\barrel)}
+  \begin{tabular}{l|c|c|cc|cc}
+    & \#PO (Atelier~B) & \#PO (\barrel)
     & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)} \\
     \hline
-    File & Total & Auto & Total & Auto & Total & Auto & Total & Auto \\
+    File & Total & Total & Total & Auto & Total & Auto \\
     \hline
-    \texttt{MinSearch}        & 4  & 3 
-                              & 4  & 0
+    \texttt{MinSearch}        & 4  
+                              & 4 
                               & 4  & 4
                               & 4  & 4  \\
-    \texttt{MinSearch\_r1}    & 19 & 17
-                              & 19 & 10
-                              & 2 & 2
-                              & 42 & 42 \\
-    \texttt{MinSearch\_r2}    & 21 & 9
-                              & 21 & 0
-                              & 9 & 9
+    \texttt{MinSearch\_r1}    & 19
+                              & 9
+                              & 2  & 2
+                              & 52 & 52 \\
+    \texttt{MinSearch\_r2}    & 21
+                              & 21
+                              & 9   & 9
                               & 100 & 100 \\
   \end{tabular}
 \end{table}
