@@ -68,7 +68,7 @@ END
 This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
-\paragraph*{First refinement: reducing non-determinism.}
+\paragraph*{First refinement: reducingon-determinism.}
 The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
 \begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}]
 step =

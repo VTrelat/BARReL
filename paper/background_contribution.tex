@@ -1,7 +1,9 @@
 \section{Overview of \barrel}
 
 \subsection{Background}
-\noindent\info[Check where this belongs]
+% \noindent\info[Check where this belongs]
+
+\paragraph*{The B method and proof obligations.}
 Set theory lies at the core of the B method.
 That is, every value is a set that is constrained by some properties that define its shape.
 For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
@@ -33,7 +35,7 @@ However, specifications written in the B method are still required to satisfy so
 	\end{tikzpicture}
 \end{figure}
 
-\paragraph*{Foundations of B in Lean}
+\paragraph*{Foundations of B in Lean.}
 %
 We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types\footnote{Which are defined respectively as $\mathtt{Set}\ \alpha \triangleq \alpha \to \mathtt{Prop}$ and $\mathtt{SetRel}\ \alpha\ \beta \triangleq \mathtt{Set}(\alpha \times \beta)$.} to represent sets and relations.
 This is a convenient representation since Mathlib comes
@@ -75,7 +77,7 @@ Both the definitions and theorems are readily available to end users when import
 %   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 % scoped infixl:125 " ⇸ " => pfun
 
-\paragraph*{Encoding partial B operators}
+\paragraph*{Encoding partial B operators.}
 
 Some operators of the B language are said to be partial, meaning that they are only defined when some well-definedness (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
