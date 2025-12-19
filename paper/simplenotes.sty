@@ -3,10 +3,17 @@
 
 \RequirePackage{kvoptions}
 
+% Options:
+% - disable / enable: hide/show notes (default: enable)
+% - margin / nomargin: show/hide margin markers (default: margin)
+
 \SetupKeyvalOptions{
 	family=simplenotes,
 	prefix=simplenotes@,
 }
+
+\DeclareBoolOption[false]{disable}
+\DeclareComplementaryOption{enable}{disable}
 
 \DeclareBoolOption[true]{margin}
 \DeclareComplementaryOption{nomargin}{margin}
@@ -15,37 +22,46 @@
 
 
 
-\RequirePackage{fontawesome5}
-\RequirePackage{xcolor}
-\ifsimplenotes@margin%
-	\RequirePackage{marginnote}
+\ifsimplenotes@disable%
+	\newcommand\simplenotes@box[3]{}
+	\newcommand\todo[1][]{}
+	\newcommand\fixme[1][]{}
+	\@ifundefined{note}{%
+		\newcommand\note[1][]{}
+	}{}
+	\newcommand\warn[1][]{}
+	\newcommand\info[1][]{}
+	\newcommand\what{}
+\else%
+	\RequirePackage{fontawesome5}
+	\RequirePackage{xcolor}
+	\ifsimplenotes@margin%
+		\RequirePackage{marginnote}
+	\fi
+
+	\newcommand\simplenotes@box[3]{%
+		\ifmmode\let\marker@f\text\else\def\marker@f##1{##1}\fi%
+		\marker@f{%
+			\ifsimplenotes@margin%
+				\marginnote{\textcolor{#2!90!black}{\footnotesize\faSquare}}%
+			\fi%
+			\raisebox{.08em}{\colorbox{#2!90!black}{\textcolor{white}{\textsc{#1}}}}%
+			\ifx&#3&\relax\else\textcolor{#2}{\textsc{\ #3}}\fi}%
+	}
+
+	\definecolor{simplenotes@todo}{HTML}{ED135A}
+	\definecolor{simplenotes@fixme}{HTML}{974006}
+	\definecolor{simplenotes@note}{HTML}{3C8031}
+	\definecolor{simplenotes@warn}{HTML}{F58137}
+	\definecolor{simplenotes@info}{HTML}{0071BC}
+	\definecolor{simplenotes@what}{HTML}{8C368C}
+
+	\newcommand\todo[1][]{\simplenotes@box{{\tiny\faTasks}}{simplenotes@todo}{#1}}
+	\newcommand\fixme[1][]{\simplenotes@box{{\tiny\faTools}}{simplenotes@fixme}{#1}}
+	\@ifundefined{note}{%
+		\newcommand\note[1][]{\simplenotes@box{{\tiny\faCommentDots}}{simplenotes@note}{#1}}
+	}{}
+	\newcommand\warn[1][]{\simplenotes@box{{\tiny\faExclamationTriangle}}{simplenotes@warn}{#1}}
+	\newcommand\info[1][]{\simplenotes@box{{\tiny\faInfoCircle}}{simplenotes@info}{#1}}
+	\newcommand\what{\simplenotes@box{{\tiny\faRadiation}}{simplenotes@what}{}}
 \fi
-
-
-
-\newcommand\simplenotes@box[3]{%
-	\ifmmode\let\marker@f\text\else\def\marker@f##1{##1}\fi%
-	\marker@f{%
-		\ifsimplenotes@margin%
-			\marginnote{\textcolor{#2!90!black}{\footnotesize\faSquare}}%
-		\fi%
-		\raisebox{.08em}{\colorbox{#2!90!black}{\textcolor{white}{\textsc{#1}}}}%
-		\ifx&#3&\relax\else\textcolor{#2}{\textsc{\ #3}}\fi}%
-}
-
-\definecolor{simplenotes@todo}{HTML}{ED135A}
-\definecolor{simplenotes@fixme}{HTML}{974006}
-\definecolor{simplenotes@note}{HTML}{3C8031}
-\definecolor{simplenotes@warn}{HTML}{F58137}
-\definecolor{simplenotes@info}{HTML}{0071BC}
-\definecolor{simplenotes@what}{HTML}{8C368C}
-
-
-\newcommand\todo[1][]{\simplenotes@box{{\tiny\faTasks}}{simplenotes@todo}{#1}}
-\newcommand\fixme[1][]{\simplenotes@box{{\tiny\faTools}}{simplenotes@fixme}{#1}}
-\@ifundefined{note}{%
-	\newcommand\note[1][]{\simplenotes@box{{\tiny\faCommentDots}}{simplenotes@note}{#1}}
-}{}
-\newcommand\warn[1][]{\simplenotes@box{{\tiny\faExclamationTriangle}}{simplenotes@warn}{#1}}
-\newcommand\info[1][]{\simplenotes@box{{\tiny\faInfoCircle}}{simplenotes@info}{#1}}
-\newcommand\what{\simplenotes@box{{\tiny\faRadiation}}{simplenotes@what}{}}
