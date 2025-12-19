@@ -16,7 +16,7 @@ This chain exercises both data refinement and partial operators (\texttt{min}, \
 
 \subsection{A refinement chain: from sets to tables}
 
-\paragraph*{Abstract specification.}
+\paragraph*{Abstract specification}
 The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset $\texttt{S} \in \texttt{FIN1(INTEGER)}$ and maintains a set $\texttt{done}$ of already explored elements of \texttt{S} together with a candidate $\texttt{m}$ satisfying $\texttt{m} = \min(\texttt{done})$.
 The operation \texttt{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \texttt{search\_min} returns the candidate once all elements have been processed.
 
@@ -68,7 +68,7 @@ END
 This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
-\paragraph*{First refinement: reducing non-determinism.}
+\paragraph*{First refinement: reducing non-determinism}
 The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
 
 \begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}]
@@ -84,15 +84,17 @@ step =
 Although the concrete update avoids recomputing \texttt{min}, refinement of the operation and invariant preservation still relate $\texttt{m}$ to $\min(\texttt{done})$, so WD facts about \texttt{min} remain part of the proof landscape.
 All 52 WD conditions are again automatically discharged by \barrel, while the remaining 9 POs correspond to standard refinement obligations.
 
-\paragraph*{Second refinement: scanning an explicit table.}
+\paragraph*{Second refinement: scanning an explicit table}
 The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch-r2} introduces an explicit enumeration and refines set exploration into a traversal using an index $\texttt{i}$ and a current minimum candidate $\texttt{mc}$.
 A gluing invariant links the abstract set $\texttt{done}$ with the image $\texttt{tab[1..i]}$ and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
 
 \begin{figure}[t]
   \centering
   \captionsetup{type=lstlisting}
-  \begin{minipage}[t]{0.48\linewidth}
-    \begin{lstlisting}[language=b]
+  \begin{minipage}[b]{0.48\linewidth}%
+    % \caption{Refinement \texttt{MinSearch\_r2.ref}.}
+    % \label{lst:minsearch-r2}
+    \begin{lstlisting}[language=b, caption={Refinement \texttt{MinSearch\_r2.ref}.}, label={lst:minsearch-r2}]
 REFINEMENT MinSearch_r2
 REFINES MinSearch_r1
 CONSTANTS n, tab
@@ -110,7 +112,7 @@ INVARIANT
   ∀jj.(jj : 1..i ⇒ mc ≤ tab(jj))
 \end{lstlisting}
   \end{minipage}\hfill
-  \begin{minipage}[t]{0.48\linewidth}
+  \begin{minipage}[b]{0.48\linewidth}
     \begin{lstlisting}[language=b,firstnumber=last]
 INITIALISATION
   i := 1 || mc := tab(1)
@@ -129,15 +131,15 @@ OPERATIONS
 END
 \end{lstlisting}
   \end{minipage}
-  \caption{Refinement \texttt{MinSearch\_r2.ref}.}
-  \label{lst:minsearch-r2}
 \end{figure}
 
 This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and application of \texttt{tab(i)}.
 Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 72 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
 
-\paragraph*{Discharging refinement POs inside Lean.}
+\paragraph*{Discharging refinement POs inside Lean}
 
+\begin{figure}[t]
+  \centering
 \begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
 import machine    MinSearch    from "specs/case_study"
 import refinement MinSearch_r1 from "specs/case_study"
@@ -152,6 +154,7 @@ next ...  -- 9 remaining goals
 prove_obligations_of MinSearch_r2
 next ...  -- 21 remaining goals
 \end{lstlisting}
+\end{figure}
 
 Working with \barrel involves standard Lean workflow: B files are imported and POs are generated as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
 
@@ -190,7 +193,7 @@ Table \ref{tab:case-study-stats} summarizes the size and proof obligation statis
 As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
 Fortunately, \barrel's automation should be able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
 
-\paragraph*{Comparison with Atelier~B's interactive prover.}
+\paragraph*{Comparison with Atelier~B's interactive prover}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
 In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent well-definedness side conditions.
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands (e.g.\ \texttt{se}, instantiation of existentially quantified variables) do not enforce typing or well-definedness of user-provided instantiations, potentially leading to inconsistent proofs.

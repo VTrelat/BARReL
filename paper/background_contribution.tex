@@ -1,13 +1,24 @@
 \section{Overview of \barrel}
 
 \subsection{Background}
-% \noindent\info[Check where this belongs]
 
-\paragraph*{The B method and proof obligations.}
+\paragraph*{The B method and proof obligations}
+The B method is a state-based formal development approach centered on \emph{machines} and stepwise \emph{refinement}.
+A machine declares abstract sets and constants, a state described by variables constrained by an invariant, an initialization, and operations.
+A development proceeds by refining an abstract machine into more concrete refinements down to an implementation, introducing representation data together with a \emph{gluing invariant} relating concrete and abstract states.
+From each machine and refinement step, Atelier~B generates POs: logical sequents whose discharge guarantees that the model is consistent and that refinement is correct.
+Concretely, POs cover invariant preservation by the initialization and each operation under its precondition, and simulation-style obligations ensuring that concrete operations preserve the abstract behavior through the gluing invariant.
+In addition, the PO generator emits WD obligations for the many partial constructs of the language.
+
+POs can be discharged automatically using Atelier~B’s internal provers and by delegating to external backends.
+In particular, several approaches translate B obligations to SMT solvers such as Z3~\cite{z3} or cvc5~\cite{cvc5} via dedicated encodings, including the historical \emph{ppTransSMT}~\cite{DeharbeBSMT} and the more recent \emph{BEer}~\cite{beer} encodings.
+Obligations that remain---often those requiring non-trivial quantifier instantiation, refinement reasoning, or tedious WD bookkeeping---are typically discharged interactively using Atelier~B’s GUI-oriented prover, where the user guides rule applications and instantiations.
+
+\paragraph*{The B language in a nutshell}
 Set theory lies at the core of the B method.
 That is, every value is a set that is constrained by some properties that define its shape.
 For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
-However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification (except for intrinsics such as \texttt{INTEGER} or \texttt{POW}) \fixme[weird sentence].
+However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification (except for intrinsics such as \texttt{INTEGER} or \texttt{POW}\fixme[remove? Unclear and wrong]) \fixme[weird sentence].
 
 \todo[TODO]
 
@@ -35,7 +46,7 @@ However, specifications written in the B method are still required to satisfy so
 	\end{tikzpicture}
 \end{figure}
 
-\paragraph*{Foundations of B in Lean.}
+\paragraph*{Foundations of B in Lean}
 %
 We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types\footnote{Which are defined respectively as $\mathtt{Set}\ \alpha \triangleq \alpha \to \mathtt{Prop}$ and $\mathtt{SetRel}\ \alpha\ \beta \triangleq \mathtt{Set}(\alpha \times \beta)$.} to represent sets and relations.
 This is a convenient representation since Mathlib comes
@@ -77,7 +88,7 @@ Both the definitions and theorems are readily available to end users when import
 %   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 % scoped infixl:125 " ⇸ " => pfun
 
-\paragraph*{Encoding partial B operators.}
+\paragraph*{Encoding partial B operators}
 
 Some operators of the B language are said to be partial, meaning that they are only defined when some well-definedness (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
