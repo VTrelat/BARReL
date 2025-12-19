@@ -1,2 +1,12 @@
-\section{Related Work and Conclusion}
-\todo[TODO]
+\section{Related Work}
+\label{sec:related}
+
+Several approaches have explored using interactive theorem provers to increase confidence in developments written in the B family of methods by moving proof obligations into a prover with a small, auditable kernel.
+An early line of work translates (fragments of) B into PVS, leveraging type synthesis to recover the typing information needed by the target logic and then relying on PVS for interactive discharge of the resulting obligations~\cite{Bodeveix2002BtoPVS}.
+In the Isabelle/HOL ecosystem~\cite{IsabelleHOL}, mechanizations have focused primarily on Event-B.
+The Isabelle plugin for Rodin~\cite{Schmalz2012RodinIsabelle} provides a formalization of the Event-B logic, including treatment of partial functions via definitional extensions and supporting automation.
+A more user-facing shallow embedding was proposed recently, viewing Event-B as a DSL hosted in Isabelle/HOL~\cite{Wolff2024EB_Isabelle}.
+Beyond these, the Rocq proof assistant \cite{Coq12} has also been used in complementary work that emphasizes mechanized semantics and meta-theory, rather than providing a drop-in backend integrated with an industrial proof-obligation generator.
+
+\barrel is complementary in scope and emphasis.
+Rather than formalizing the logic, it targets the existing Atelier~B workflow by consuming POG files or invoking the generator and turning each obligation into a Lean theorem over Mathlib’s set-theoretic primitives~\cite{mathlib4}, while preserving B notations and focusing on usability for B developers, with the aim of minimizing the learning effort required to get started, providing basic automation to reduce user effort and emphasizing on explicit handling of well-definedness conditions.
