@@ -88,7 +88,7 @@ Both the definitions and theorems are readily available to end users when import
 %   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
 % scoped infixl:125 " ⇸ " => pfun
 
-\paragraph*{Encoding partial B operators}
+\subsection{Encoding partial B operators}
 
 Some operators of the B language are said to be partial, meaning that they are only defined when some well-definedness (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
@@ -125,3 +125,5 @@ abbrev app {α β} (f : SetRel α β) (x : α) (wd : app.WD f x) : β :=
   Classical.choose wd.isInDomain
 scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
+
+\subsection{Automation and usability features}
