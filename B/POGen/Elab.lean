@@ -1,5 +1,6 @@
 import B.DSL.Machine
 import B.AST
+import B.POGen.Env
 import Barrel.Builtins
 
 def Array.partitionMap {α β γ} (f : α → β ⊕ γ) (a : Array α) : Array β × Array γ :=
@@ -97,7 +98,7 @@ namespace B
   macro "enum_ctor_name% " c:term " of " S:term " in " m:term : term => `((enum_name% $S in $m) ++ $c)
   macro "constants_name% " m:term : term => `(Name.str $m "Consts")
   macro "invariants_name% " m:term : term => `(Name.str $m "Invariants")
-  macro "assertions_nme% " m:term : term => `(Name.str $m "Assertions")
+  macro "assertions_name% " m:term : term => `(Name.str $m "Assertions")
 
   macro S:term "_abs%" : term => `(Name.appendAfter $S "_abs")
   macro S:term "_def%" : term => `(Name.appendAfter $S "_def")
@@ -507,7 +508,7 @@ namespace B
 
             k fvars fvars' fvars'_typ
 
-  private def makeTyping {α} (m : Machine Ident Term) (fields : Array Expr) (mach : Expr) (vars_typ : Array Expr) (k : Array Expr → TermElabM α) : TermElabM α := do
+  private def makeProps {α} (fields : ExprMap Expr) (props : Array Expr) (k : ExprMap Expr → TermElabM α) : TermElabM α := do
     /- NOTE: accumulators
 
       The accumulators are present because we need to substitute free variables that have been introduced earlier
@@ -515,53 +516,62 @@ namespace B
 
       This is quite ugly, and the scopes could/should be clearly defined at the cost of introducing more free variables.
     -/
-    let rec go_vars (i : ℕ) (acc₁ acc₂ : Array Expr) : TermElabM α := do
-      if _h : i < vars_typ.size then
-        let var := vars_typ[i]
-
-        let prop ← var.fvarId!.getType
-        let defName ← var.fvarId!.getUserName
-        -- let var ← lookupVar defName
-
-        let toReplace : Array Expr ← fields.mapM λ f ↦ do
-          return .app (.const ((← getCurrNamespace) ++ m.name.getId ++ (← f.fvarId!.getUserName)) []) mach
-
-        let prop := (← instantiateMVars prop).replaceFVars (fields ++ acc₁) (toReplace ++ acc₂)
-
-        Meta.withLocalDecl defName .default prop λ defName' ↦ do
-          go_vars (i + 1) (acc₁.push var) (acc₂.push defName')
-      else
-        k acc₂
-
-    go_vars 0 #[] #[]
-
-  private def makeProps {α} (m : Machine Ident Term) (fields : Array Expr) (vars_typ vars_typ' : Array Expr) (mach : Expr) (props : Array Expr) (k : Array Expr → TermElabM α) : TermElabM α := do
-    -- See the NOTE "accumulators" above
-    let rec go_inv (i : ℕ) (acc₁ acc₂ : Array Expr) : TermElabM α := do
+    let rec go_prop (i : ℕ) (acc : ExprMap Expr) : TermElabM α := do
       if _h : i < props.size then
         let var := props[i]
 
         let defName ← var.fvarId!.getUserName
-        let prop ← var.fvarId!.getType
-        -- let var ← lookupVar defName
-
-        let toReplace : Array Expr ← fields.mapM λ f ↦ do
-          return .app (.const ((← getCurrNamespace) ++ m.name.getId ++ (← f.fvarId!.getUserName)) []) mach
-
-        let prop' := (← instantiateMVars prop).replaceFVars (fields ++ acc₁) (toReplace ++ acc₂)
+        let prop ← instantiateMVars =<< var.fvarId!.getType
+        let prop' := prop.replace λ e ↦ acc[e]? <|> fields[e]?
         -- logInfo m!"makeProps:\n• prop (before) ={indentExpr prop}\n• prop' (after) ={indentExpr prop'}\n• to replace =\n  {fields ++ acc₁}\n• replaced by =\n  {toReplace ++ acc₂}\n• raw prop (before):\n  {repr prop}\n• raw prop' (after):\n  {repr prop'}"
 
         Meta.withLocalDecl defName .default prop' λ defName' ↦ do
-          go_inv (i + 1) (acc₁.push var) (acc₂.push defName')
+          go_prop (i + 1) (acc.insert var defName')
       else
-        k acc₂
+        k acc
 
-    go_inv 0 vars_typ vars_typ'
+    go_prop 0 .emptyWithCapacity
 
-  private def generateInvariantStructure {α} (m : Machine Ident Term) (fields : Array Expr) (vars_typ : Array Expr) (mach : Expr) (invariants : Array Expr) (k : Array Expr → TermElabM α) : TermElabM α := do
-    makeTyping m fields mach vars_typ λ vars_typ' ↦ do
-      makeProps m fields vars_typ vars_typ' mach invariants λ invariants ↦ do
+  private def generateInvariantStructure {α} (m : Machine Ident Term) (fields : Array Expr) (vars_typ : Array Expr) (mach : Expr) (invariants : Array Expr) (k : ExprMap Expr → TermElabM α) : TermElabM α := do
+    -- TODO: converting the array to a list then constructing a map?
+    let fields : ExprMap Expr ← (Std.HashMap.ofList ∘ Array.toList) <$> fields.mapM λ f ↦ do
+      return (f, .app (.const ((← getCurrNamespace) ++ m.name.getId ++ (← f.fvarId!.getUserName)) []) mach)
+
+    makeProps fields vars_typ λ vars_typ ↦ do
+      makeProps (fields ∪ vars_typ) invariants λ invariants ↦ do
         k invariants
+
+  private def generateAssertionStructure {α} (m : Machine Ident Term) (fields : Array Expr) (invariants : Array Expr) (mach machInv : Expr) (assertions : Array Expr) (k : ExprMap Expr → TermElabM α) : TermElabM α := do
+    -- TODO: converting the array to a list then constructing a map?
+    let fields : ExprMap Expr ← (Std.HashMap.ofList ∘ Array.toList) <$> fields.mapM λ f ↦ do
+      return (f, .app (.const ((← getCurrNamespace) ++ m.name.getId ++ (← f.fvarId!.getUserName)) []) mach)
+    let invariants : ExprMap Expr ← (Std.HashMap.ofList ∘ Array.toList) <$> invariants.mapM λ f ↦ do
+      return (f, .app (.const ((← getCurrNamespace) ++ (invariants_name% m.name.getId) ++ (← f.fvarId!.getUserName)) []) machInv)
+
+    makeProps (fields ∪ invariants) assertions λ assertions ↦ do
+      k assertions
+
+  partial def Substitution.variablesSet {α β} [BEq α] [Hashable α] : {k : _} → Substitution α β k → Std.HashSet α
+    | .any, .seq s₁ s₂ => s₁.variablesSet ∪ s₂.variablesSet
+    | .any, .par s₁ s₂ => s₁.variablesSet ∪ s₂.variablesSet
+    | .level1, .block s => s.variablesSet
+    | .level1, .identity => ∅
+    | .level1, .become_equal₁ vs _ => Std.HashSet.ofArray vs
+    | .level1, .become_equal₂ v _ _ => {v}
+    | .level1, .precond _ s => s.variablesSet
+    | .level1, .assert _ s => s.variablesSet
+    | .level1, .choice ss => ss.foldl (init := ∅) λ acc s ↦ acc ∪ s.2.variablesSet
+    | .level1, .if ss s => (ss.foldl (init := ∅) λ acc s ↦ acc ∪ s.2.2.variablesSet) ∪ match s with
+      | .none => ∅
+      | .some s => s.2.variablesSet
+    | .level1, .select ss s => (ss.foldl (init := ∅) λ acc s ↦ acc ∪ s.2.2.variablesSet) ∪ match s with
+      | .none => ∅
+      | .some s => s.2.variablesSet
+    | .level1, .any bs _ s => bs.foldl (init := s.variablesSet) λ s b => s.erase b.name
+    | .level1, .let vs _ s => vs.foldl (init := s.variablesSet) Std.HashSet.erase
+    | .level1, .become_element vs _ => Std.HashSet.ofArray vs
+    | .level1, .become_such_that vs _ => Std.HashSet.ofArray vs
+    | .level1, .var bs s => bs.foldl (init := s.variablesSet) λ s b => s.erase b.name
 
   -- private def checkSubstitution (m : Machine Ident Term) : {k : _} → Substitution Ident Term k → TermElabM (Σ k, Substitution Expr Expr k)
   --   | .level1, .block s => checkSubstitution m s
@@ -587,44 +597,93 @@ namespace B
   --   | .any, .seq s₁ s₂ => panic! "TODO"
   --   | .any, @Substitution.par _ _ k₁ k₂ s₁ s₃ => panic! "TODO"
 
-  open private mkToParentName from Lean.Elab.Structure in
+  private def Machine.structName {m : Type → Type} [Monad m] [MonadResolveName m] (mach : Machine Ident Term) : m Name := do
+    return (← getCurrNamespace) ++ mach.name.getId
+
+  private def Machine.structConstsName {m : Type → Type} [Monad m] [MonadResolveName m] (mach : Machine Ident Term) : m Name := do
+    return constants_name% (← mach.structName)
+
+  private def Machine.structInvariantsName {m : Type → Type} [Monad m] [MonadResolveName m] (mach : Machine Ident Term) : m Name := do
+    return invariants_name% (← mach.structName)
+
+  private def Machine.structAssertsName {m : Type → Type} [Monad m] [MonadResolveName m] (mach : Machine Ident Term) : m Name := do
+    return assertions_name% (← mach.structName)
+
+  open private mkToParentName from Lean.Elab.Structure
+
   private def elabMachineFromExpr (m : Machine Ident Term) : CommandElabM PUnit := do
     -- First, generate the inductive types for the enumerated sets of the machine
     generateAbstractEnumeratedSets m
     -- Then scope all the sets, constants, properties and variables (without their typing infos)
     -- and generate a structure named `m.name`
-    generateMachineStructure m λ fields vars vars_typ ↦ do
+    generateMachineStructure m λ fields vars vars_typ ↦
       -- Then make all the typing predicates, invariants and assertions in our environment
-      withProps m.invariants λ invariants ↦ do
-        let machName := (← getCurrNamespace) ++ m.name.getId
-        let consts := constants_name% machName
-        let invs := invariants_name% machName
+      withProps m.invariants λ invariants ↦
+        withProps m.assertions λ assertions ↦ do
+          let consts ← m.structConstsName
+          let machName ← m.structName
+          let invs ← m.structInvariantsName
+          let asserts ← m.structAssertsName
 
-        -- Finally, declare the structures in the global environment
-        generateStructure consts #[] (mkSort 2) fields
-        Meta.withLocalDecl (mkToParentName consts) .default (Expr.const consts []) (kind := .implDetail) λ consts ↦ do
-          generateStructure machName #[] (mkSort 2) vars #[consts]
+          -- Finally, declare the structures in the global environment
+          generateStructure consts #[] (mkSort 2) fields
+          Meta.withLocalDecl (mkToParentName consts) .default (Expr.const consts []) (kind := .implDetail) λ consts ↦ do
+            generateStructure machName #[] (mkSort 2) vars #[consts]
           Meta.withLocalDecl `mach .default (.const machName []) (kind := .implDetail) λ mach ↦ do
             generateInvariantStructure m (fields ++ vars) vars_typ mach invariants λ invariants ↦ do
-              generateStructure invs #[mach] (mkSort 0) invariants
+              generateStructure invs #[mach] (mkSort 0) invariants.valuesArray
+              Meta.withLocalDecl `invs .default (.app (.const invs []) mach) (kind := .implDetail) λ machInv ↦ do
+                generateAssertionStructure m (fields ++ vars) invariants.valuesArray mach machInv assertions λ assertions ↦ do
+                  generateStructure asserts #[mach, machInv] (mkSort 0) assertions.valuesArray
 
-      -- let assertions ← generateAssertionStructure m fields vars
+    return .unit
 
-      -- Then check the substitutions of the initialisation and operations
-      -- let subInit := m.initialisation.2.generateMetaSubstitution m
-        -- Meta.liftMetaM ∘ Meta.mkLambdaFVars #[mach] =<< generateSubstitution m.initialisation.2
+  private def makeObligations (m : Machine Ident Term) : CommandElabM (Array Obligation) := do
+    -- Then check the substitutions of the initialisation and operations
+    -- let subInit := m.initialisation.2.generateMetaSubstitution m
+      -- Meta.liftMetaM ∘ Meta.mkLambdaFVars #[mach] =<< generateSubstitution m.initialisation.2
 
-      -- Substitutions of type `(mach : Expr) → (f : Expr) → MetaM Expr`:
-      -- * `mach` is a free variable of the type `Mach` of the machine (to carry around variables)
-      -- * `f` must internally be a functional expression from `Mach` to `Prop` (an invariant or an assertion)
-      --
-      -- For example, the substitution `pre h : x ∈ INTEGER then x := x + 1 ‖ y := 0` should become
-      -- the meta-expression (abusing notations)
-      -- `λ (mach : Mach) (t : Expr) ↦ `(expr| (h : x ∈ INTEGER) → $t { $mach with x := $mach.x + 1, y := 0 })`
-      --
-      -- Is there a possibility that this representation does not work for some kind of substitution?
+    -- Substitutions of type `(mach : Expr) → (f : Expr) → MetaM Expr`:
+    -- * `mach` is a free variable of the type `Mach` of the machine (to carry around variables)
+    -- * `f` must internally be a functional expression from `Mach` to `Prop` (an invariant or an assertion)
+    --
+    -- For example, the substitution `pre h : x ∈ INTEGER then x := x + 1 ‖ y := 0` should become
+    -- the meta-expression (abusing notations)
+    -- `λ (mach : Mach) (t : Expr) ↦ `(expr| (h : x ∈ INTEGER) → $t { $mach with x := $mach.x + 1, y := 0 })`
+    --
+    -- Is there a possibility that this representation does not work for some kind of substitution?
 
-        return .unit
+
+    let mut obligations : Array Obligation := #[]
+
+    obligations ← obligations.push <$> liftTermElabM do
+      -- # Assertions
+      --   Aₘ /- ∧ Aᵤ -/                                       -- Parameter constraints
+      -- ∧ Bₘ /- ∧ Bᵤ ∧ Bₛ ∧ Bᵢ₍₁₎ ∧ … ∧ Bᵢ₍ₙ₎ -/             -- Properties
+      -- /- ∧ Iᵤ ∧ Jᵤ -/
+      -- ∧ Iₘ ∧ Lₘ                                             -- Invariants
+      -- ∧ Jₘ₍₁₎ ∧ … ∧ Jₘ₍ₖ₋₁₎                                 -- Previous assertions
+      -- ──────────────────────────────────────────────────────────────────────────────────
+      -- ⊢ Jₘ₍ₖ₎
+      let thm ← Meta.withLocalDeclD `mach (.const (← m.structName) []) λ mach ↦ do
+        Meta.withLocalDeclD `invs (← Meta.mkAppM (← m.structInvariantsName) #[mach]) λ invs ↦ do
+          Meta.mkForallFVars #[mach, invs] (← Meta.mkAppM (← m.structAssertsName) #[mach, invs])
+
+      pure {
+        name := (← m.structAssertsName) ++ `satisfied
+        description := "Assertions are satisfied"
+        type := thm
+      }
+
+    -- # Invariants (initialisation)
+    --   Aₘ /- ∧ Aᵤ -/                                       -- Parameter constraints
+    -- ∧ Bₘ /- ∧ Bᵤ ∧ Bₛ ∧ Bᵢ₍₁₎ ∧ … ∧ Bᵢ₍ₙ₎ -/             -- Properties
+    -- /- ∧ Iᵤ ∧ Jᵤ -/
+    -- /- ∧ Iₛ ∧ Jₛ -/
+    -- ──────────────────────────────────────────────────────────────────────────────────
+    -- ⊢ Uₘ • Iₘ
+
+    return obligations
 
 
 
@@ -670,9 +729,11 @@ namespace B
         «operations» ← Option.some <$> ops.mapM (liftMacroM ∘ elabOperation)
       | _ => throwUnsupportedSyntax
 
+
     -- TODO: Check that the machine is syntactically valid before generating its POs
     if «abstract_variables».isSome && «initialisation».isNone then
       throwError "variables clause requires an initialisation clause"
+
 
     let «machine» : Machine Ident Term := {
       name
@@ -692,10 +753,18 @@ namespace B
       «assertions» := «assertions».getD #[]
       «operations» := «operations».getD #[]
     }
-    let machine' ← elabMachineFromExpr «machine»
-    -- logInfo s!"{repr machine'}"
-    -- let pos ← liftTermElabM <| generateProofObligations machine'
-    -- logInfo m!"{pos}"
+
+    elabMachineFromExpr «machine»
+    let goals ← makeObligations «machine»
+
+    do
+      let mut message : MessageData := ""
+      if !goals.isEmpty then
+        for goal in goals do
+          message := message ++ m!"• {goal}"
+        logInfo message
+
+    modifyEnv λ env ↦ obligations.addEntry env goals
 
     return .unit
   where
