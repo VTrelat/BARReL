@@ -23,8 +23,8 @@ The operation \texttt{step} non-deterministically adds a non-empty finite subset
 \begin{figure}[t]
   \centering
   \captionsetup{type=lstlisting}
-  \begin{minipage}[t]{0.48\linewidth}
-    \begin{lstlisting}[language=b]
+  \begin{minipage}[b]{0.48\linewidth}
+    \begin{lstlisting}[language=b, caption={Specification \texttt{MinSearch.mch}.}, label={lst:minsearch-mch}]
 MACHINE MinSearch
 CONSTANTS
   S
@@ -42,7 +42,7 @@ INITIALISATION
   END
 \end{lstlisting}
   \end{minipage}\hfill
-  \begin{minipage}[t]{0.48\linewidth}
+  \begin{minipage}[b]{0.48\linewidth}
     \begin{lstlisting}[language=b,firstnumber=last]
 OPERATIONS
   mi <-- search_min =
@@ -61,8 +61,6 @@ OPERATIONS
 END
 \end{lstlisting}
   \end{minipage}
-  \caption{Specification \texttt{MinSearch.mch}.}
-  \label{lst:minsearch-mch}
 \end{figure}
 
 This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
@@ -193,7 +191,7 @@ Table \ref{tab:case-study-stats} summarizes the size and proof obligation statis
 As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
 Fortunately, \barrel's automation should be able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
 
-\paragraph*{Comparison with Atelier~B's interactive prover}
+\subsection{Comparison with Atelier~B's interactive prover}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
 In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent well-definedness side conditions.
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands (e.g.\ \texttt{se}, instantiation of existentially quantified variables) do not enforce typing or well-definedness of user-provided instantiations, potentially leading to inconsistent proofs.

@@ -13,6 +13,33 @@ This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lea
 Given a B machine (or an existing POG file), \barrel invokes Atelier~B to generate POs when needed and translates them into Lean theorems expressed over Mathlib~\cite{mathlib4}'s set-theoretic primitives, preserving the original structures and notations as closely as possible.
 The library provides commands \fixme[detail?] allowing a user to turn B developments into a sequence of Lean theorems corresponding to the POs of the developments;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs.
+
+\begin{figure}[htb]
+	\caption{High-level picture of \barrel.}
+
+	\centering
+	\begin{tikzpicture}[
+			file/.style={chamfered rectangle, draw, chamfered rectangle corners=north west},
+			entity/.style={rectangle, draw},
+			node distance=1.5cm and 1.5cm,
+			every node/.style={inner sep=6pt, align=center, minimum height=1.22cm, outer sep=0},
+			% start chain = going right,
+			arr/.style={->, shorten <=3pt, shorten >=3pt}
+		]
+		\node[file] (B mch) {.mch};
+		\node[file, right=of B mch] (B bxml) {.bxml};
+		\node[entity, right=of B bxml] (pos) {Proof\\obligations};
+		\node[entity, right=of pos] (thms) {Lean\\theorems};
+
+		\draw[arr] (B mch) -- node[above=-4mm, midway] {\scriptsize Parsing} (B bxml);
+		\draw[arr] (B bxml) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize generation} (pos);
+		\draw[arr] (pos) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize encoding} (thms);
+		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.5mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
+	\end{tikzpicture}
+\end{figure}
+
+\todo[Integrate fig]
+
 Our contributions are therefore threefold:
 \begin{itemize}
   \item \barrel, an open-source lightweight and modular backend for B developments written in Lean~4;

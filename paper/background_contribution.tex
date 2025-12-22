@@ -6,7 +6,7 @@
 The B method is a state-based formal development approach centered on \emph{machines} and stepwise \emph{refinement}.
 A machine declares abstract sets and constants, a state described by variables constrained by an invariant, an initialization, and operations.
 A development proceeds by refining an abstract machine into more concrete refinements down to an implementation, introducing representation data together with a \emph{gluing invariant} relating concrete and abstract states.
-From each machine and refinement step, Atelier~B generates POs: logical sequents whose discharge guarantees that the model is consistent and that refinement is correct.
+From each machine and refinement step, Atelier~B generates proof obligations (POs): logical sequents whose discharge guarantees that the model is consistent and that refinement is correct.
 Concretely, POs cover invariant preservation by the initialization and each operation under its precondition, and simulation-style obligations ensuring that concrete operations preserve the abstract behavior through the gluing invariant.
 In addition, the PO generator emits well-definedness (WD) obligations for the many partial constructs of the language.
 
@@ -22,30 +22,6 @@ However, specifications written in the B method are still required to satisfy so
 
 \todo[TODO]
 
-\begin{figure}[htb]
-	\caption{High-level picture of \barrel.}
-
-	\centering
-	\begin{tikzpicture}[
-			file/.style={chamfered rectangle, draw, chamfered rectangle corners=north west},
-			entity/.style={rectangle, draw},
-			node distance=1.5cm and 1.5cm,
-			every node/.style={inner sep=6pt, align=center, minimum height=1.22cm, outer sep=0},
-			% start chain = going right,
-			arr/.style={->, shorten <=3pt, shorten >=3pt}
-		]
-		\node[file] (B mch) {.mch};
-		\node[file, right=of B mch] (B bxml) {.bxml};
-		\node[entity, right=of B bxml] (pos) {Proof\\obligations};
-		\node[entity, right=of pos] (thms) {Lean\\theorems};
-
-		\draw[arr] (B mch) -- node[above=-4mm, midway] {\scriptsize Parsing} (B bxml);
-		\draw[arr] (B bxml) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize generation} (pos);
-		\draw[arr] (pos) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize encoding} (thms);
-		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.5mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
-	\end{tikzpicture}
-\end{figure}
-
 \paragraph*{Foundations of B in Lean}
 %
 We leverage these typing annotations and ground our encoding in typed higher order logic (rather than ZFC set theory) by using Mathlib's \texttt{Set} and \texttt{SetRel} types\footnote{Which are defined respectively as $\mathtt{Set}\ \alpha \triangleq \alpha \to \mathtt{Prop}$ and $\mathtt{SetRel}\ \alpha\ \beta \triangleq \mathtt{Set}(\alpha \times \beta)$.} to represent sets and relations.
@@ -56,20 +32,17 @@ This representation also allows us to express every kind of set used in B specif
 For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementations of the B method.
 % this also enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
 
-A central challenge in this setting is the use of partial B operators.
-Function application, the minimum and maximum of a set, and cardinality for instance are all only defined under suitable well-definedness (WD) conditions.
-Atelier~B typically handles these via additional WD proof obligations, which are generated \emph{after} the main obligations, expecting that they will be later instantiated when needed.
-Lean, on the other hand, has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant functions.
-This also means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
-From the user's perspective, the discharger presents a sequence of goals where WD obligations appear explicitly, ahead of the original PO, and all of them can be proved using the usual tactic language and existing library lemmas.
-
 We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the POs to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
 Some examples (the set of relations, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
 %
-\begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}]
+\begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}, float]
 abbrev rels {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
   𝒫 (A ×ˢ B)
 scoped infixl:125 "  ⟷  " => rels
+
+abbrev pfun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
+  { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
+scoped infixl:125 " ⇸ " => pfun
 
 abbrev injTFun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
   A ⤔ B ∩ A  ⟶  B
@@ -83,19 +56,15 @@ scoped infixl:160 " ⩤ " => domSubtr
 We then provide proofs, using Mathlib's infrastructure and theorems, of various laws and theorems of B: for any total function $f \in A \longrightarrow B$ its domain $\bdom{f}$ equals $A$; assuming that $a \le b$, the minimum of $\binterval{a}{b}$ is $a$; etc.
 Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
 
-% abbrev pfun {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
-%   { f ∈ A  ⟷  B | ∀ ⦃x y z⦄, (x, y) ∈ f → (x, z) ∈ f → y = z }
-% scoped infixl:125 " ⇸ " => pfun
-
 \subsection{Encoding partial B operators}
-
-Some operators of the B language are said to be partial, meaning that they are only defined when some well-definedness (WD) conditions are satisfied.
+A central challenge in this setting is the use of \emph{partial} B operators, meaning that they are only defined when some \emph{well-definedness} (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
 These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
 The \emph{WD condition} of the corresponding operator is that $P$ is satisfied by (at least) an element of $S$.
 
-Atelier B handles this partiality by generating the WD conditions of each partial operator as side goals and assumes in the main goal that the partial operators are well-defined.
+Atelier B handles this partiality by generating the WD conditions of each partial operator used in a PO as side goals and assumes in the main goal that the partial operators are well-defined.
 However, one must trust that these WD conditions actually correspond to the WD conditions that are expected from the context of those partial operators, and there is no clear dependency---even after inspecting the generated POG file---between the main goal and the WD side goals.
+Furthermore, these WD conditions are only generated for the goal itself but not during proof steps. This may lead to inconsistencies if the user is not careful enough for instance when instantiating quantified variables in the interactive prover.
 
 Our approach in \barrel differs from Atelier B in that the dependency between the WD goals and the main goals is clear and explicit.
 %
@@ -103,11 +72,12 @@ First, we do not rely on the WD conditions that are generated by Atelier B and i
 This is not necessarily true of the WD conditions generated by Atelier B since they undergo some simplification steps or do not match exactly our encoding of some predicates.
 In practice, our tool generates WD side goals that are equivalent to the WD side goals generated by Atelier B.
 %
-Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, but in Lean) which explicitly depends on a proof that the predicate is satisfied by at least one element\footnote{By doing so we encode partial operators as total functions: since they now explicitly depend on the proof of the WD condition, they cannot be undefined anymore.}.
-The statement of this proof, which is the WD condition of the operator, is then generated as a side theorem which must be discharged for the main theorem to be fully proven, i.e.\@ not depend on the \texttt{sorryAx} axiom (the axiom that is introduced by admitted theorems).
+Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, but in Lean) which explicitly depends on a proof that the predicate is satisfied by at least one element\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}.
+This means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
+The statement of this proof, which is the WD condition of the operator, is then generated as a side theorem (or a subgoal) which must be discharged for the main theorem to be fully proven, i.e.\@ not depend on the \texttt{sorryAx} axiom---the axiom that is introduced by admitted theorems.
 To illustrate this use of \texttt{Classical.choose}, the encoding (and WD conditions) of $\bmin{S}$ and function application $\bapp{F}{x}$ are given in \cref{lst:min-fn-app}.
 
-\begin{lstlisting}[label=lst:min-fn-app, caption={Encoding of the $\bmin{S}$ and $\bapp{F}{x}$ partial operators.}]
+\begin{lstlisting}[label=lst:min-fn-app, caption={Encoding of the $\bmin{S}$ and $\bapp{F}{x}$ partial operators.}, float=t]
 structure min.WD {α} [LinearOrder α] (S : Set α) : Prop where
   isBoundedBelow : ∃ x ∈ S, ∀ y ∈ S, x ≤ y
 
@@ -125,4 +95,5 @@ abbrev app {α β} (f : SetRel α β) (x : α) (wd : app.WD f x) : β :=
 scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
 
-\subsection{Automation and usability features}
+\subsection{Implementation and Automation}
+\todo[Find a better title!]
