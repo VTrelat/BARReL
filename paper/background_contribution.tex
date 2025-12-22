@@ -18,7 +18,7 @@ Obligations that remain---often those requiring non-trivial quantifier instantia
 Set theory lies at the core of the B method.
 That is, every value is a set that is constrained by some properties that define its shape.
 For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
-However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification (except for intrinsics such as \texttt{INTEGER} or \texttt{POW}\fixme[remove? Unclear and wrong]) \fixme[weird sentence].
+However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification.
 
 \todo[TODO]
 
@@ -64,7 +64,8 @@ The \emph{WD condition} of the corresponding operator is that $P$ is satisfied b
 
 Atelier B handles this partiality by generating the WD conditions of each partial operator used in a PO as side goals and assumes in the main goal that the partial operators are well-defined.
 However, one must trust that these WD conditions actually correspond to the WD conditions that are expected from the context of those partial operators, and there is no clear dependency---even after inspecting the generated POG file---between the main goal and the WD side goals.
-Furthermore, these WD conditions are only generated for the goal itself but not during proof steps. This may lead to inconsistencies if the user is not careful enough for instance when instantiating quantified variables in the interactive prover.
+Furthermore, these WD conditions are only generated for the goal itself but not during proof steps.
+This can lead to inconsistencies if the user is not careful enough for instance when instantiating quantified variables in the interactive prover.
 
 Our approach in \barrel differs from Atelier B in that the dependency between the WD goals and the main goals is clear and explicit.
 %

@@ -21,10 +21,10 @@ The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} 
 The operation \texttt{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \texttt{search\_min} returns the candidate once all elements have been processed.
 
 \begin{figure}[t]
-  \centering
-  \captionsetup{type=lstlisting}
-  \begin{minipage}[b]{0.48\linewidth}
-    \begin{lstlisting}[language=b, caption={Specification \texttt{MinSearch.mch}.}, label={lst:minsearch-mch}]
+	\centering
+	\captionsetup{type=lstlisting}
+	\begin{minipage}[b]{0.48\linewidth}
+		\begin{lstlisting}[language=b, caption={Specification \texttt{MinSearch.mch}.}, label={lst:minsearch-mch}]
 MACHINE MinSearch
 CONSTANTS
   S
@@ -41,9 +41,9 @@ INITIALISATION
     done := {x} || m := x
   END
 \end{lstlisting}
-  \end{minipage}\hfill
-  \begin{minipage}[b]{0.48\linewidth}
-    \begin{lstlisting}[language=b,firstnumber=last]
+	\end{minipage}\hfill
+	\begin{minipage}[b]{0.48\linewidth}
+		\begin{lstlisting}[language=b,firstnumber=last]
 OPERATIONS
   mi <-- search_min =
     PRE done = S THEN
@@ -60,10 +60,10 @@ OPERATIONS
     END
 END
 \end{lstlisting}
-  \end{minipage}
+	\end{minipage}
 \end{figure}
 
-This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions, that are discharged automatically by \barrel's underlying automation.
+This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions \fixme[uh?], that are discharged automatically by \barrel's underlying automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
 \paragraph*{First refinement: reducing non-determinism}
@@ -87,12 +87,12 @@ The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch
 A gluing invariant links the abstract set $\texttt{done}$ with the image $\texttt{tab[1..i]}$ and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
 
 \begin{figure}[t]
-  \centering
-  \captionsetup{type=lstlisting}
-  \begin{minipage}[b]{0.48\linewidth}%
-    % \caption{Refinement \texttt{MinSearch\_r2.ref}.}
-    % \label{lst:minsearch-r2}
-    \begin{lstlisting}[language=b, caption={Refinement \texttt{MinSearch\_r2.ref}.}, label={lst:minsearch-r2}]
+	\centering
+	\captionsetup{type=lstlisting}
+	\begin{minipage}[b]{0.48\linewidth}%
+		% \caption{Refinement \texttt{MinSearch\_r2.ref}.}
+		% \label{lst:minsearch-r2}
+		\begin{lstlisting}[language=b, caption={Refinement \texttt{MinSearch\_r2.ref}.}, label={lst:minsearch-r2}]
 REFINEMENT MinSearch_r2
 REFINES MinSearch_r1
 CONSTANTS n, tab
@@ -109,9 +109,9 @@ INVARIANT
   mc ∈ tab[1..i]    ∧
   ∀jj.(jj : 1..i ⇒ mc ≤ tab(jj))
 \end{lstlisting}
-  \end{minipage}\hfill
-  \begin{minipage}[b]{0.48\linewidth}
-    \begin{lstlisting}[language=b,firstnumber=last]
+	\end{minipage}\hfill
+	\begin{minipage}[b]{0.48\linewidth}
+		\begin{lstlisting}[language=b,firstnumber=last]
 INITIALISATION
   i := 1 || mc := tab(1)
 OPERATIONS
@@ -128,17 +128,17 @@ OPERATIONS
     END
 END
 \end{lstlisting}
-  \end{minipage}
+	\end{minipage}
 \end{figure}
 
-This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and application of \texttt{tab(i)}.
+This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and function application \texttt{tab(i)}.
 Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 72 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
 
 \paragraph*{Discharging refinement POs inside Lean}
 
 \begin{figure}[t]
-  \centering
-\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
+	\centering
+	\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
 import machine    MinSearch    from "specs/case_study"
 import refinement MinSearch_r1 from "specs/case_study"
 import refinement MinSearch_r2 from "specs/case_study"
@@ -157,33 +157,33 @@ next ...  -- 21 remaining goals
 Working with \barrel involves standard Lean workflow: B files are imported and POs are generated as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
 
 \begin{table}[t]
-  \centering
-  \small
-  \setlength{\tabcolsep}{4pt}
-  % \renewcommand{\arraystretch}{1.05}
-  \caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
-  ``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
-  ``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).}
-  \label{tab:case-study-stats}
-  \begin{tabular}{l|c|c|cc|cc}
-    & \#PO (Atelier~B) & \#PO (\barrel)
-    & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)} \\
-    \hline
-    File & Total & Total & Total & Auto & Total & Auto \\
-    \hline
-    \texttt{MinSearch}        & 4  
-                              & 4 
-                              & 4  & 4
-                              & 4  & 4  \\
-    \texttt{MinSearch\_r1}    & 19
-                              & 9
-                              & 2  & 2
-                              & 52 & 52 \\
-    \texttt{MinSearch\_r2}    & 21
-                              & 21
-                              & 9   & 9
-                              & 100 & 100 \\
-  \end{tabular}
+	\centering
+	\small
+	\setlength{\tabcolsep}{4pt}
+	% \renewcommand{\arraystretch}{1.05}
+	\caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
+		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
+		``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).}
+	\label{tab:case-study-stats}
+	\begin{tabular}{l|c|c|cc|cc}
+		                       & \#PO (Atelier~B)                      & \#PO (\barrel)
+		                       & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)}                               \\
+		\hline
+		File                   & Total                                 & Total                              & Total & Auto & Total & Auto \\
+		\hline
+		\texttt{MinSearch}     & 4
+		                       & 4
+		                       & 4                                     & 4
+		                       & 4                                     & 4                                                                \\
+		\texttt{MinSearch\_r1} & 19
+		                       & 9
+		                       & 2                                     & 2
+		                       & 52                                    & 52                                                               \\
+		\texttt{MinSearch\_r2} & 21
+		                       & 21
+		                       & 9                                     & 9
+		                       & 100                                   & 100                                                              \\
+	\end{tabular}
 \end{table}
 
 In total for this case study, \barrel produces 190 goals across the three levels, 156 of which are WD conditions that are all automatically discharged using \barrel's underlying automation. The remaining 34 goals correspond to the expected proof obligations and are discharged with straightforward Lean proofs.
@@ -197,3 +197,5 @@ In practice, however, interactive proof in Atelier~B is primarily carried out th
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands (e.g.\ \texttt{se}, instantiation of existentially quantified variables) do not enforce typing or well-definedness of user-provided instantiations, potentially leading to inconsistent proofs.
 By contrast, BARReL lets users discharge the same obligations as ordinary Lean goals.
 In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under BARReL’s encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
+
+\todo[Because we don't really want to only trash talk Atelier B, perhaps include other things that are better handled by Lean? (e.g. reals, and basically everything that comes from mathlib)]
