@@ -8,7 +8,7 @@ A machine declares abstract sets and constants, a state described by variables c
 A development proceeds by refining an abstract machine into more concrete refinements down to an implementation, introducing representation data together with a \emph{gluing invariant} relating concrete and abstract states.
 From each machine and refinement step, Atelier~B generates POs: logical sequents whose discharge guarantees that the model is consistent and that refinement is correct.
 Concretely, POs cover invariant preservation by the initialization and each operation under its precondition, and simulation-style obligations ensuring that concrete operations preserve the abstract behavior through the gluing invariant.
-In addition, the PO generator emits WD obligations for the many partial constructs of the language.
+In addition, the PO generator emits well-definedness (WD) obligations for the many partial constructs of the language.
 
 POs can be discharged automatically using Atelier~B’s internal provers and by delegating to external backends.
 In particular, several approaches translate B obligations to SMT solvers such as Z3~\cite{z3} or cvc5~\cite{cvc5} via dedicated encodings, including the historical \emph{ppTransSMT}~\cite{DeharbeBSMT} and the more recent \emph{BEer}~\cite{beer} encodings.
@@ -56,9 +56,8 @@ This representation also allows us to express every kind of set used in B specif
 For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementations of the B method.
 % this also enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
 
-\info[moved from the intro]
 A central challenge in this setting is the use of partial B operators.
-Function application, the minimum and maximum of a set, and cardinality are all only defined under suitable well-definedness (WD) conditions.
+Function application, the minimum and maximum of a set, and cardinality for instance are all only defined under suitable well-definedness (WD) conditions.
 Atelier~B typically handles these via additional WD proof obligations, which are generated \emph{after} the main obligations, expecting that they will be later instantiated when needed.
 Lean, on the other hand, has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant functions.
 This also means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
