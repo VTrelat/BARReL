@@ -2,7 +2,17 @@
 
 \noindent\todo[Increase coverage of B]
 
-\noindent\todo[WD subsumption to avoid goal explosion]
+\paragraph*{Reducing the number of WD side goals via subsumption}
+As evidenced by \cref{tab:case-study-stats}, \barrel generates a lot more WD side goals compared to Atelier B.
+This stems from a combination of multiple factors: \begin{itemize}
+	\item Atelier B is able to reason directly on the machine itself, while \barrel only knows about the obligations generated.
+	      Thus, Atelier B can insert WD conditions only where needed (at the call sites of partial operators), once and for all, and share them between sub-goals (or rather not duplicate them).
+	\item When invariants are $n$-ary conjunctions, Atelier B's \texttt{pog} binary generates multiple separate obligations (one per conjunct) while duplicating the hypotheses.
+	      Since \barrel encodes each obligation individually and separately, this means that WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation theorems) are needlessly duplicated.
+\end{itemize}
+In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic made specifically for discharging WD conditions.
+The remaining WD side goals, those that are not automatically proved, are usually either totally unrelated or logical consequences of each other.
+\todo[blah blah blah implement subsumption and voilà!]
 
 \noindent\todo[More clever automation, even for regular POs]
 
