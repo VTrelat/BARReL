@@ -12,7 +12,7 @@ The development consists of:
 \texttt{MinSearch\_r1.ref} (first refinement),
 \texttt{MinSearch\_r2.ref} (second refinement),
 together with a Lean script \texttt{MinSearch.lean} containing the proofs of all generated POs.
-This chain exercises both data refinement and partial operators (\texttt{min}, \texttt{card}, and application), making it a compact stress-test for BARReL’s WD generation and automation.
+This chain exercises both data refinement and partial operators (\texttt{min}, \texttt{card}, and application), making it a compact stress-test for \barrel's WD generation and automation.
 
 \subsection{A refinement chain: from sets to tables}
 
@@ -63,7 +63,7 @@ END
 	\end{minipage}
 \end{figure}
 
-This level already showcases \barrel's handling of partial operators: $\min(\texttt{done})$ and $\min(\texttt{done} \cup \texttt{add})$ are well-defined only if they can be bounded below, hence the POs are generated along with respective WD conditions \fixme[uh?], that are discharged automatically by \barrel's underlying automation.
+This level already illustrates \barrel's treatment of partial operators: since $\min(\texttt{done})$ and $\min(\texttt{done}\cup\texttt{add})$ are only defined when the corresponding sets are bounded below, \barrel generates the associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual proof obligations, and discharges them automatically using its built-in automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
 \paragraph*{First refinement: reducing non-determinism}
@@ -84,7 +84,7 @@ All 52 WD conditions are again automatically discharged by \barrel, while the re
 
 \paragraph*{Second refinement: scanning an explicit table}
 The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch-r2} introduces an explicit enumeration and refines set exploration into a traversal using an index $\texttt{i}$ and a current minimum candidate $\texttt{mc}$.
-A gluing invariant links the abstract set $\texttt{done}$ with the image $\texttt{tab[1..i]}$ and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
+A gluing invariant links the abstract set $\texttt{done}$ with $\texttt{tab[1..i]}$ (denoting the image of the interval \texttt{1..i} under \texttt{tab}) and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
 
 \begin{figure}[t]
 	\centering
@@ -132,7 +132,7 @@ END
 \end{figure}
 
 This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and function application \texttt{tab(i)}.
-Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 72 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
+Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
 
 \paragraph*{Discharging refinement POs inside Lean}
 
@@ -193,9 +193,15 @@ Fortunately, \barrel's automation should be able to discharge most of the result
 
 \subsection{Comparison with Atelier~B's interactive prover}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
-In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent well-definedness side conditions.
-Moreover, the interactive prover documentation explicitly warns that some instantiation commands (e.g.\ \texttt{se}, instantiation of existentially quantified variables) do not enforce typing or well-definedness of user-provided instantiations, potentially leading to inconsistent proofs.
-By contrast, BARReL lets users discharge the same obligations as ordinary Lean goals.
-In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under BARReL’s encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
+In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent WD obligations.
+Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs
+\footnote{
+It is actually easy to derive falsehood in Atelier~B, an example being the following assertion: $\exists x, x \in \mathbb{N} \land x \notin \mathbb{Z}$.
+Atelier~B's interactive prover accepts the instantiation $x := \min(\varnothing)$ and the proofs completes successfully after a call to the automatic internal prover \texttt{pp}.}.
 
-\todo[Because we don't really want to only trash talk Atelier B, perhaps include other things that are better handled by Lean? (e.g. reals, and basically everything that comes from mathlib)]
+By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
+In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
+
+Beyond these soundness guarantees, Lean provides a significantly richer proof-engineering ecosystem.
+Once B obligations are expressed in Lean, users can leverage Mathlib's libraries and automation to simplify routine reasoning steps using normalization and algebraic tactics such as \texttt{ac\_rfl},\texttt{ring} and related arithmetic tactics when needed.
+This becomes particularly valuable when developments go beyond the integer/set-theoretic core of B, for instance by introducing real-valued models.

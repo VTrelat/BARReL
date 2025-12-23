@@ -12,10 +12,11 @@ There were also developments in Rocq~\cite{Coq12}, focussing primarily on formal
 This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorems.
 Given a B machine (or an existing POG file), \barrel invokes Atelier~B to generate POs when needed and translates them into Lean theorems expressed over Mathlib~\cite{mathlib4}'s set-theoretic primitives, preserving the original structures and notations as closely as possible.
 The library provides commands \fixme[detail?] allowing a user to turn B developments into a sequence of Lean theorems corresponding to the POs of the developments;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
-The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs.
+The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs. This high-level architecture is illustrated in \cref{fig:barrel-archi}.
 
 \begin{figure}[htb]
 	\caption{High-level picture of \barrel.}
+	\label{fig:barrel-archi}
 
 	\centering
 	\begin{tikzpicture}[
@@ -43,7 +44,7 @@ The translation pipeline is organised into clearly separated components: a light
 Our contributions are therefore threefold:
 \begin{itemize}
   \item \barrel, an open-source lightweight and modular backend for B developments written in Lean~4;
-  \item a translation pipeline preserving B notations and proof obligations almost homomorphically, properly handling partial operators via explicit well-definedness conditions;
+  \item a translation pipeline preserving B notations and proof obligations, properly handling partial operators via explicit well-definedness conditions;
   \item an evaluation on a small refinement chain that demonstrates that an Atelier~B-style refinement workflow can be carried out end-to-end inside Lean, with most well-definedness side-conditions discharged automatically.
 \end{itemize}
 Finally, \barrel opens the door to using Lean as an independent backend for the B Method and suggests interesting extensions, such an integrated proof obligation generator---which can even be verified---and even an embedded DSL for writing B developments directly in Lean.
