@@ -15,12 +15,20 @@ In particular, several approaches translate B obligations to SMT solvers such as
 Obligations that remain---often those requiring non-trivial quantifier instantiation, refinement reasoning, or tedious WD bookkeeping---are typically discharged interactively using Atelier~B’s GUI-oriented prover, where the user guides rule applications and instantiations.
 
 \paragraph*{The B language in a nutshell}
-Set theory lies at the core of the B method.
-That is, every value is a set that is constrained by some properties that define its shape.
-For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
-However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification.
+% Set theory lies at the core of the B method.
+B's mathematical language is based on classical set theory and first-order logic with equality.
+Specifications are written using the usual set-theoretic constructors such as comprehension, powerset, cartesian product, and an algebra of relations.
+Ordered pairs are first-class values (written as \emph{maplets} $x \mapsto y$), and relations are simply sets of such pairs, \emph{i.e.}\@ $R \subseteq A \times B$.
+Functions are not primitive: a (partial) function $f$ from $A$ to $B$ (written $f \in A \pfun B$) is a relation $f \subseteq A \times B$ whose domain is contained in $A$ and which is \emph{functional}:
+for all $x \in A$ and $y,z \in B$, if $(x \mapsto y) \in f$ and $(x \mapsto z) \in f$ then $y = z$.
+Total, injective, and surjective variants are defined similarly as usual.
 
-\todo[TODO]
+% That is, every value is a set that is constrained by some properties that define its shape.
+% For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
+% However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification.
+Although the underlying logic is set-theoretic and thus untyped, Atelier~B enforces a static well-formedness discipline often described as “typing”: every identifier and expression must be assigned a ``parent set'' that must be deducible for every constant, variable, and expression in a specification.
+This guarantees in particular that constructed sets are homogeneous and rules out ill-formed terms.
+These inferred parent sets provide exactly the information needed to interpret B expressions in Lean's typed logic in our translation.
 
 \paragraph*{Foundations of B in Lean}
 %
@@ -33,7 +41,7 @@ For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementat
 % this also enables us to easily reason about sets using the plethora of theorems and definitions that Mathlib puts at our disposal.
 
 We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the POs to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
-Some examples (the set of relations, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
+Some examples (the set of relations, the set of partial functions, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
 %
 \begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}, float]
 abbrev rels {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
@@ -98,3 +106,12 @@ scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 
 \subsection{Implementation and Automation}
 \todo[Find a better title!]
+
+\paragraph*{Proof automation}
+\label{par:automation}
+Before presenting the remaining goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
+Concretely, the tactic layer repeatedly applies potentially relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
+These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically. We leverage Mathlib's features to tag helper lemmas with relevant categories and tap into its rich library of set-theoretic results to keep the tactic small and focused.
+The remaining obligations—typically invariant preservation and refinement simulation goals—are left as interactive proof tasks, keeping the automation transparent and predictable while still removing most of the WD bookkeeping arising from B developments.
+
+\noindent\todo[Maybe give more details and an example?]
