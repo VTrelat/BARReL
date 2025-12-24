@@ -14,7 +14,7 @@ Given a B machine (or an existing POG file), \barrel invokes Atelier~B to genera
 The library provides commands \fixme[detail?] allowing a user to turn B developments into a sequence of Lean theorems corresponding to the POs of the developments;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organised into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs. This high-level architecture is illustrated in \cref{fig:barrel-archi}.
 
-\begin{figure}[htb]
+\begin{figure}[t]
 	\caption{High-level picture of \barrel.}
 	\label{fig:barrel-archi}
 
@@ -38,8 +38,6 @@ The translation pipeline is organised into clearly separated components: a light
 		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.5mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
 	\end{tikzpicture}
 \end{figure}
-
-\todo[Integrate fig]
 
 Our contributions are therefore threefold:
 \begin{itemize}
