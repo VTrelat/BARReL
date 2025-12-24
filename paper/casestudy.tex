@@ -196,8 +196,7 @@ Atelier~B already provides effective automation and an interactive mode for disc
 In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent WD obligations.
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs
 \footnote{
-It is actually easy to derive falsehood in Atelier~B, an example being the following assertion: $\exists x, x \in \mathbb{N} \land x \notin \mathbb{Z}$.
-Atelier~B's interactive prover accepts the instantiation $x := \min(\varnothing)$ and the proofs completes successfully after a call to the automatic internal prover \texttt{pp}.}.
+The following assertion: $\exists x, x \in \mathbb{N} \land x \notin \mathbb{Z}$ can be discharged in the interactive prover with the instantiation $x := \min(\varnothing)$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
 
 By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
 In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
