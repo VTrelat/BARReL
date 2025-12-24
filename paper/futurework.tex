@@ -10,7 +10,7 @@ This stems from a combination of multiple factors: \begin{itemize}
 	\item When invariants are $n$-ary conjunctions, Atelier B's \texttt{pog} binary generates multiple separate obligations (one per conjunct) while duplicating the hypotheses.
 	      Since \barrel encodes each obligation individually and separately, this means that WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation theorems) are needlessly duplicated.
 \end{itemize}
-In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic made specifically for discharging WD conditions.
+In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic\todo[Just mention again what's been decribed in \cref{par:automation}] made specifically for discharging WD conditions.
 The remaining WD side goals, those that are not automatically proved, are usually either totally unrelated or logical consequences of each other.
 \todo[blah blah blah implement subsumption and voilà!]
 
