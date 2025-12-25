@@ -105,13 +105,41 @@ scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
 
 \subsection{Implementation and Automation}
-\todo[Find a better title!]
+\noindent\todo[Find a better title!]
+
+\noindent\todo[Write about the implementation part]
 
 \paragraph*{Proof automation}
 \label{par:automation}
 Before presenting the remaining goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
 Concretely, the tactic layer repeatedly applies potentially relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
-These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically. We leverage Mathlib's features to tag helper lemmas with relevant categories and tap into its rich library of set-theoretic results to keep the tactic small and focused.
-The remaining obligations—typically invariant preservation and refinement simulation goals—are left as interactive proof tasks, keeping the automation transparent and predictable while still removing most of the WD bookkeeping arising from B developments.
+These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically.
+We leverage Mathlib's features to tag helper lemmas with relevant categories and tap into its rich library of set-theoretic results to keep the tactic small and focused.
 
-\noindent\todo[Maybe give more details and an example?]
+\paragraph*{A small library of B lemmas}
+Beyond the core encoding of B primitives, \barrel comes with a curated---still small, but already well-furnished---library of theorems about built-in operators.
+Its purpose is twofold:
+\begin{enumerate}
+  \item provide reusable WD facts that discharge the side-goals generated for partial operators;
+  \item offer canonical rewrite lemmas that turn B-shaped expressions into ``Mathlib-friendly'' goals.
+\end{enumerate}
+For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant tag.
+
+\begin{lstlisting}[language=lean, caption={Some WD lemmas about extrema in our B library.}, label=lst:min-wd-lemmas, float]
+  -- choose amongst those
+  theorem min.WF_singleton
+  theorem min.WF_of_finite
+  theorem min.WF_interval
+\end{lstlisting}
+
+The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}.
+
+\begin{lstlisting}[language=lean, caption={Some membership lemmas about finite-sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
+  -- choose amongst those
+  theorem FIN_1.singleton_mem
+  theorem interval.FIN_1_mem
+  theorem min.of_singleton
+  theorem interval.min_eq
+\end{lstlisting}
+
+The remaining obligations---typically invariant preservation and refinement simulation goals---are left as interactive proof tasks, keeping the automation transparent and predictable while still removing most of the WD bookkeeping arising from B developments.
