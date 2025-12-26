@@ -126,20 +126,27 @@ Its purpose is twofold:
 For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant tag.
 
 \begin{lstlisting}[language=lean, caption={Some WD lemmas about extrema in our B library.}, label=lst:min-wd-lemmas, float]
-  -- choose amongst those
-  theorem min.WF_singleton
-  theorem min.WF_of_finite
-  theorem min.WF_interval
+  @[grind ., wf_min]
+  theorem min.WF_singleton {α : Type _} [PartialOrder α] {a : α} :
+    min.WF {a} := ...
+  @[wf_min]
+  theorem min.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α}
+    (h : S ∈ FIN₁ A) : min.WF S := ...
+  @[grind ., wf_min]
+  theorem min.WF_interval {lo hi : ℤ} (h : lo ≤ hi) :
+    min.WF (lo..hi) := ...
 \end{lstlisting}
 
 The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}.
 
 \begin{lstlisting}[language=lean, caption={Some membership lemmas about finite-sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
-  -- choose amongst those
-  theorem FIN_1.singleton_mem
-  theorem interval.FIN_1_mem
-  theorem min.of_singleton
-  theorem interval.min_eq
+  theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) : lo .. hi ∈ FIN₁ INTEGER := ...
+  @[simp]
+  theorem min.of_singleton {α : Type _} [PartialOrder α] {a : α} :
+      min {a} (min.WF_singleton) = a := ...
+  @[grind ., simp]
+  theorem interval.min_eq {lo hi : Int} (h : lo ≤ hi) :
+      min (lo .. hi) (min.WF_interval h) = lo := ...
 \end{lstlisting}
 
 The remaining obligations---typically invariant preservation and refinement simulation goals---are left as interactive proof tasks, keeping the automation transparent and predictable while still removing most of the WD bookkeeping arising from B developments.
