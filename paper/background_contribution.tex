@@ -140,7 +140,8 @@ For instance, in the arithmetic fragment used throughout our running examples, t
 The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}.
 
 \begin{lstlisting}[language=lean, caption={Some membership lemmas about finite-sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
-  theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) : lo .. hi ∈ FIN₁ INTEGER := ...
+  theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) :
+    lo .. hi ∈ FIN₁ INTEGER := ...
   @[simp]
   theorem min.of_singleton {α : Type _} [PartialOrder α] {a : α} :
       min {a} (min.WF_singleton) = a := ...
