@@ -3,16 +3,20 @@
 \noindent\todo[Increase coverage of B]
 
 \paragraph*{Reducing the number of WD side goals via subsumption}
-As evidenced by \cref{tab:case-study-stats}, \barrel generates a lot more WD side goals compared to Atelier B.
+One issue that \barrel suffers from is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
 This stems from a combination of multiple factors: \begin{itemize}
 	\item Atelier B is able to reason directly on the machine itself, while \barrel only knows about the obligations generated.
-	      Thus, Atelier B can insert WD conditions only where needed (at the call sites of partial operators), once and for all, and share them between sub-goals (or rather not duplicate them).
+	      Thus, Atelier B can insert WD conditions only where needed (at the call sites of partial operators, before generating the goals), once and for all, and share them between sub-goals (or rather not duplicate them).
 	\item When invariants are $n$-ary conjunctions, Atelier B's \texttt{pog} binary generates multiple separate obligations (one per conjunct) while duplicating the hypotheses.
-	      Since \barrel encodes each obligation individually and separately, this means that WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation theorems) are needlessly duplicated.
+	      Since \barrel encodes each obligation individually and separately, this means that WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation goals) are needlessly duplicated.
 \end{itemize}
-In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic\todo[Just mention again what's been decribed in \cref{par:automation}] made specifically for discharging WD conditions.
-The remaining WD side goals, those that are not automatically proved, are usually either totally unrelated or logical consequences of each other.
-\todo[blah blah blah implement subsumption and voilà!]
+Although most of these WD side goals are automatically discharged by an internal tactic (see \cref{par:automation}), the remaining ones may still require proving the same WD condition in multiple different (but subsumable \fixme[not sure if this is understandable]) contexts.
+We leave as future work implementing subsumption of WD conditions to reduce the number of side goals generated, thus improving overall performance of \barrel when importing a B machine.
+
+
+% In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic\todo[Just mention again what's been decribed in \cref{par:automation}] made specifically for discharging WD conditions.
+% The remaining WD side goals, those that are not automatically proved, are usually either totally unrelated or logical consequences of each other.
+% \todo[blah blah blah implement subsumption and voilà! (I don't quite know how to say it here)]
 
 \noindent\todo[More clever automation, even for regular POs]
 
