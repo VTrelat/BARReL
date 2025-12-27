@@ -63,13 +63,13 @@ END
 	\end{minipage}
 \end{figure}
 
-This level already illustrates \barrel's treatment of partial operators: since $\min(\texttt{done})$ and $\min(\texttt{done}\cup\texttt{add})$ are only defined when the corresponding sets are bounded below, \barrel generates the associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual proof obligations, and discharges them automatically using its built-in automation.
+This level already illustrates \barrel's treatment of partial operators: since $\min(\texttt{done})$ and $\min(\texttt{done}\cup\texttt{add})$ are only defined when the corresponding sets have a least element, \barrel generates the associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual proof obligations, and discharges them automatically using its built-in automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
 \paragraph*{First refinement: reducing non-determinism}
 The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
 
-\begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}]
+\begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}, float]
 step =
   IF done ≠ S THEN
     ANY x WHERE x ∈ S - done THEN
