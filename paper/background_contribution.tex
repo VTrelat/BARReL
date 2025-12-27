@@ -18,7 +18,7 @@ Obligations that remain---often those requiring non-trivial quantifier instantia
 % Set theory lies at the core of the B method.
 B's mathematical language is based on classical set theory and first-order logic with equality.
 Specifications are written using the usual set-theoretic constructors such as comprehension, powerset, cartesian product, and an algebra of relations.
-Ordered pairs are first-class values (written as \emph{maplets} $x \mapsto y$), and relations are simply sets of such pairs, \emph{i.e.}\@ $R \subseteq A \times B$.
+Ordered pairs are first-class values (written as \emph{maplets} $x \mapsto y$), and relations are simply sets of such pairs, i.e.\@ $R \subseteq A \times B$.
 Functions are not primitive: a (partial) function $f$ from $A$ to $B$ (written $f \in A \pfun B$) is a relation $f \subseteq A \times B$ whose domain is contained in $A$ and which is \emph{functional}:
 for all $x \in A$ and $y,z \in B$, if $(x \mapsto y) \in f$ and $(x \mapsto z) \in f$ then $y = z$.
 Total, injective, and surjective variants are defined similarly as usual.
