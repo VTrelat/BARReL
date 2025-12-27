@@ -68,7 +68,7 @@ Both the definitions and theorems are readily available to end users when import
 A central challenge in this setting is the use of \emph{partial} B operators, meaning that they are only defined when some \emph{well-definedness} (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
 These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
-The \emph{WD condition} of the corresponding operator is that $P$ is satisfied by (at least) an element of $S$.
+The \emph{WD condition} of the corresponding operator is precisely that $P$ is satisfied by (at least) an element of $S$.
 
 Atelier B handles this partiality by generating the WD conditions of each partial operator used in a PO as side goals and assumes in the main goal that the partial operators are well-defined.
 However, one must trust that these WD conditions actually correspond to the WD conditions that are expected from the context of those partial operators, and there is no clear dependency---even after inspecting the generated POG file---between the main goal and the WD side goals.
@@ -105,9 +105,35 @@ scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
 
 \subsection{Inner Workings of \barrel and Automation}
+\label{sec:innner-workings}
 \noindent\todo[Find a better title!]
 
-\noindent\todo[Inner workings]
+\paragraph*{But how does it work?}
+\barrel is organized into four clearly separate passes.
+First, the machine is parsed into the BXML format, and proof obligations are generated from this format using Atelier B's internal tools \texttt{bxml} and \texttt{pog}.
+Although \texttt{pog} is able to generate WD conditions for the given machine, we choose to rely on our own generation instead.
+Then, the resulting POs (in XML format) are parsed by \barrel into an Abstract Syntax Tree (AST) and normalized.
+Normalization ensures that B predicates like $P \wedge Q \Rightarrow R$ are treated the same as $P \Rightarrow Q \Rightarrow R$.
+Although it is not needed, we perform normalization of B terms solely for the purpose of generating Lean goals that overall need less conjunction destructions.
+The normalized B formulas are then transcribed into Lean terms using Lean's facilities for meta-programming/elaboration.
+However, a lot of bookkeeping has to happen in order to encode partial B operators, since they rely on WD conditions that must be inserted on the fly.
+Instead of handling the bookkeeping ourselves, we generate meta-variables (which contain their local contexts that they appear in) in place of the WD conditions.
+We later assign the generated meta-variables with fresh theorem names whose propositions are extracted from the context of the meta-variable. \todo[needs further explaining or an example?]
+All the previous steps are performed by the command \texttt{import machine <name> from <folder>}.
+Finally, the command \texttt{prove\_obligations\_of <name>} gives back all the generated WD conditions and propositions to the user for them to prove them.
+Each WD condition and proposition is then inserted into the global context as a theorem, which the user can re-use instead of duplicating proofs or check for no use of the \texttt{sorryAx} axiom (so that every obligation is fully proven).
+
+
+% : \begin{itemize}
+% 	\item 
+% 	\item 
+% 	\item Then, the formulas are transcribed into Lean terms using Lean's facilities for meta-programming/elaboration.
+% 	\item Finally, these Lean terms and their associated WD conditions are presented to the user who fills out the proofs.
+% \end{itemize}
+
+% The first three steps are performed by the command \texttt{import machine <name> from <folder>}.
+
+% \noindent\todo[Inner workings]
 
 \paragraph*{Proof automation}
 \label{par:automation}
@@ -120,8 +146,8 @@ We leverage Mathlib's features to tag helper lemmas with relevant categories and
 Beyond the core encoding of B primitives, \barrel comes with a curated---still small, but already well-furnished---library of theorems about built-in operators.
 Its purpose is twofold:
 \begin{enumerate}
-  \item provide reusable WD facts that discharge the side-goals generated for partial operators;
-  \item offer canonical rewrite lemmas that turn B-shaped expressions into ``Mathlib-friendly'' goals.
+	\item provide reusable WD facts that discharge the side-goals generated for partial operators;
+	\item offer canonical rewrite lemmas that turn B-shaped expressions into ``Mathlib-friendly'' goals.
 \end{enumerate}
 For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant tag.
 
