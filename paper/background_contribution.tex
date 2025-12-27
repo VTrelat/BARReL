@@ -104,19 +104,19 @@ abbrev app {α β} (f : SetRel α β) (x : α) (wd : app.WD f x) : β :=
 scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
 
-\subsection{Implementation and Automation}
+\subsection{Inner Workings of \barrel and Automation}
 \noindent\todo[Find a better title!]
 
-\noindent\todo[Write about the implementation part]
+\noindent\todo[Inner workings]
 
 \paragraph*{Proof automation}
 \label{par:automation}
-Before presenting the remaining goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
+Before presenting goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
 Concretely, the tactic layer repeatedly applies potentially relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
 These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically.
 We leverage Mathlib's features to tag helper lemmas with relevant categories and tap into its rich library of set-theoretic results to keep the tactic small and focused.
 
-\paragraph*{A small library of B lemmas}
+
 Beyond the core encoding of B primitives, \barrel comes with a curated---still small, but already well-furnished---library of theorems about built-in operators.
 Its purpose is twofold:
 \begin{enumerate}
@@ -128,13 +128,13 @@ For instance, in the arithmetic fragment used throughout our running examples, t
 \begin{lstlisting}[language=lean, caption={Some WD lemmas about extrema in our B library.}, label=lst:min-wd-lemmas, float]
   @[grind ., wf_min]
   theorem min.WF_singleton {α : Type _} [PartialOrder α] {a : α} :
-    min.WF {a} := ...
+    min.WF {a} := ⋯
   @[wf_min]
   theorem min.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α}
-    (h : S ∈ FIN₁ A) : min.WF S := ...
+    (h : S ∈ FIN₁ A) : min.WF S := ⋯
   @[grind ., wf_min]
   theorem min.WF_interval {lo hi : ℤ} (h : lo ≤ hi) :
-    min.WF (lo..hi) := ...
+    min.WF (lo..hi) := ⋯
 \end{lstlisting}
 
 The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}.
