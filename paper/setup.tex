@@ -2,6 +2,14 @@
 
 \newcommand\barrel{BARReL\xspace}
 
+\makeatletter
+\newcommand{\rw}[2]{%
+\ifsimplenotes@disable #2%
+\else \fixme[{\normalfont\st{#1} \textcolor{red}{#2}}]%
+\fi%
+}
+\makeatother
+
 %%%% TikZ 
 
 \usetikzlibrary{shapes.misc, positioning, chains, calc}
