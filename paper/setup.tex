@@ -4,9 +4,9 @@
 
 \makeatletter
 \newcommand{\rw}[2]{%
-\ifsimplenotes@disable #2%
-\else \fixme[{\normalfont\st{#1} \textcolor{red}{#2}}]%
-\fi%
+	\ifsimplenotes@disable #2%
+	\else \fixme[{\normalfont\st{#1} \textcolor{red}{#2}}]%
+	\fi%
 }
 \makeatother
 
@@ -20,6 +20,7 @@
 \newcommand\bdom[1]{\ensuremath{dom(#1)}}
 \newcommand\bapp[2]{\ensuremath{#1(#2)}}
 \newcommand\binterval[2]{\ensuremath{#1 .. #2}}
+\newcommand\bfinone[1]{\ensuremath{\operatorname{FIN}_1({#1})}}
 
 \newcommand\pfun{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\to$\cr}}}
 \newcommand\pinj{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\rightarrowtail$\cr}}}
@@ -90,52 +91,52 @@
 }
 
 \lstdefinelanguage{b} {
-  morekeywords=[1]{MACHINE, REFINEMENT, IMPLEMENTATION, REFINES, SEES, INCLUDES, IMPORTS, EXTENDS, SETS, CONSTANTS, VARIABLES, PROPERTIES, INVARIANT, OPERATIONS, PRE, IF, THEN, END, INITIALISATION, ANY, WHERE},
-  morekeywords=[2]{NATURAL, NAT, NATURAL1, NAT1, INTEGER, INT, BOOL, BOOL, POW, POW1, FIN, FIN1, card, min, max},
-  morecomment=[l]{//},
-  showstringspaces=false,
-  mathescape=true,
-  keepspaces=true,
-  breaklines=true,
-  numbers=left,
-  numberstyle=\tiny\textcolor{black},
-  % basicstyle=\small\ttfamily,
-  keywordstyle=[1]\small\itshape\textcolor{keywordcolor},
-  keywordstyle=[2]\small\textcolor{sortcolor},
-  commentstyle=\textcolor{commentcolor},
-  identifierstyle={\ttfamily\textcolor{black}},
-  numbersep=6pt,
-  % frame=single,
-  columns=[l]fullflexible,
-  % framerule=.7pt,
-  % rulecolor=\color{black},
-  % columns=[l]fullflexible,
-  % framerule=0pt,
-  % backgroundcolor=\color{black!5},
-  % frame=shadowbox,
-  % rulesepcolor=\color{black!30},
-  % xleftmargin=1ex,
-  % xrightmargin=1em,
-	literate=
+morekeywords=[1]{MACHINE, REFINEMENT, IMPLEMENTATION, REFINES, SEES, INCLUDES, IMPORTS, EXTENDS, SETS, CONSTANTS, VARIABLES, PROPERTIES, INVARIANT, OPERATIONS, PRE, IF, THEN, END, INITIALISATION, ANY, WHERE},
+morekeywords=[2]{NATURAL, NAT, NATURAL1, NAT1, INTEGER, INT, BOOL, BOOL, POW, POW1, FIN, FIN1, card, min, max},
+morecomment=[l]{//},
+showstringspaces=false,
+mathescape=true,
+keepspaces=true,
+breaklines=true,
+numbers=left,
+numberstyle=\tiny\textcolor{black},
+% basicstyle=\small\ttfamily,
+keywordstyle=[1]\small\itshape\textcolor{keywordcolor},
+keywordstyle=[2]\small\textcolor{sortcolor},
+commentstyle=\textcolor{commentcolor},
+identifierstyle={\ttfamily\textcolor{black}},
+numbersep=6pt,
+% frame=single,
+columns=[l]fullflexible,
+% framerule=.7pt,
+% rulecolor=\color{black},
+% columns=[l]fullflexible,
+% framerule=0pt,
+% backgroundcolor=\color{black!5},
+% frame=shadowbox,
+% rulesepcolor=\color{black!30},
+% xleftmargin=1ex,
+% xrightmargin=1em,
+literate=
 	{∈}{{\ensuremath{\in}}}1
-	{∉}{{\ensuremath{\notin}}}1
-	{∧}{{\ensuremath{\land}}}1
-	{∨}{{\ensuremath{\lor}}}1
-	{¬}{{\ensuremath{\lnot}}}1
-	{⇒}{{\ensuremath{\implies}}}1
-	{⇔}{{\ensuremath{\iff}}}1
-	{≠}{{\ensuremath{\neq}}}1
-	{≤}{{\ensuremath{\leq}}}1
-	{≥}{{\ensuremath{\geq}}}1
-	{→}{{\ensuremath{\to}}}1
-	{↔}{{\ensuremath{\leftrightarrow}}}1
-	{∅}{{\ensuremath{\varnothing}}}1
-	{∪}{{\ensuremath{\cup}}}1
-	{∩}{{\ensuremath{\cap}}}1
-	{⊆}{{\ensuremath{\subseteq}}}1
-	{⊂}{{\ensuremath{\subset}}}1
-	{⇒}{{\ensuremath{\Rightarrow}}}1
-	{∀}{{\ensuremath{\forall}}}1
-	{↣}{{\ensuremath{\tinj}}}1,
-  extendedchars=true
+{∉}{{\ensuremath{\notin}}}1
+{∧}{{\ensuremath{\land}}}1
+{∨}{{\ensuremath{\lor}}}1
+{¬}{{\ensuremath{\lnot}}}1
+{⇒}{{\ensuremath{\implies}}}1
+{⇔}{{\ensuremath{\iff}}}1
+{≠}{{\ensuremath{\neq}}}1
+{≤}{{\ensuremath{\leq}}}1
+{≥}{{\ensuremath{\geq}}}1
+{→}{{\ensuremath{\to}}}1
+{↔}{{\ensuremath{\leftrightarrow}}}1
+{∅}{{\ensuremath{\varnothing}}}1
+{∪}{{\ensuremath{\cup}}}1
+{∩}{{\ensuremath{\cap}}}1
+{⊆}{{\ensuremath{\subseteq}}}1
+{⊂}{{\ensuremath{\subset}}}1
+{⇒}{{\ensuremath{\Rightarrow}}}1
+{∀}{{\ensuremath{\forall}}}1
+{↣}{{\ensuremath{\tinj}}}1,
+extendedchars=true
 }
