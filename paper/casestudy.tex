@@ -17,7 +17,7 @@ This chain exercises both data refinement and partial operators (\texttt{min}, \
 \subsection{A refinement chain: from sets to tables}
 
 \paragraph*{Abstract specification}
-The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset $\texttt{S} \in \texttt{FIN1(INTEGER)}$ and maintains a set $\texttt{done}$ of already explored elements of \texttt{S} together with a candidate $\texttt{m}$ satisfying $\texttt{m} = \min(\texttt{done})$.
+The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset $\texttt{S} \in \texttt{FIN1(INTEGER)}$ and maintains a set $\texttt{done}$ of already explored elements of \texttt{S} together with a candidate $\texttt{m}$ satisfying $\texttt{m} = \bmin{\texttt{done}}$.
 The operation \texttt{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \texttt{search\_min} returns the candidate once all elements have been processed.
 
 \begin{figure}[t]
@@ -63,7 +63,7 @@ END
 	\end{minipage}
 \end{figure}
 
-This level already illustrates \barrel's treatment of partial operators: since $\min(\texttt{done})$ and $\min(\texttt{done}\cup\texttt{add})$ are only defined when the corresponding sets have a least element, \barrel generates the associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual proof obligations, and discharges them automatically using its built-in automation.
+This level already illustrates \barrel's treatment of partial operators: since $\bmin{\texttt{done}}$ and $\bmin{\texttt{done}\cup\texttt{add}}$ are only defined when the corresponding sets have a least element, \barrel generates the associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual proof obligations, and discharges them automatically using its built-in automation.
 Remaining subgoals correspond to standard invariant preservation and operation correctness obligations.
 
 \paragraph*{First refinement: reducing non-determinism}
@@ -79,7 +79,7 @@ step =
   END
 \end{lstlisting}
 
-Although the concrete update avoids recomputing \texttt{min}, refinement of the operation and invariant preservation still relate $\texttt{m}$ to $\min(\texttt{done})$, so WD facts about \texttt{min} remain part of the proof landscape.
+Although the concrete update avoids recomputing \texttt{min}, refinement of the operation and invariant preservation still relate $\texttt{m}$ to $\bmin{\texttt{done}}$, so WD facts about \texttt{min} remain part of the proof landscape.
 All 52 WD conditions are again automatically discharged by \barrel, while the remaining 9 POs correspond to standard refinement obligations.
 
 \paragraph*{Second refinement: scanning an explicit table}
@@ -191,12 +191,12 @@ Table \ref{tab:case-study-stats} summarizes the size and proof obligation statis
 As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
 Fortunately, \barrel's automation should be able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
 
-\subsection{Comparison with Atelier~B's interactive prover}
+\subsection{Comparison with Atelier~B's interactive prover}\label{sec:lean-ip-comparison}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
 In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent WD obligations.
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs
 \footnote{
-	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \min(\varnothing)$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
+	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \bmin{\varnothing}$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
 
 By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
 In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
