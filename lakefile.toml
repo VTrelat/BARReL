@@ -19,6 +19,3 @@ name = "B"
 
 [[lean_lib]]
 name = "POGReader"
-
-[[lean_lib]]
-name = "BARReL"
