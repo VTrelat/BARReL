@@ -26,8 +26,9 @@ lake build      # build all libraries
 
 To experiment with the sample machines, open `Test.lean` in your editor or run:
 ```bash
-lake env lean Test.lean
+lake lean Test.lean
 ```
+Note that you may have to edit the path to the Atelier B distribution in `Test.lean` at the beginning of the file.
 
 ### Quick example
 Consider the B machine [`CounterMin.mch`](specs/CounterMin.mch):
