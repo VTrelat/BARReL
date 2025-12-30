@@ -1,4 +1,4 @@
-import Barrel.Discharger
+import Barrel
 import Mathlib.Util.AssertNoSorry
 
 -- set_option trace.barrel true
@@ -11,6 +11,8 @@ open B.Builtins
 
 import machine Counter from "specs/"
 prove_obligations_of Counter
+next
+  grind
 -- next
 --   grind
 -- next
@@ -30,23 +32,31 @@ next
 
 import machine Finite from "specs/"
 prove_obligations_of Finite
+next
+  grind
 -- next
 --   intros
 --   exact interval.FIN_mem
 
 import machine Nat from "specs/"
 prove_obligations_of Nat
+next
+  grind
 -- next
 --   rintro _ ⟨_, _⟩
 --   assumption
 
 import machine Collect from "specs/"
 prove_obligations_of Collect
+next
+  grind
 -- next
 --   simp
 
 import machine Forall from "specs/"
 prove_obligations_of Forall
+next
+  grind
 -- next
 --   rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
 --   assumption
@@ -58,12 +68,12 @@ next
 
 import machine Injective from "specs/"
 prove_obligations_of Injective
-next
-  rintro X Y F x y _ _ ⟨_, F_tot⟩ x_mem_X _
-  exact app.WF_of_mem_tfun F_tot x_mem_X
-next
-  rintro X Y F x y _ _ ⟨_, F_tot⟩ _ y_mem_X
-  exact app.WF_of_mem_tfun F_tot y_mem_X
+-- next
+--   rintro X Y F x y _ _ ⟨_, F_tot⟩ x_mem_X _
+--   exact app.WF_of_mem_tfun F_tot x_mem_X
+-- next
+--   rintro X Y F x y _ _ ⟨_, F_tot⟩ _ y_mem_X
+--   exact app.WF_of_mem_tfun F_tot y_mem_X
 next
   rintro X Y F x y _ _ ⟨⟨_, F_inj⟩, F_tot⟩ x_mem_X y_mem_X F_eq
   generalize_proofs wf_x wf_y at F_eq
@@ -75,12 +85,12 @@ next
 
 import machine HO from "specs/"
 prove_obligations_of HO
-next
-  intros X Y x _ _ _ _ _ x_mem_X _ _ _ _ G G_fun
-  exact app.WF_of_mem_tfun G_fun x_mem_X
-next
-  intros X Y x _ _ F _ _ x_mem_X _ _ _ F_fun _ _
-  exact app.WF_of_mem_tfun F_fun x_mem_X
+-- next
+--   intros X Y x _ _ _ _ _ x_mem_X _ _ _ _ G G_fun
+--   exact app.WF_of_mem_tfun G_fun x_mem_X
+-- next
+--   intros X Y x _ _ F _ _ x_mem_X _ _ _ F_fun _ _
+--   exact app.WF_of_mem_tfun F_fun x_mem_X
 next
   intros X Y x y₀ y₁ F _ _ x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun
 
@@ -116,12 +126,12 @@ next
 
 import machine Extensionality from "specs/"
 prove_obligations_of Extensionality
-next
-  intros X Y F _ _ _ F_fun _ x hx
-  exact app.WF_of_mem_tfun F_fun hx
-next
-  intros X Y _ G _ _ _ G_fun x hx
-  exact app.WF_of_mem_tfun G_fun hx
+-- next
+--   intros X Y F _ _ _ F_fun _ x hx
+--   exact app.WF_of_mem_tfun F_fun hx
+-- next
+--   intros X Y _ G _ _ _ G_fun x hx
+--   exact app.WF_of_mem_tfun G_fun hx
 next
   intros X Y F G _ _ F_fun G_fun ext
   ext ⟨x, y⟩
@@ -147,14 +157,14 @@ next
 
 import machine CounterMin from "specs/"
 prove_obligations_of CounterMin
-next
-  exact fun _ _ ↦ max.WF_singleton
-next
-  exact fun _ _ ↦ min.WF_singleton
-next
-  exact fun _ _ ↦ max.WF_of_finite
-next
-  exact fun _ _ ↦ min.WF_of_finite
+-- next
+--   exact fun _ _ ↦ max.WF_singleton
+-- next
+--   exact fun _ _ ↦ min.WF_singleton
+-- next
+--   exact fun _ _ ↦ max.WF_of_finite
+-- next
+--   exact fun _ _ ↦ min.WF_of_finite
 next
   rintro _ z - - z_mem
   exact max.WF_interval <| neg_le_self z_mem
@@ -219,8 +229,8 @@ assert_no_sorry CounterMin.Operation_inc_3
 
 import machine Collect2 from "specs/"
 prove_obligations_of Collect2
--- next
---   grind
+next
+  grind
 
 import machine Lambda from "specs/"
 prove_obligations_of Lambda
@@ -237,9 +247,9 @@ next
 
 import machine Eta from "specs/"
 prove_obligations_of Eta
-next
-  intros X Y F _ _ F_tfun x _ x_mem
-  exact app.WF_of_mem_tfun F_tfun x_mem
+-- next
+--   intros X Y F _ _ F_tfun x _ x_mem
+--   exact app.WF_of_mem_tfun F_tfun x_mem
 next
   intros X Y F _ _ F_tfun
   ext ⟨x, y⟩
