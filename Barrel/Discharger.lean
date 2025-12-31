@@ -29,10 +29,10 @@ private def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Opt
     goals
   }
 
-private def findWF (g : Expr) (wfs : Array (Name × String × Expr)) (wfs' : Array (Name × String × Expr × Bool)) : TermElabM (Option Name) := do
-  if let .some (n, _, _) ← wfs.findM? λ (_, _, g') ↦ Meta.isDefEq g g' then
+private def findWD (g : Expr) (wds : Array (Name × String × Expr)) (wds' : Array (Name × String × Expr × Bool)) : TermElabM (Option Name) := do
+  if let .some (n, _, _) ← wds.findM? λ (_, _, g') ↦ Meta.isDefEq g g' then
     return n
-  else if let .some (n, _, _, _) ← wfs'.findM? λ (_, _, g', _) ↦ Meta.isDefEq g g' then
+  else if let .some (n, _, _, _) ← wds'.findM? λ (_, _, g', _) ↦ Meta.isDefEq g g' then
     return n
   else
     return .none
@@ -62,17 +62,17 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
   let _ ← IO.Process.run {
     cmd := (atelierBDir/"bin"/"pog").toString
     /-
-      Although `pog` can generate the WF conditions for us (with the `-w` flag), we will not be using these.
+      Although `pog` can generate the WD conditions for us (with the `-w` flag), we will not be using these.
 
       Reasons are:
-      * The WF conditions are placed at the very end of the `.pog` file, while we would need to
+      * The WD conditions are placed at the very end of the `.pog` file, while we would need to
         reference this in our main goals.
-      * Knowing whether a goal is a WF condition requires parsing its description, which is very
+      * Knowing whether a goal is a WD condition requires parsing its description, which is very
         fragile and error-prone.
       * Even with these issues ironed out, we would still need complicated logic in order to correctly
-        instantiate those conditions in our goals (which is even worse in the cases where a WF condition
+        instantiate those conditions in our goals (which is even worse in the cases where a WD condition
         may depend on the previous conjunct, e.g. in goals like `∃ G. G ∈ A ⟶ B ∧ G(x) ∈ B`, where the
-        generated WF condition is `∀ G. G ∈ A ⟶ B ⇒ x ∈ dom(G) ∧ G ∈ dom(G) ⇸ ran(G)`).
+        generated WD condition is `∀ G. G ∈ A ⟶ B ⇒ x ∈ dom(G) ∧ G ∈ dom(G) ⇸ ran(G)`).
     -/
     args := #["-p", (atelierBDir/"include"/"pog"/"paramGOPSoftware.xsl").toString, /- "-w", -/ bxml.toString]
   }
@@ -85,9 +85,9 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
 
   let ns ← getCurrNamespace
 
-  -- let mut wfs := #[]
+  -- let mut wds := #[]
   let mut res := #[]
-  let mut wfs : Array (Name × String × Expr) := #[]
+  let mut wds : Array (Name × String × Expr) := #[]
   let mut autoDischarged := 0
   let mut nbGoals := goals.size
   let mut i := 0
@@ -95,36 +95,36 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"
 
-    let (declName, reason, g', wfs') ← liftTermElabM do
-      let (g', wfs'') ← g.toExpr
+    let (declName, reason, g', wds') ← liftTermElabM do
+      let (g', wds'') ← g.toExpr
 
-      let mut wfs' : Array (Name × String × Expr × Bool) := #[]
+      let mut wds' : Array (Name × String × Expr × Bool) := #[]
       let mut j := 0
-      for ⟨g', mvar⟩ in wfs'' do
-        let n_wf := declName.str s!"wf_{j}"
+      for ⟨g', mvar⟩ in wds'' do
+        let n_wd := declName.str s!"wd_{j}"
         j := j + 1
 
-        if let .some n ← findWF g' wfs wfs' then -- ← (wfs ++ wfs'.map λ (a, b, c, d) ↦ ((a : Name), (b : String), (c : Expr))).findM? λ (_, _, g'') ↦ Meta.isDefEq g' g'' then
-          trace[barrel.wf] "Found duplicated WF theorem: using {n} instead"
+        if let .some n ← findWD g' wds wds' then -- ← (wds ++ wds'.map λ (a, b, c, d) ↦ ((a : Name), (b : String), (c : Expr))).findM? λ (_, _, g'') ↦ Meta.isDefEq g' g'' then
+          trace[barrel.wd] "Found duplicated WD theorem: using {n} instead"
           mvar.assign (.const n [])
         else do
-          mvar.assign (.const n_wf [])
+          mvar.assign (.const n_wd [])
           let g' ← instantiateMVars g'
-          wfs' := wfs'.push (n_wf, "Assertion is well-defined", g', true)
+          wds' := wds'.push (n_wd, "Assertion is well-defined", g', true)
 
       let g' ← instantiateMVars g'
       trace[barrel] "Generated theorem: {g'}"
 
-      pure (declName, g.reason, g', wfs')
+      pure (declName, g.reason, g', wds')
 
-    nbGoals := nbGoals + wfs'.size
-    let try_discharge := wfs'.push (declName, reason, g', false)
+    nbGoals := nbGoals + wds'.size
+    let try_discharge := wds'.push (declName, reason, g', false)
 
     -- NOTE: Now try and solve it automatically...if possible
-    for (declName, reason, g, isWf) in try_discharge do
-      let gOrWf : _ ⊕ _ ← liftTermElabM do -- <| withOptions (Elab.async.set · false) do
+    for (declName, reason, g, isWd) in try_discharge do
+      let gOrWd : _ ⊕ _ ← liftTermElabM do -- <| withOptions (Elab.async.set · false) do
         try
-          trace[barrel.solve] m!"Trying to solve theorem {declName} (isWf: {isWf}):{indentExpr g}"
+          trace[barrel.solve] m!"Trying to solve theorem {declName} (isWd: {isWd}):{indentExpr g}"
           let e ← withoutErrToSorry do
             Meta.check g
             instantiateMVars =<< elabTermAndSynthesize (← `(term| by barrel_solve)) (.some g)
@@ -152,17 +152,17 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
         catch ex =>
           trace[barrel.solve] m!"{Lean.crossEmoji} Failed!\n{ex.toMessageData}"
 
-          pure <| .inr (declName, reason, g, isWf)
+          pure <| .inr (declName, reason, g, isWd)
 
-      match gOrWf with
+      match gOrWd with
       | .inl _ => autoDischarged := autoDischarged + 1
-      | .inr (declName, reason, g, isWf) =>
+      | .inr (declName, reason, g, isWd) =>
         let goal := (declName, reason, g)
-        if isWf then wfs := wfs.push goal else res := res.push goal
+        if isWd then wds := wds.push goal else res := res.push goal
 
     i := i + 1
 
-  let goals := wfs ++ res
+  let goals := wds ++ res
   if (← getOptions).getBool `barrel.show_auto_solved && autoDischarged > 0 then
     logInfo s!"🎉 Automatically solved {autoDischarged} out of {nbGoals} subgoals!"
 

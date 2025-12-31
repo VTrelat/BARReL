@@ -15,23 +15,23 @@ namespace B.Builtins
   abbrev interval (lo hi : ℤ) : Set Int := Set.Icc lo hi
   scoped infixl:170 ".." => interval
 
-  structure min.WF {α : Type _} [PartialOrder α] (S : Set α) : Prop where
+  structure min.WD {α : Type _} [PartialOrder α] (S : Set α) : Prop where
     isBoundedBelow : ∃ x ∈ S, ∀ y ∈ S, x ≤ y
 
-  noncomputable abbrev min {α : Type _} [PartialOrder α] (S : Set α) (wf : min.WF S) : α :=
-    Classical.choose wf.isBoundedBelow
+  noncomputable abbrev min {α : Type _} [PartialOrder α] (S : Set α) (wd : min.WD S) : α :=
+    Classical.choose wd.isBoundedBelow
 
-  structure max.WF {α : Type _} [PartialOrder α] (S : Set α) : Prop where
+  structure max.WD {α : Type _} [PartialOrder α] (S : Set α) : Prop where
     isBoundedAbove : ∃ x ∈ S, ∀ y ∈ S, y ≤ x
 
-  noncomputable abbrev max {α : Type _} [PartialOrder α] (S : Set α) (wf : max.WF S) : α :=
-    Classical.choose wf.isBoundedAbove
+  noncomputable abbrev max {α : Type _} [PartialOrder α] (S : Set α) (wd : max.WD S) : α :=
+    Classical.choose wd.isBoundedAbove
 
-  structure card.WF {α : Type _} (S : Set α) : Prop where
+  structure card.WD {α : Type _} (S : Set α) : Prop where
     isFinite : S.Finite
 
-  noncomputable abbrev card {α : Type _} (S : Set α) (wf : card.WF S) : ℤ :=
-    have : Fintype S := @Fintype.ofFinite _ wf.isFinite
+  noncomputable abbrev card {α : Type _} (S : Set α) (wd : card.WD S) : ℤ :=
+    have : Fintype S := @Fintype.ofFinite _ wd.isFinite
     S.toFinset.card
 
   section Lemmas
@@ -185,51 +185,51 @@ namespace B.Builtins
       rw [eq_interval]
       apply interval.finite
 
-    @[grind., simp, wf_min]
-    theorem min.WF_NATURAL : min.WF NATURAL := by
+    @[grind., simp, wd_min]
+    theorem min.WD_NATURAL : min.WD NATURAL := by
       exists 0
       and_intros
       · rw [Builtins.NATURAL, Set.mem_setOf]
       · intro y hy
         rwa [Set.mem_setOf] at hy
 
-    @[wf_min]
-    theorem min.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
-        min.WF S := by
+    @[wd_min]
+    theorem min.WD_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
+        min.WD S := by
       let fin := Set.Finite.to_subtype h.1.2
       let nemp := Set.Nonempty.to_subtype h.2
       obtain ⟨x, h⟩ := Finite.exists_min (@_root_.id ↑S)
       exact ⟨x, Subtype.coe_prop x, fun y hy ↦ h ⟨y, hy⟩⟩
 
-    @[wf_max]
-    theorem max.WF_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
-        max.WF S := by
+    @[wd_max]
+    theorem max.WD_of_finite {α : Type _} [LinearOrder α] {S A : Set α} (h : S ∈ FIN₁ A) :
+        max.WD S := by
       let fin := Set.Finite.to_subtype h.1.2
       let nemp := Set.Nonempty.to_subtype h.2
       obtain ⟨x, h⟩ := Finite.exists_max (@_root_.id ↑S)
       exact ⟨x, Subtype.coe_prop x, fun y hy ↦ h ⟨y, hy⟩⟩
 
-    @[grind ., wf_max]
-    theorem max.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : max.WF (lo..hi) := by
+    @[grind ., wd_max]
+    theorem max.WD_interval {lo hi : ℤ} (h : lo ≤ hi) : max.WD (lo..hi) := by
       exists hi
       and_intros <;> grind
 
-    @[grind ., wf_min]
-    theorem min.WF_interval {lo hi : ℤ} (h : lo ≤ hi) : min.WF (lo..hi) := by
+    @[grind ., wd_min]
+    theorem min.WD_interval {lo hi : ℤ} (h : lo ≤ hi) : min.WD (lo..hi) := by
       exists lo
       and_intros <;> grind
 
     @[grind →]
-    theorem min.mem {α : Type _} [PartialOrder α] {S : Set α} (wf : min.WF S) :
-        min S wf ∈ S := (Classical.choose_spec wf.isBoundedBelow).1
+    theorem min.mem {α : Type _} [PartialOrder α] {S : Set α} (wd : min.WD S) :
+        min S wd ∈ S := (Classical.choose_spec wd.isBoundedBelow).1
 
     @[grind →]
-    theorem max.mem {α : Type _} [PartialOrder α] {S : Set α} (wf : max.WF S) :
-        max S wf ∈ S := (Classical.choose_spec wf.isBoundedAbove).1
+    theorem max.mem {α : Type _} [PartialOrder α] {S : Set α} (wd : max.WD S) :
+        max S wd ∈ S := (Classical.choose_spec wd.isBoundedAbove).1
 
-    @[grind ., wf_min]
-    theorem min.WF_of_union {α : Type _} [LinearOrder α] {S T : Set α}
-        (hS : min.WF S) (hT : min.WF T) : min.WF (S ∪ T) := by
+    @[grind ., wd_min]
+    theorem min.WD_of_union {α : Type _} [LinearOrder α] {S T : Set α}
+        (hS : min.WD S) (hT : min.WD T) : min.WD (S ∪ T) := by
       obtain ⟨s_min, s_min_mem, s_min_bnd⟩ := hS
       obtain ⟨t_min, t_min_mem, t_min_bnd⟩ := hT
       let m := if s_min ≤ t_min then s_min else t_min
@@ -249,9 +249,9 @@ namespace B.Builtins
           · exact le_trans hm (t_min_bnd y hy)
           · exact t_min_bnd y hy
 
-    @[grind ., wf_max]
-    theorem max.WF_of_union {α : Type _} [LinearOrder α] {S T : Set α}
-        (hS : max.WF S) (hT : max.WF T) : max.WF (S ∪ T) := by
+    @[grind ., wd_max]
+    theorem max.WD_of_union {α : Type _} [LinearOrder α] {S T : Set α}
+        (hS : max.WD S) (hT : max.WD T) : max.WD (S ∪ T) := by
       obtain ⟨s_max, s_max_mem, s_max_bnd⟩ := hS
       obtain ⟨t_max, t_max_mem, t_max_bnd⟩ := hT
       let m := if t_max ≤ s_max then s_max else t_max
@@ -275,7 +275,7 @@ namespace B.Builtins
 
     @[grind ., simp]
     theorem interval.min_eq {lo hi : Int} (h : lo ≤ hi) :
-        min (lo .. hi) (min.WF_interval h) = lo := by
+        min (lo .. hi) (min.WD_interval h) = lo := by
       unfold min
       generalize_proofs hm
       obtain ⟨m_def, m_is_min⟩ := Classical.choose_spec hm
@@ -283,30 +283,30 @@ namespace B.Builtins
 
     @[grind ., simp]
     theorem interval.max_eq {lo hi : Int} (h : lo ≤ hi) :
-        max (lo .. hi) (max.WF_interval h) = hi := by
+        max (lo .. hi) (max.WD_interval h) = hi := by
       unfold max
       generalize_proofs hm
       obtain ⟨m_def, m_is_max⟩ := Classical.choose_spec hm
       exact le_antisymm m_def.2 (m_is_max _ (Set.right_mem_Icc.mpr h))
 
-    @[grind ., wf_min]
-    theorem min.WF_singleton {α : Type _} [PartialOrder α] {a : α} : min.WF {a} :=
+    @[grind ., wd_min]
+    theorem min.WD_singleton {α : Type _} [PartialOrder α] {a : α} : min.WD {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ ge_of_eq⟩
 
-    @[grind ., wf_max]
-    theorem max.WF_singleton {α : Type _} [PartialOrder α] {a : α} : max.WF {a} :=
+    @[grind ., wd_max]
+    theorem max.WD_singleton {α : Type _} [PartialOrder α] {a : α} : max.WD {a} :=
       ⟨a, Set.mem_singleton a, fun _ ↦ le_of_eq⟩
 
     @[simp]
     theorem min.of_singleton {α : Type _} [PartialOrder α] {a : α} :
-        min {a} (min.WF_singleton) = a := by
+        min {a} (min.WD_singleton) = a := by
       unfold min
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
 
-    @[grind ., wf_min]
-    theorem min.WF_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
-        (hS : min.WF S) : min.WF (insert a S) := by
+    @[grind ., wd_min]
+    theorem min.WD_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
+        (hS : min.WD S) : min.WD (insert a S) := by
       obtain ⟨s_min, s_min_mem, s_min_bnd⟩ := hS
       let m := if a ≤ s_min then a else s_min
       exists m
@@ -329,8 +329,8 @@ namespace B.Builtins
 
     @[grind ., simp]
     theorem min.of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
-        (hS : min.WF S) :
-        min (insert a S) (min.WF_of_insert a hS) =
+        (hS : min.WD S) :
+        min (insert a S) (min.WD_of_insert a hS) =
           if a ≤ min S hS then a else min S hS := by
       unfold min
       split_ifs with ha
@@ -360,9 +360,9 @@ namespace B.Builtins
             (s_min_is_min _ (Set.mem_insert_of_mem a m_def))
             (m_is_min s_min s_min_in)
 
-    @[grind ., wf_max]
-    theorem max.WF_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
-        (hS : max.WF S) : max.WF (insert a S) := by
+    @[grind ., wd_max]
+    theorem max.WD_of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
+        (hS : max.WD S) : max.WD (insert a S) := by
       obtain ⟨s_max, s_max_mem, s_max_bnd⟩ := hS
       let m := if s_max ≤ a then a else s_max
       exists m
@@ -385,8 +385,8 @@ namespace B.Builtins
 
     @[grind ., simp]
     theorem max.of_insert {α : Type _} [LinearOrder α] {S : Set α} (a : α)
-        (hS : max.WF S) :
-        max (insert a S) (max.WF_of_insert a hS) =
+        (hS : max.WD S) :
+        max (insert a S) (max.WD_of_insert a hS) =
           if max S hS ≤ a then a else max S hS := by
       unfold max
       split_ifs with ha
@@ -418,14 +418,14 @@ namespace B.Builtins
 
     @[simp]
     theorem max.of_singleton {α : Type _} [PartialOrder α] {a : α} :
-        max {a} (max.WF_singleton) = a := by
+        max {a} (max.WD_singleton) = a := by
       unfold max
       generalize_proofs ha
       exact (Classical.choose_spec ha).1
 
     @[grind .]
     theorem max.ge_min {α : Type _} [PartialOrder α] {S : Set α}
-        (hmax : max.WF S) (hmin : min.WF S) :
+        (hmax : max.WD S) (hmin : min.WD S) :
         max S hmax ≥ min S hmin := by
       unfold max min
       generalize_proofs hmax hmin
@@ -435,14 +435,14 @@ namespace B.Builtins
 
     @[grind .]
     theorem min.le_max {α : Type _} [PartialOrder α] {S : Set α}
-      (hmin : min.WF S) (hmax : max.WF S) :
+      (hmin : min.WD S) (hmax : max.WD S) :
         min S hmin ≤ max S hmax := max.ge_min hmax hmin
 
-    @[wf_min]
-    theorem min.WF_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
+    @[wd_min]
+    theorem min.WD_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⇸ B) (hS : S ∈ FIN₁ (dom f)) :
-        min.WF (f[S]) := by
-      apply min.WF_of_finite (A := f[S])
+        min.WD (f[S]) := by
+      apply min.WD_of_finite (A := f[S])
       and_intros
       · exact subset_refl _
       · obtain ⟨⟨Sdom, Sfin⟩, Snemp⟩ := hS
@@ -483,18 +483,18 @@ namespace B.Builtins
         obtain ⟨w, hw⟩ := sub_dom hs
         exists w, s
 
-    @[wf_min]
-    theorem min.WF_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
+    @[wd_min]
+    theorem min.WD_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⟶ B) (hS : S ∈ FIN₁ A) :
-        min.WF (f[S]) := by
-      apply min.WF_of_finite_image_pfun (Set.mem_of_mem_inter_left hf)
+        min.WD (f[S]) := by
+      apply min.WD_of_finite_image_pfun (Set.mem_of_mem_inter_left hf)
       rwa [tfun_dom_eq hf]
 
-    @[wf_max]
-    theorem max.WF_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
+    @[wd_max]
+    theorem max.WD_of_finite_image_pfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⇸ B) (hS : S ∈ FIN₁ (dom f)) :
-        max.WF (f[S]) := by
-      apply max.WF_of_finite (A := f[S])
+        max.WD (f[S]) := by
+      apply max.WD_of_finite (A := f[S])
       and_intros
       · exact subset_refl _
       · obtain ⟨⟨Sdom, Sfin⟩, Snemp⟩ := hS
@@ -535,47 +535,47 @@ namespace B.Builtins
         obtain ⟨w, hw⟩ := sub_dom hs
         exists w, s
 
-    @[wf_max]
-    theorem max.WF_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
+    @[wd_max]
+    theorem max.WD_of_finite_image_tfun {α β : Type _} [LinearOrder β] {A : Set α } {B : Set β}
       {f : SetRel α β} {S : Set α} (hf : f ∈ A ⟶ B) (hS : S ∈ FIN₁ A) :
-        max.WF (f[S]) := by
-      apply max.WF_of_finite_image_pfun (Set.mem_of_mem_inter_left hf)
+        max.WD (f[S]) := by
+      apply max.WD_of_finite_image_pfun (Set.mem_of_mem_inter_left hf)
       rwa [tfun_dom_eq hf]
 
     @[grind .]
     theorem min.mono {α : Type _} [PartialOrder α] {S T : Set α} (hsub : T ⊆ S)
-      (hS : min.WF S) (hT : min.WF T) : min S hS ≤ min T hT :=
+      (hS : min.WD S) (hT : min.WD T) : min S hS ≤ min T hT :=
         (choose_spec hS.isBoundedBelow).right
           (choose hT.isBoundedBelow)
           (hsub (choose_spec hT.isBoundedBelow).left)
 
     @[grind .]
     theorem max.mono {α : Type _} [PartialOrder α] {S T : Set α} (hsub : S ⊆ T)
-      (hS : max.WF S) (hT : max.WF T) : max S hS ≤ max T hT :=
+      (hS : max.WD S) (hT : max.WD T) : max S hS ≤ max T hT :=
         (choose_spec hT.isBoundedAbove).right
           (choose hS.isBoundedAbove)
           (hsub (choose_spec hS.isBoundedAbove).left)
 
-    @[grind ., simp, wf_card]
-    theorem card.WF_of_empty {α : Type _} : card.WF (∅ : Set α) where
+    @[grind ., simp, wd_card]
+    theorem card.WD_of_empty {α : Type _} : card.WD (∅ : Set α) where
       isFinite := Set.finite_empty
 
-    @[grind ., simp, wf_card]
-    theorem card.WF_of_interval {lo hi : ℤ} : card.WF (lo .. hi) where
+    @[grind ., simp, wd_card]
+    theorem card.WD_of_interval {lo hi : ℤ} : card.WD (lo .. hi) where
       isFinite := interval.finite lo hi
 
     @[grind ., simp]
-    theorem card.of_empty {α : Type _} : card (∅ : Set α) (card.WF_of_empty) = 0 := by
+    theorem card.of_empty {α : Type _} : card (∅ : Set α) (card.WD_of_empty) = 0 := by
       simp only [card, Set.toFinset_empty, Finset.card_empty, Nat.cast_zero]
 
     @[grind =_, simp]
     theorem card.of_interval {lo hi : ℤ} :
-        card (lo .. hi) (card.WF_of_interval) = Max.max (hi + 1 - lo) 0 := by
+        card (lo .. hi) (card.WD_of_interval) = Max.max (hi + 1 - lo) 0 := by
       simp only [card, Set.toFinset_Icc, Int.card_Icc, Int.ofNat_toNat]
 
     @[grind =_, simp]
     theorem card.of_interval' {lo hi : ℤ} (h : lo ≤ hi) :
-        card (lo .. hi) (card.WF_of_interval) = hi - lo + 1 := by
+        card (lo .. hi) (card.WD_of_interval) = hi - lo + 1 := by
       simp only [of_interval]
       rw [Int.max_eq_left]
       · symm
@@ -583,65 +583,65 @@ namespace B.Builtins
       · rw [Int.sub_nonneg]
         exact Int.le_add_one h
 
-    @[grind <=, wf_card]
-    theorem card.WF_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
-        (hT : card.WF T) : card.WF S where
+    @[grind <=, wd_card]
+    theorem card.WD_of_subset {α : Type _} {S T : Set α} (hS : S ⊆ T)
+        (hT : card.WD T) : card.WD S where
       isFinite := Set.Finite.subset hT.isFinite hS
 
-    @[wf_card]
-    theorem card.WF_of_finite {α : Type _} {S A : Set α} (h : S ∈ FIN A) :
-        card.WF S where
+    @[wd_card]
+    theorem card.WD_of_finite {α : Type _} {S A : Set α} (h : S ∈ FIN A) :
+        card.WD S where
       isFinite := h.2
 
-    @[wf_card]
-    theorem card.WF_of_finite' {α : Type _} {S A : Set α} (h : S ∈ FIN₁ A) :
-        card.WF S where
+    @[wd_card]
+    theorem card.WD_of_finite' {α : Type _} {S A : Set α} (h : S ∈ FIN₁ A) :
+        card.WD S where
       isFinite := h.1.2
 
-    @[grind ., wf_card]
-    theorem card.WF_of_singleton {α : Type _} {a : α} : card.WF {a} where
+    @[grind ., wd_card]
+    theorem card.WD_of_singleton {α : Type _} {a : α} : card.WD {a} where
       isFinite := Set.finite_singleton a
 
     @[simp]
     theorem card.of_singleton {α : Type _} {a : α} :
-        card {a} WF_of_singleton = 1 := by
+        card {a} WD_of_singleton = 1 := by
       simp only [card, Set.toFinset_singleton, Finset.card_singleton, Nat.cast_one]
 
     @[mono]
-    theorem card.mono {α : Type _} {S T : Set α} (hS : S ⊆ T) (hT : card.WF T) :
-        card S (card.WF_of_subset hS hT) ≤ card T hT := by
+    theorem card.mono {α : Type _} {S T : Set α} (hS : S ⊆ T) (hT : card.WD T) :
+        card S (card.WD_of_subset hS hT) ≤ card T hT := by
       rw [Int.ofNat_le]
       apply Finset.card_le_card
-      have : Finite ↑S := (card.WF_of_subset hS hT).isFinite
+      have : Finite ↑S := (card.WD_of_subset hS hT).isFinite
       have : Finite ↑T := hT.isFinite
       exact @Set.toFinset_mono α S T (Fintype.ofFinite ↑S) (Fintype.ofFinite ↑T) hS
 
-    @[grind ., wf_card]
-    theorem card.WF_of_inter {α : Type _} {S T : Set α} (h : card.WF S ∨ card.WF T) :
-        card.WF (S ∩ T) where
+    @[grind ., wd_card]
+    theorem card.WD_of_inter {α : Type _} {S T : Set α} (h : card.WD S ∨ card.WD T) :
+        card.WD (S ∩ T) where
       isFinite := by
         rcases h with hS | hT
         · exact Set.Finite.inter_of_left hS.isFinite _
         · exact Set.Finite.inter_of_right hT.isFinite _
 
-    @[grind ., wf_card]
-    theorem card.WF_of_union {α : Type _} {S T : Set α} (hS : card.WF S) (hT : card.WF T) :
-        card.WF (S ∪ T) where
+    @[grind ., wd_card]
+    theorem card.WD_of_union {α : Type _} {S T : Set α} (hS : card.WD S) (hT : card.WD T) :
+        card.WD (S ∪ T) where
       isFinite := Set.Finite.union hS.isFinite hT.isFinite
 
-    @[grind ., wf_card]
-    theorem card.WF_of_insert {α : Type _} {S : Set α} (a : α)
-        (hS : card.WF S) : card.WF (insert a S) where
+    @[grind ., wd_card]
+    theorem card.WD_of_insert {α : Type _} {S : Set α} (a : α)
+        (hS : card.WD S) : card.WD (insert a S) where
       isFinite := Set.Finite.insert a hS.isFinite
 
-    @[grind ., wf_card]
-    theorem card.WF_of_insert' {α : Type _} {S : Set α} (a : α)
-        (hS : card.WF S) : card.WF (S ∪ {a}) where
+    @[grind ., wd_card]
+    theorem card.WD_of_insert' {α : Type _} {S : Set α} (a : α)
+        (hS : card.WD S) : card.WD (S ∪ {a}) where
       isFinite := by simpa only [Set.union_singleton, Set.finite_insert] using hS.isFinite
 
     @[grind ., simp]
-    theorem card.of_insert {α : Type _} {S : Set α} (a : α)  (hS : card.WF S) :
-        card (insert a S) (card.WF_of_insert a hS) =
+    theorem card.of_insert {α : Type _} {S : Set α} (a : α)  (hS : card.WD S) :
+        card (insert a S) (card.WD_of_insert a hS) =
           if a ∈ S then card S hS else card S hS + 1 := by
       split_ifs with ha
       · conv =>
@@ -654,19 +654,19 @@ namespace B.Builtins
         · simp only [Set.toFinset_card, Nat.cast_add, Nat.cast_one]
         · rwa [Set.mem_toFinset]
 
-    @[grind ., wf_card]
-    theorem card.WF_of_sdiff {α : Type _} {S T : Set α} (hS : card.WF S) : card.WF (S \ T) where
+    @[grind ., wd_card]
+    theorem card.WD_of_sdiff {α : Type _} {S T : Set α} (hS : card.WD S) : card.WD (S \ T) where
       isFinite := Set.Finite.diff hS.isFinite
 
     @[simp]
-    theorem card.of_sdiff {α : Type _} {S T : Set α} (hS : card.WF S) :
-        card (S \ T) (card.WF_of_sdiff hS) =
-          card S hS - card (S ∩ T) (WF_of_inter (Or.inl hS)) := by
+    theorem card.of_sdiff {α : Type _} {S T : Set α} (hS : card.WD S) :
+        card (S \ T) (card.WD_of_sdiff hS) =
+          card S hS - card (S ∩ T) (WD_of_inter (Or.inl hS)) := by
       admit
 
     @[simp]
-    theorem card.of_diff_singleton {α : Type _} {S : Set α} (a : α) (hS : card.WF S) :
-        card (S \ {a}) (card.WF_of_sdiff hS) =
+    theorem card.of_diff_singleton {α : Type _} {S : Set α} (a : α) (hS : card.WD S) :
+        card (S \ {a}) (card.WD_of_sdiff hS) =
           if a ∈ S then card S hS - 1 else card S hS := by
       rw [card.of_sdiff hS]
       split_ifs with ha

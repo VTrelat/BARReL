@@ -1,4 +1,4 @@
-import BARReL
+import Barrel
 
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
@@ -24,8 +24,8 @@ next
 next
   introv
   have : done ∪ add ⊆ SS := by grind
-  generalize_proofs min_wf
-  exact this (min.mem min_wf)
+  generalize_proofs min_wd
+  exact this (min.mem min_wd)
 
 prove_obligations_of MinSearch_r1
 next grind
@@ -44,14 +44,14 @@ next
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
-  rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
+  rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
 next
   intros
   expose_names
   subst_eqs
   exists {xx}, FIN₁.singleton_mem h_10, rfl
   simp only [Set.union_singleton]
-  rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
+  rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
 next
   intros
   expose_names
@@ -65,8 +65,8 @@ next
   simp only [Set.union_singleton]
   rw [Int.not_lt, Int.le_iff_lt_or_eq] at h_11
   obtain hle | rfl := h_11
-  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
-  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
+  · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
+  · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
 next
   intros
   expose_names
@@ -75,8 +75,8 @@ next
   simp only [Set.union_singleton]
   rw [Int.not_lt, Int.le_iff_lt_or_eq] at h_11
   obtain hle | rfl := h_11
-  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
-  · rw [min.of_insert _ (by wf_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
+  · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
+  · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
 
 prove_obligations_of MinSearch_r2
 next
@@ -135,7 +135,7 @@ next
   apply le_antisymm
   · exact h_12.2
   · by_contra! contr
-    have : app.WF tab (ii1 + 1) := by
+    have : app.WD tab (ii1 + 1) := by
       refine ⟨?_, ?_⟩
       · rw [tfun_dom_eq h_4.2]
         exact h_4.2
@@ -152,19 +152,19 @@ next
   intros
   expose_names
   subst_eqs
-  exists tab(ii1+1)'(app.WF_of_mem_tfun h_4.2 ⟨Int.le_add_one h_12.1, h_18⟩)
+  exists tab(ii1+1)'(app.WD_of_mem_tfun h_4.2 ⟨Int.le_add_one h_12.1, h_18⟩)
   use ?_, ?_, ?_
   · simp only [Set.mem_diff, Set.mem_setOf_eq, SetRel.mem_image, Set.mem_Icc, not_exists, not_and,
     and_imp]
     and_intros
     · exact ⟨ii1 + 1, app.pair_app_mem⟩
     · intro i hi hi' contr
-      rw [app.of_pair_iff (app.WF_of_mem_tfun h_4.2 ⟨hi, le_trans hi' h_12.2⟩)] at contr
-      generalize_proofs wf_i wf_ii1 at contr
+      rw [app.of_pair_iff (app.WD_of_mem_tfun h_4.2 ⟨hi, le_trans hi' h_12.2⟩)] at contr
+      generalize_proofs wd_i wd_ii1 at contr
       have : i = ii1 + 1 := by
         apply h_4.1.2
-        · rw [app.of_pair_iff wf_i]
-        · rw [app.of_pair_iff wf_ii1, contr]
+        · rw [app.of_pair_iff wd_i]
+        · rw [app.of_pair_iff wd_ii1, contr]
       rw [this, Int.add_one_le_iff] at hi'
       nomatch lt_irrefl _ hi'
   · intro
@@ -183,7 +183,7 @@ next
           use i, ⟨hi, hi'⟩, h
         · left
           symm
-          rwa [app.of_pair_iff (app.WF_of_mem_tfun h_4.right ⟨Int.le_add_one h_12.left, h_18⟩)] at h
+          rwa [app.of_pair_iff (app.WD_of_mem_tfun h_4.right ⟨Int.le_add_one h_12.left, h_18⟩)] at h
     · use ii1 + 1, ⟨Int.le_add_one h_12.1, Int.le_refl (ii1 + 1)⟩, app.pair_app_mem
     · rintro jj ⟨le_jj, hjj⟩
       rw [Int.le_add_one_iff] at hjj
@@ -211,24 +211,24 @@ next
   · rintro ⟨i, ⟨hi, hi'⟩, hxᵢ⟩
     use i, ⟨hi, Int.le_add_one hi'⟩
   · rintro ⟨i, ⟨hi, hi'⟩, hxᵢ⟩
-    have := app.mem_ran (app.WF_of_mem_tfun h_4.2 ⟨hi, le_trans hi' h_18⟩)
+    have := app.mem_ran (app.WD_of_mem_tfun h_4.2 ⟨hi, le_trans hi' h_18⟩)
     conv_lhs at this => rw [←h_20]
     rw [SetRel.mem_image] at this
     obtain ⟨i', hi', hxi'⟩ := this
-    generalize_proofs wf_i' at hxi'
+    generalize_proofs wd_i' at hxi'
     exists i', hi'
-    obtain rfl := app.of_pair_eq wf_i' hxᵢ
+    obtain rfl := app.of_pair_eq wd_i' hxᵢ
     exact hxi'
 next
   intros
   expose_names
   subst_eqs
-  generalize_proofs app_wf at h_19
-  have := app.mem_ran app_wf
+  generalize_proofs app_wd at h_19
+  have := app.mem_ran app_wd
   conv_lhs at this => rw [←h_20]
   rw [SetRel.mem_image] at this
   obtain ⟨i', hi', hxi'⟩ := this
-  rw [app.of_pair_iff (app.WF_of_mem_tfun h_4.2 ⟨hi'.1, le_trans hi'.2 h_12.2⟩)] at hxi'
+  rw [app.of_pair_iff (app.WD_of_mem_tfun h_4.2 ⟨hi'.1, le_trans hi'.2 h_12.2⟩)] at hxi'
   specialize h_17 i' hi'
   rw [hxi'] at h_17
   nomatch lt_irrefl _ (Int.lt_of_le_of_lt h_17 h_19)
@@ -252,10 +252,10 @@ next
   intros
   expose_names
   subst_eqs
-  generalize_proofs app_wf at h_19
-  use tab(ii1+1)'app_wf, ?_, ?_, ?_
+  generalize_proofs app_wd at h_19
+  use tab(ii1+1)'app_wd, ?_, ?_, ?_
   · rw [Int.not_gt_eq] at h_19
-    apply And.intro (app.mem_ran app_wf)
+    apply And.intro (app.mem_ran app_wd)
     intro contr
     simp only [SetRel.mem_image, Set.mem_Icc] at contr
     obtain ⟨i', ⟨hi'₁, hi'₂⟩, hxi'⟩ := contr
@@ -284,7 +284,7 @@ next
           use i, ⟨hi₁, hi₂⟩, ik
         · left
           symm
-          rwa [app.of_pair_iff (app.WF_of_mem_tfun h_4.2 ⟨Int.le_add_one h_12.1, h_18⟩)] at ik
+          rwa [app.of_pair_iff (app.WD_of_mem_tfun h_4.2 ⟨Int.le_add_one h_12.1, h_18⟩)] at ik
     · simp only [SetRel.mem_image, Set.mem_Icc] at h_16 ⊢
       obtain ⟨i, ⟨hi₁, hi₂⟩, hxi⟩ := h_16
       use i, ⟨hi₁, Int.le_add_one hi₂⟩, hxi

@@ -36,13 +36,13 @@ namespace B.Builtins
     A ↣ B ∩ A ↠ B
   scoped infixl:125 " ⤖ " => bijTFun
 
-  structure app.WF {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop where
+  structure app.WD {α : Type _} {β : Type _} (f : SetRel α β) (x : α) : Prop where
     isPartialFunction : f ∈ dom f ⟶ ran f
     isInDomain : x ∈ dom f
 
-  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wf : app.WF f x) : β :=
-    Classical.choose wf.isInDomain
-  scoped notation:290 F:290 "(" x:min ")'" wf:300 => app F x wf
+  noncomputable abbrev app {α β : Type _} (f : SetRel α β) (x : α) (wd : app.WD f x) : β :=
+    Classical.choose wd.isInDomain
+  scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 
   section Lemmas
 
@@ -106,9 +106,9 @@ namespace B.Builtins
     theorem tfun.of_bijtfun {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}
       (hf : f ∈ A ⤖ B) : f ∈ A ⟶ B := hf.1.2
 
-    @[wf_app]
-    theorem app.WF_of_mem_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hA : A ⊆ dom f) (hx : x ∈ A) :
-      app.WF f x where
+    @[wd_app]
+    theorem app.WD_of_mem_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hA : A ⊆ dom f) (hx : x ∈ A) :
+      app.WD f x where
       isPartialFunction := by
         obtain ⟨f_rel, f_is_func⟩ := hf
         and_intros
@@ -124,9 +124,9 @@ namespace B.Builtins
           exists x
       isInDomain := hA hx
 
-    @[wf_app]
-    theorem app.WF_of_mem_dom_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hx : x ∈ dom f) :
-      app.WF f x where
+    @[wd_app]
+    theorem app.WD_of_mem_dom_pfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α} (hf : f ∈ A ⇸ B) (hx : x ∈ dom f) :
+      app.WD f x where
       isPartialFunction := by
         obtain ⟨f_rel, f_is_func⟩ := hf
         and_intros
@@ -142,29 +142,29 @@ namespace B.Builtins
           exists x
       isInDomain := hx
 
-    @[wf_app]
-    theorem app.WF_of_mem_tfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α}
+    @[wd_app]
+    theorem app.WD_of_mem_tfun {α β : Type _} {f : SetRel α β} {A : Set α} {B : Set β} {x : α}
       (hf : f ∈ A ⟶ B) (hx : x ∈ A) :
-        app.WF f x := by
-      apply app.WF_of_mem_pfun hf.1 (fun y hy ↦ ?_) hx
+        app.WD f x := by
+      apply app.WD_of_mem_pfun hf.1 (fun y hy ↦ ?_) hx
       · obtain ⟨z, -, hfxy⟩ := hf.2 y hy
         exact ⟨z, hfxy⟩
 
     @[grind →, simp]
     theorem app.of_pair_eq {α β : Type _} {f : SetRel α β} {x : α} {y : β}
-      (wf : WF f x) (hxy : (x, y) ∈ f) :
-        app f x wf = y :=
-          wf.isPartialFunction.1.2 hxy (Classical.choose_spec wf.isInDomain) |>.symm
+      (wd : WD f x) (hxy : (x, y) ∈ f) :
+        app f x wd = y :=
+          wd.isPartialFunction.1.2 hxy (Classical.choose_spec wd.isInDomain) |>.symm
 
     @[grind →]
-    theorem app.pair_app_mem {α β : Type _} {f : SetRel α β} {x : α} {wf : WF f x} :
-      (x, f(x)'wf) ∈ f := Classical.choose_spec wf.isInDomain
+    theorem app.pair_app_mem {α β : Type _} {f : SetRel α β} {x : α} {wd : WD f x} :
+      (x, f(x)'wd) ∈ f := Classical.choose_spec wd.isInDomain
 
     @[grind =>, simp]
     theorem app.of_pair_iff {α β : Type _} {f : SetRel α β} {x : α} {y : β}
-      (wf : WF f x) :
-        (x, y) ∈ f ↔ app f x wf = y where
-      mp hxy := app.of_pair_eq wf hxy
+      (wd : WD f x) :
+        (x, y) ∈ f ↔ app f x wd = y where
+      mp hxy := app.of_pair_eq wd hxy
       mpr h_eq := by
         rw [←h_eq]
         exact pair_app_mem
@@ -308,12 +308,12 @@ namespace B.Builtins
           · nomatch notmem_f₂' _ mem_f₂
           · exact hf₂.2 mem_f₂ mem_f₂'
 
-    @[wf_app]
-    theorem app.WF_of_overload {α β : Type _} {A C : Set α} {B D : Set β} {f₁ f₂ : SetRel α β}
+    @[wd_app]
+    theorem app.WD_of_overload {α β : Type _} {A C : Set α} {B D : Set β} {f₁ f₂ : SetRel α β}
       {x : α} (hf₁ : f₁ ∈ A ⇸ B) (hf₂ : f₂ ∈ C ⇸ D) (hx : x ∈ dom f₁ ∨ x ∈ dom f₂) :
-        app.WF (f₁ <+ f₂) x := by
+        app.WD (f₁ <+ f₂) x := by
       obtain hx | hx := hx <;> {
-        apply app.WF_of_mem_dom_pfun
+        apply app.WD_of_mem_dom_pfun
         · apply pfun_of_overload hf₁ hf₂
         · rw [overload_dom_eq]
           grind
@@ -340,14 +340,14 @@ namespace B.Builtins
           exact ⟨hy, x_dom⟩
 
   @[grind =, simp]
-  theorem app.image_singleton_eq_of_wf {α β : Type _} {f : SetRel α β} {a : α} (wf : WF f a) :
-      f[{a}] = {f(a)'wf} := by
+  theorem app.image_singleton_eq_of_wd {α β : Type _} {f : SetRel α β} {a : α} (wd : WD f a) :
+      f[{a}] = {f(a)'wd} := by
     ext y
     simp only [SetRel.mem_image, Set.mem_singleton_iff, exists_eq_left]
     constructor
     · intro h
       symm
-      exact of_pair_eq wf h
+      exact of_pair_eq wd h
     · rintro rfl
       exact pair_app_mem
 
@@ -362,15 +362,15 @@ namespace B.Builtins
   @[simp]
   theorem app.image_singleton_eq_of_tfun {α β : Type _} {A : Set α} {B : Set β}
     {f : SetRel α β} {a : α} (hf : f ∈ A ⟶ B) (ha : a ∈ A) :
-      f[{a}] = {f(a)'(WF_of_mem_tfun hf ha)} := app.image_singleton_eq_of_wf _
+      f[{a}] = {f(a)'(WD_of_mem_tfun hf ha)} := app.image_singleton_eq_of_wd _
 
   @[simp]
   theorem app.image_singleton_eq_of_pfun_mem_dom {α β : Type _} {A : Set α} {B : Set β}
     {f : SetRel α β} {a : α} (hf : f ∈ A ⇸ B) (ha : a ∈ dom f) :
-      f[{a}] = {f(a)'(WF_of_mem_dom_pfun hf ha)} := app.image_singleton_eq_of_wf _
+      f[{a}] = {f(a)'(WD_of_mem_dom_pfun hf ha)} := app.image_singleton_eq_of_wd _
 
   @[grind →]
-  theorem app.mem_ran {α β : Type _} {f : SetRel α β} {x : α} (hx : WF f x) : f(x)'hx ∈ ran f :=
+  theorem app.mem_ran {α β : Type _} {f : SetRel α β} {x : α} (hx : WD f x) : f(x)'hx ∈ ran f :=
     ⟨x, pair_app_mem⟩
 
   theorem tfun.ran_eq {α β : Type _} {A : Set α} {B : Set β} {f : SetRel α β}

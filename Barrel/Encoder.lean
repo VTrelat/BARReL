@@ -242,27 +242,27 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
         let S ← S.toExpr
-        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.min.WF #[S]
-        mkAppM ``B.Builtins.min #[S, wfMVar]
+        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.min.WD #[S]
+        mkAppM ``B.Builtins.min #[S, wdMVar]
       | .max S => do
         let S ← S.toExpr
-        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.max.WF #[S]
-        mkAppM ``B.Builtins.max #[S, wfMVar]
+        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.max.WD #[S]
+        mkAppM ``B.Builtins.max #[S, wdMVar]
       | .app f x => do
         let f ← f.toExpr
         let x ← x.toExpr
-        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.app.WF #[f, x]
-        mkAppM ``B.Builtins.app #[f, x, wfMVar]
+        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.app.WD #[f, x]
+        mkAppM ``B.Builtins.app #[f, x, wdMVar]
       | .size E => do
         let E ← E.toExpr
-        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.size.WF #[E]
-        mkAppM ``B.Builtins.size #[E, wfMVar]
+        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.size.WD #[E]
+        mkAppM ``B.Builtins.size #[E, wdMVar]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => do
         let S ← S.toExpr
-        let wfMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.card.WF #[S]
-        mkAppM ``B.Builtins.card #[S, wfMVar]
+        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.card.WD #[S]
+        mkAppM ``B.Builtins.card #[S, wdMVar]
 
   end
 
@@ -292,17 +292,17 @@ namespace B
 
     trace[barrel] "Generated goal: {indentExpr g}"
 
-    let mut wfs := #[]
+    let mut wds := #[]
     let mut i := 0
 
     for mvar in mvars do
       let ty ← mvar.withContext do
         liftMetaM ∘ mkForallFVars (← getLCtx).getFVars =<< mvar.getType
 
-      trace[barrel.wf] "WF metavariable to solve {sg.name}.wf_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
+      trace[barrel.wd] "WD metavariable to solve {sg.name}.wd_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
 
-      wfs := wfs.push (ty, mvar)
+      wds := wds.push (ty, mvar)
 
-    return (g, wfs)
+    return (g, wds)
 
 end B

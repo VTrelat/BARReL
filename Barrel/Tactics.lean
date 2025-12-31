@@ -2,10 +2,10 @@ import Mathlib.Tactic.Core
 import Mathlib.CategoryTheory.Category.Basic
 
 namespace Barrel.Tactics
-  register_label_attr wf_min
-  register_label_attr wf_max
-  register_label_attr wf_app
-  register_label_attr wf_card
+  register_label_attr wd_min
+  register_label_attr wd_max
+  register_label_attr wd_app
+  register_label_attr wd_card
 
   register_label_attr pfun
   register_label_attr tfun
@@ -33,62 +33,62 @@ namespace Barrel.Tactics
     | assumption
     | solve_by_elim using tfun))
 
-  syntax (name := wf_min) "wf_min" : tactic
-  syntax (name := wf_max) "wf_max" : tactic
-  syntax (name := wf_app) "wf_app" : tactic
-  syntax (name := wf_card) "wf_card" : tactic
+  syntax (name := wd_min) "wd_min" : tactic
+  syntax (name := wd_max) "wd_max" : tactic
+  syntax (name := wd_app) "wd_app" : tactic
+  syntax (name := wd_card) "wd_card" : tactic
 
   set_option hygiene false in
-  macro "wf_min" : tactic => `(tactic| (
+  macro "wd_min" : tactic => `(tactic| (
     intros
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
-    | solve_by_elim using wf_min))
+    | solve_by_elim using wd_min))
 
   set_option hygiene false in
-  macro "wf_max" : tactic => `(tactic| (
+  macro "wd_max" : tactic => `(tactic| (
     intros
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
-    | solve_by_elim using wf_max))
+    | solve_by_elim using wd_max))
 
   set_option hygiene false in
-  macro "wf_app" : tactic => `(tactic| (
+  macro "wd_app" : tactic => `(tactic| (
     intros
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
     | (
-        apply app.WF_of_mem_tfun
+        apply app.WD_of_mem_tfun
         · tfun
         · and_intros <;> grind
       )
     | (
-        apply app.WF_of_mem_pfun
+        apply app.WD_of_mem_pfun
         · pfun
         · and_intros <;> grind
       )
-    | solve_by_elim using wf_app))
+    | solve_by_elim using wd_app))
 
   set_option hygiene false in
-  macro "wf_card" : tactic => `(tactic| (
+  macro "wd_card" : tactic => `(tactic| (
     intros
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
-    | solve_by_elim using wf_card))
+    | solve_by_elim using wd_card))
 
-  syntax (name := b_wf) "b_wf" : tactic
-  macro "b_wf" : tactic => `(tactic| (
+  syntax (name := b_wd) "b_wd" : tactic
+  macro "b_wd" : tactic => `(tactic| (
     subst_eqs
     generalize_proofs at *
-    first | wf_min | wf_max | wf_app | wf_card
+    first | wd_min | wd_max | wd_app | wd_card
   ))
 
   syntax (name := b_typing) "b_typing" : tactic
@@ -97,7 +97,7 @@ namespace Barrel.Tactics
 
   macro_rules | `(tactic| barrel_solve) => `(tactic| fail "`barrel_solve` failed to solve goal")
   -- macro_rules | `(tactic| barrel_solve) => `(tactic| grind)
-  macro_rules | `(tactic| barrel_solve) => `(tactic| b_wf)
+  macro_rules | `(tactic| barrel_solve) => `(tactic| b_wd)
   macro_rules | `(tactic| barrel_solve) => `(tactic| b_typing)
   macro_rules | `(tactic| barrel_solve) => `(tactic| trivial)
   macro_rules | `(tactic| barrel_solve) => `(tactic| (repeat1 intro); barrel_solve)
