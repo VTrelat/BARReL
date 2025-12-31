@@ -175,7 +175,8 @@ Each WD condition and proposition is then inserted into the global context as a 
 Before presenting goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
 Concretely, the tactic layer repeatedly applies potentially relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
 These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically.
-We leverage Mathlib's features to tag helper lemmas with relevant categories and tap into its rich library of set-theoretic results to keep the tactic small and focused.
+We leverage Mathlib's features to tag helper lemmas with relevant categories---\texttt{wd\_min}, \texttt{wd\_max}, \texttt{wd\_app}, \texttt{wd\_card}---and tap into its rich library of set-theoretic results to keep the tactic small and focused.
+To those tags also correspond the names of the tactics that are run automatically by \barrel's automation layer, so that users may also invoke them manually when needed or extend them with their own lemmas.
 
 
 Beyond the core encoding of B primitives, \barrel comes with a curated---still small, but already well-furnished---library of theorems about built-in operators.
