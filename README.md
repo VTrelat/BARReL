@@ -46,46 +46,35 @@ OPERATIONS
   END
 END
 ```
-This machine generates four proof obligations:
+This machine generates 4 proof obligations from the invariant and operation `inc`, and 8 subgoals arising from well-formedness conditions (types, definitions, etc.), for a total of 12 proof obligations:
 - _Initialisation_:
   - `{0} ∈ FIN₁(INTEGER)`
   - `max({0}) = -min({0})`
 - _Invariant preservation_ for `inc`:
   - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → (-z)..z ∈ FIN₁(ℤ)`
   - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → max((-z)..z) = -min((-z)..z)`
+- _Well-formedness conditions_.
 
 In Lean, we can discharge them as follows (the first four obligations are well-formedness conditions):
 
 ```lean
-import Barrel.Discharger
+import Barrel
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-import machine CounterMin from "specs/"
+set_option barrel.show_auto_solved true -- for showing auto-solved goals
+
+import machine CounterMin from "specs/" -- 🎉 Automatically solved 6 out of 12 subgoals!
+
 prove_obligations_of CounterMin
-next
-  exact fun _ _ ↦ max.WF_singleton
-next
-  exact fun _ _ ↦ min.WF_singleton
-next
-  exact fun _ _ ↦ max.WF_of_finite
-next
-  exact fun _ _ ↦ min.WF_of_finite
-next
-  rintro _ z - - z_mem
-  exact max.WF_interval <| neg_le_self z_mem
-next
-  rintro _ z - - z_mem
-  exact min.WF_interval <| neg_le_self z_mem
-next
-  exact FIN₁.singleton_mem trivial
+next grind
+next grind
+next grind
 next
   intros _ _
   rw [max.of_singleton, min.of_singleton]
   rfl
-next
-  rintro X z - - z_mem
-  exact interval.FIN₁_mem <| neg_le_self z_mem
+next grind
 next
   rintro X z - - hz
   rw [interval.min_eq (neg_le_self hz),
@@ -102,7 +91,7 @@ next
 ## Using the discharger
 Two commands are provided to discharge proof obligations from B machines:
 
-- `import (machine|system|pog) <name> from "<directory>` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it.
+- `import (machine|system|refinement|pog) <name> from "<directory>` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it.
 - `prove_obligations_of <name>` — discharge all proof obligations generated.
 
 `prove_obligations_of` expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:
