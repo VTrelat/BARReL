@@ -20,7 +20,7 @@ This chain exercises both data refinement and partial operators (\texttt{min}, \
 The initial machine \texttt{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset $\texttt{S} \in \texttt{FIN1(INTEGER)}$ and maintains a set $\texttt{done}$ of already explored elements of \texttt{S} together with a candidate $\texttt{m}$ satisfying $\texttt{m} = \bmin{\texttt{done}}$.
 The operation \texttt{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \texttt{search\_min} returns the candidate once all elements have been processed.
 
-\begin{figure}[t]
+\begin{figure}[htb]
 	\centering
 	\captionsetup{type=lstlisting}
 	\begin{minipage}[b]{0.48\linewidth}
@@ -86,7 +86,7 @@ All 52 WD conditions are again automatically discharged by \barrel, while the re
 The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch-r2} introduces an explicit enumeration and refines set exploration into a traversal using an index $\texttt{i}$ and a current minimum candidate $\texttt{mc}$.
 A gluing invariant links the abstract set $\texttt{done}$ with $\texttt{tab[1..i]}$ (denoting the image of the interval \texttt{1..i} under \texttt{tab}) and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
 
-\begin{figure}[t]
+\begin{figure}[htb]
 	\centering
 	\captionsetup{type=lstlisting}
 	\begin{minipage}[b]{0.48\linewidth}%
@@ -132,11 +132,11 @@ END
 \end{figure}
 
 This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and function application \texttt{tab(i)}.
-Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated (all automatically discharged) alongside the 21 POs corresponding to standard refinement obligations.
+Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated---and are all automatically discharged---alongside the 21 POs corresponding to standard refinement obligations.\todo[Fix weird page break here]
 
 \paragraph*{Discharging refinement POs inside Lean}
 
-\begin{figure}[t]
+\begin{figure}[htb]
 	\centering
 	\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
 import machine    MinSearch    from "specs/case_study"
@@ -156,7 +156,7 @@ next ...  -- 21 remaining goals
 
 Working with \barrel involves standard Lean workflow: B files are imported and POs are generated as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
 
-\begin{table}[t]
+\begin{table}[htb]
 	\centering
 	\small
 	\setlength{\tabcolsep}{4pt}
@@ -194,13 +194,31 @@ Fortunately, \barrel's automation should be able to discharge most of the result
 \subsection{Comparison with Atelier~B's interactive prover}\label{sec:lean-ip-comparison}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
 In practice, however, interactive proof in Atelier~B is primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent WD obligations.
-Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs
-\footnote{
-	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \bmin{\varnothing}$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
+Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} (\emph{suggest for exist}) for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs, as illustrated by the following example.
+
+\begin{example}
+Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.mch}'' in the artifacts.}, shown in Listing~\ref{lst:deriv-false}, containing only one, clearly unprovable assertion.
+\begin{lstlisting}[language=b, caption={A simple B machine with a clearly unprovable assertion.}, label={lst:deriv-false}, float]
+MACHINE DerivFalse
+ASSERTIONS
+  ∃ x. (x ∈ INTEGER ∧ x ∉ INTEGER)
+END
+\end{lstlisting}
+Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence:
+\begin{itemize}
+  \item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
+  \item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.
+\end{itemize}
+Once falsehood is derived, any proof obligation can be discharged trivially by invoking command \texttt{ah} (\emph{add hypothesis}) with this contradiction as a hypothesis.
+
+\end{example}
+
+% \footnote{
+% 	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \bmin{\varnothing}$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
 
 By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
 In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
 
 Beyond these soundness guarantees, Lean provides a significantly richer proof-engineering ecosystem.
-Once B obligations are expressed in Lean, users can leverage Mathlib's libraries and automation to simplify routine reasoning steps using normalization and algebraic tactics such as \texttt{ac\_rfl},\texttt{ring} and related arithmetic tactics when needed.
+Once B obligations are expressed in Lean, users can leverage Mathlib's libraries and automation to simplify routine reasoning steps using normalization and algebraic tactics such as \texttt{ac\_rfl}, \texttt{ring} and related arithmetic tactics when needed.
 This becomes particularly valuable when developments go beyond the integer/set-theoretic core of B, for instance by introducing real-valued models.
