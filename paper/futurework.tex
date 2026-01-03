@@ -56,9 +56,6 @@ Table~\ref{tab:fragment} summarizes the current coverage and the partial operato
 Extending \barrel to cover more of the B mathematical language is mostly a matter of implementing the corresponding Lean definitions, and can be done incrementally as needed, as it has been done so far.
 Missing constructs include sequences (beyond size, there are many more operations like concatenation, head, tail, etc.), trees, quantified operators (union, intersection, summation, product), and more advanced operations like permutations, closures, etc.
 
-\fixme[This is redundant: it has been said one paragraph before (the item list)]
-The overall engineering effort for extending \barrel may be summarized as follows: extend the syntax with the new symbol, extend the parser to recognize it and write the corresponding encoding rule. If the operator is partial, a corresponding WD condition must also be defined and generated where appropriate.
-
 \paragraph*{Implementation metrics}
 
 Considering core tooling only, \barrel consists of \textbf{1{,}331} lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
@@ -80,9 +77,8 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 	\end{tabular}
 \end{table}
 
-Finally, the artifacts also contain examples from the paper and more that exercise the end-to-end \fixme[?] workflow.
+Finally, the artifacts also contain examples from the paper and more that exercise \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
-
 
 \subsection{Reducing the number of WD side goals via subsumption}
 One challenge with \barrel is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
@@ -104,7 +100,7 @@ We leave as future work implementing subsumption of WD conditions to reduce the 
 
 The current tactic layer of \barrel is intentionally narrow: it targets WD side conditions and leaves the remaining obligations---typically invariant preservation and refinement simulation---to interactive proof.
 In practice, these non-WD obligations also exhibit highly regular structures---such as routine set/relational algebra, standard refinement simulation patterns, and repeated use of the same invariants---suggesting that they also admit dedicated, domain-specific automation.
-Since \barrel operates entirely inside Lean, such automation can remain \emph{proof-producing}, meaning that such tactics can synthesize proof terms which are still available for user inspection \todo[Is this really important? Nobody reads the generated proof terms...unless for debugging purposes].
+Since \barrel operates entirely inside Lean, such automation is \emph{proof-producing}, meaning that such tactics synthesize proof terms that are checked by the kernel.
 The relevant design goal is to increase proof-search power while keeping proofs readable and predictable.
 
 A concrete plan for extending \barrel's automation layer includes:

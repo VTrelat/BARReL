@@ -190,7 +190,7 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 In total for this case study, \barrel produces 190 goals across the three levels, 156 of which are WD conditions that are all automatically discharged using \barrel's underlying automation. The remaining 34 goals correspond to the expected proof obligations and are discharged with straightforward Lean proofs.
 Table \ref{tab:case-study-stats} summarizes the size and proof obligation statistics of each artifact.
 As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
-Fortunately, \barrel's automation should be \fixme[weird tense?] able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
+Fortunately, \barrel's automation is able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
 
 \subsection{Comparison with Atelier~B's interactive prover}\label{sec:lean-ip-comparison}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
@@ -198,14 +198,14 @@ In practice, however, interactive proof in Atelier~B is primarily carried out th
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} (\emph{suggest for exist}) for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs, as illustrated by the following example.
 
 \begin{example}
-	Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifacts.}, shown in Listing~\ref{lst:deriv-false}\fixme[I don't like that this is a floating listing with a caption \textit{inside} an example. I'd rather inline it so that it stays contained in the example and does not really need to be referenced. I agree that this will look out of place because all the other listings have captions, but I don't really have a better idea. Perhaps just remove the floating capabilities?], containing only one, clearly unprovable assertion.
-	\begin{lstlisting}[language=b, caption={A simple B machine with a clearly unprovable assertion.}, label={lst:deriv-false}, float]
+	Consider this very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifacts.}, containing only one, clearly unprovable assertion:
+	\begin{lstlisting}[language=b]
 MACHINE DerivFalse
 ASSERTIONS
   ∃ x. (x ∈ INTEGER ∧ x ∉ INTEGER)
 END
 \end{lstlisting}
-	\fixme[``Yet,''?] Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
+	Yet, Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
 	\begin{itemize}
 		\item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
 		\item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.

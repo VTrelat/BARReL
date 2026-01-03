@@ -9,5 +9,6 @@ A more user-facing shallow embedding was proposed recently, viewing Event-B as a
 Beyond these, the Rocq proof assistant \cite{Coq12} has also been used in complementary work that emphasizes mechanized semantics and meta-theory, rather than providing a drop-in backend integrated with an industrial proof-obligation generator.
 
 \barrel is complementary in scope and emphasis.
-\fixme[This is one very long sentence...]
-Rather than formalizing the logic, it targets the existing Atelier~B workflow by consuming POG files or invoking the generator and turning each obligation into a Lean theorem over Mathlib’s set-theoretic primitives~\cite{mathlib4}, while preserving B notations and focusing on usability for B developers, with the aim of minimizing the learning effort required to get started, providing basic automation to reduce user effort and emphasizing explicit handling of well-definedness conditions.
+Rather than formalizing the logic, it targets the existing Atelier~B workflow.
+By consuming POG files or invoking the generator, \barrel turns each obligation into a Lean theorem over Mathlib’s set-theoretic primitives~\cite{mathlib4}, while preserving B notations and focusing on usability for B developers.
+\barrel also aims at minimizing the learning effort required to get started and thus provides basic automation to reduce user effort, emphasizing on explicit handling of well-definedness conditions.
