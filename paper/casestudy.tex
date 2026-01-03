@@ -162,8 +162,9 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 	\setlength{\tabcolsep}{4pt}
 	% \renewcommand{\arraystretch}{1.05}
 	\caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
-		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
-		``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).}
+		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately. 
+		``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).
+    Because Atelier~B and \barrel place WD obligations at different granularity (machine-level sharing vs.\ per-occurrence reification), ``\#WD'' counts are not expected to match one-to-one.}
 	\label{tab:case-study-stats}
 	\begin{tabular}{l|c|c|cc|cc}
 		                       & \#PO (Atelier~B)                      & \#PO (\barrel)
@@ -197,19 +198,20 @@ In practice, however, interactive proof in Atelier~B is primarily carried out th
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} (\emph{suggest for exist}) for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs, as illustrated by the following example.
 
 \begin{example}
-Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.mch}'' in the artifacts.}, shown in Listing~\ref{lst:deriv-false}, containing only one, clearly unprovable assertion.
+Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifact.}, shown in Listing~\ref{lst:deriv-false}, containing only one, clearly unprovable assertion.
 \begin{lstlisting}[language=b, caption={A simple B machine with a clearly unprovable assertion.}, label={lst:deriv-false}, float]
 MACHINE DerivFalse
 ASSERTIONS
   ∃ x. (x ∈ INTEGER ∧ x ∉ INTEGER)
 END
 \end{lstlisting}
-Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence:
+Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
 \begin{itemize}
   \item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
   \item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.
 \end{itemize}
 Once falsehood is derived, any proof obligation can be discharged trivially by invoking command \texttt{ah} (\emph{add hypothesis}) with this contradiction as a hypothesis.
+This example is reproducible with all Community Edition releases of Atelier~B, up to the current latest 24.04.2.
 
 \end{example}
 

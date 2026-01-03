@@ -58,6 +58,31 @@ Missing constructs include sequences (beyond size, there are many more operation
 
 The overall engineering effort for extending \barrel may be summarized as follows: extend the syntax with the new symbol, extend the parser to recognize it and write the corresponding encoding rule. If the operator is partial, a corresponding WD condition must also be defined and generated where appropriate.
 
+\paragraph*{Implementation metrics}
+
+Considering core tooling only, \barrel consists of \textbf{1{,}331} lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
+
+The artifact also includes the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for \textbf{1{,}282} LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
+
+\begin{table}[htb]
+\caption{Implementation metrics of the artifact containing \barrel.}
+\label{tab:implementation-metrics}
+\centering
+\begin{tabular}{l r}
+\textbf{Component} & \textbf{(LoC)} \\
+\hline
+Core tooling & 1{,}331 \\
+Lemmas and automation & 1{,}282 \\
+Examples and tests & 585 \\
+\hline
+\textbf{Total} & \textbf{3{,}198} \\
+\end{tabular}
+\end{table}
+
+Finally, the artifact also contains examples from the paper and more that exercise the end-to-end workflow.
+These metrics are summarized in \cref{tab:implementation-metrics}.
+
+
 \subsection{Reducing the number of WD side goals via subsumption}
 One challenge with \barrel is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
 This stems from a combination of multiple factors: \begin{itemize}
