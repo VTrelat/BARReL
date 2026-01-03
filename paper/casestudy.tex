@@ -107,7 +107,7 @@ INVARIANT
   m = mc            ∧
   done = tab[1..i]  ∧
   mc ∈ tab[1..i]    ∧
-  ∀jj.(jj : 1..i ⇒ mc ≤ tab(jj))
+  ∀jj.(jj ∈ 1..i ⇒ mc ≤ tab(jj))
 \end{lstlisting}
 	\end{minipage}\hfill
 	\begin{minipage}[b]{0.48\linewidth}
@@ -132,7 +132,7 @@ END
 \end{figure}
 
 This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and function application \texttt{tab(i)}.
-Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated---and are all automatically discharged---alongside the 21 POs corresponding to standard refinement obligations.\todo[Fix weird page break here]
+Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated---and are all automatically discharged---alongside the 21 POs corresponding to standard refinement obligations.%\todo[Fix weird page break here]
 
 \paragraph*{Discharging refinement POs inside Lean}
 
@@ -162,9 +162,9 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 	\setlength{\tabcolsep}{4pt}
 	% \renewcommand{\arraystretch}{1.05}
 	\caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
-		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately. 
+		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
 		``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel default automation).
-    Because Atelier~B and \barrel place WD obligations at different granularity (machine-level sharing vs.\ per-occurrence reification), ``\#WD'' counts are not expected to match one-to-one.}
+		Because Atelier~B and \barrel place WD obligations at different granularity (machine-level sharing vs.\ per-occurrence reification), ``\#WD'' counts are not expected to match one-to-one.}
 	\label{tab:case-study-stats}
 	\begin{tabular}{l|c|c|cc|cc}
 		                       & \#PO (Atelier~B)                      & \#PO (\barrel)
@@ -190,7 +190,7 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 In total for this case study, \barrel produces 190 goals across the three levels, 156 of which are WD conditions that are all automatically discharged using \barrel's underlying automation. The remaining 34 goals correspond to the expected proof obligations and are discharged with straightforward Lean proofs.
 Table \ref{tab:case-study-stats} summarizes the size and proof obligation statistics of each artifact.
 As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
-Fortunately, \barrel's automation should be able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
+Fortunately, \barrel's automation should be \fixme[weird tense?] able to discharge most of the resulting WD conditions automatically, as showcased in this case study.
 
 \subsection{Comparison with Atelier~B's interactive prover}\label{sec:lean-ip-comparison}
 Atelier~B already provides effective automation and an interactive mode for discharging proof obligations; in particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
@@ -198,20 +198,20 @@ In practice, however, interactive proof in Atelier~B is primarily carried out th
 Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} (\emph{suggest for exist}) for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs, as illustrated by the following example.
 
 \begin{example}
-Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifact.}, shown in Listing~\ref{lst:deriv-false}, containing only one, clearly unprovable assertion.
-\begin{lstlisting}[language=b, caption={A simple B machine with a clearly unprovable assertion.}, label={lst:deriv-false}, float]
+	Consider the very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifacts.}, shown in Listing~\ref{lst:deriv-false}\fixme[I don't like that this is a floating listing with a caption \textit{inside} an example. I'd rather inline it so that it stays contained in the example and does not really need to be referenced. I agree that this will look out of place because all the other listings have captions, but I don't really have a better idea. Perhaps just remove the floating capabilities?], containing only one, clearly unprovable assertion.
+	\begin{lstlisting}[language=b, caption={A simple B machine with a clearly unprovable assertion.}, label={lst:deriv-false}, float]
 MACHINE DerivFalse
 ASSERTIONS
   ∃ x. (x ∈ INTEGER ∧ x ∉ INTEGER)
 END
 \end{lstlisting}
-Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
-\begin{itemize}
-  \item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
-  \item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.
-\end{itemize}
-Once falsehood is derived, any proof obligation can be discharged trivially by invoking command \texttt{ah} (\emph{add hypothesis}) with this contradiction as a hypothesis.
-This example is reproducible with all Community Edition releases of Atelier~B, up to the current latest 24.04.2.
+	\fixme[``Yet,''?] Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
+	\begin{itemize}
+		\item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
+		\item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.
+	\end{itemize}
+	Once falsehood is derived, any proof obligation can be discharged trivially by invoking command \texttt{ah} (\emph{add hypothesis}) with this contradiction as a hypothesis.
+	This example is reproducible with all Community Edition releases of Atelier~B, up to the current latest 24.04.2.
 
 \end{example}
 
@@ -219,7 +219,7 @@ This example is reproducible with all Community Edition releases of Atelier~B, u
 % 	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \bmin{\varnothing}$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
 
 By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
-In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations cannot even be formed without providing the corresponding evidence.
+In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations---like \texttt{min($\varnothing$)}---cannot even be formed without providing the corresponding evidence.
 
 Beyond these soundness guarantees, Lean provides a significantly richer proof-engineering ecosystem.
 Once B obligations are expressed in Lean, users can leverage Mathlib's libraries and automation to simplify routine reasoning steps using normalization and algebraic tactics such as \texttt{ac\_rfl}, \texttt{ring} and related arithmetic tactics when needed.
