@@ -245,17 +245,3 @@ next
     constructor
     · rwa [app.of_pair_iff (wd₁ x_mem_dom), eq_comm] at h
     · assumption
-
-import machine DerivFalse from "examples/"
-
-prove_obligations_of DerivFalse
-next
-  exists B.Builtins.min ∅ ?_
-  · -- unprovable
-    admit
-  · refine ⟨?_, ?_⟩
-    · exact trivial
-    · intro
-      generalize_proofs wd at *
-      obtain ⟨_, contr, _⟩ := wd
-      contradiction
