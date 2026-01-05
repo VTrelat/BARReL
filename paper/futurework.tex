@@ -63,7 +63,7 @@ Considering core tooling only, \barrel consists of \textbf{1{,}331} lines of cod
 The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for \textbf{1{,}282} LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
 
 \begin{table}[htb]
-	\caption{Implementation metrics of the artifact containing \barrel.}
+	\caption{Implementation metrics of the artifacts containing \barrel.}
 	\label{tab:implementation-metrics}
 	\centering
 	\begin{tabular}{l r}
@@ -110,3 +110,15 @@ A concrete plan for extending \barrel's automation layer includes:
 	\item providing lemmas for common PO families and delegation to standard Mathlib automation and reasoning.
 \end{itemize}
 This would allow \barrel to discharge a larger fraction of proof obligations automatically, while keeping the overall architecture modular and maintainable.
+
+\subsection{Towards a fully verified backend}
+\label{sec:verified-backend}
+
+\barrel is designed as a proof-producing backend for the goals it emits, yet it currently still relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for B parsing and proof-obligation generation.
+A natural next step is to implement a PO generator \emph{in Lean} for the supported fragment, producing Lean propositions directly over \barrel's embedding---including proper WD handling---and to establish soundness guarantees stating that discharging these generated obligations entails invariant preservation and refinement correctness.
+First, this would first eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
+Secondly, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
+By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically inferred---in the B developments.
+
+In the same direction, one could lean toward soundness of the translation connecting B obligations to their Lean counterparts.
+While the current translation is intentionally syntax-directed and close to a one-to-one mapping into our embedding, making this correspondence explicit would further reduce the amount of trusted code in the backend, although this would require a significant formalization effort---including giving formal semantics to a fragment of Lean.

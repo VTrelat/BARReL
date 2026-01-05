@@ -5,9 +5,9 @@ This yields robust proof scripts that are protected against ill-typed or ill-def
 
 We evaluated the approach on a three-level refinement chain for minimum search, showing generated Lean goals, many of which being discharged automatically by \barrel's lightweight automation, leaving refinement and invariant-preservation obligations to be proved interactively.
 From a trust perspective, \barrel reduces the trusted computing base by implementing the translation pipeline within Lean's metaprogramming framework as a natural, almost identical mapping from B constructs to Lean expressions relying only on Atelier~B for proof obligation generation.
-Future work includes reducing redundancy among well-definedness goals, e.g.\@ via subsumption and sharing, extending the covered fragment of B and the accompanying lemma library, and integrating a verified proof obligation generator within Lean itself.
+Future work includes reducing redundancy among well-definedness goals, e.g.\@ via subsumption, extending the covered fragment of B and the accompanying lemma library, and integrating a verified proof obligation generator within Lean itself.
 
-\paragraph*{Artifact availability}
+\paragraph*{Artifacts availability}
 A Zenodo snapshot of the BARReL project is available at \url{https://doi.org/10.5281/zenodo.<RECORD>}.
 The archive contains the complete Lean~4 implementation of BARReL (B surface embedding, POG reader, encoder, discharger macros, and tactic layer), together with the sample B machines and Lean scripts used in the evaluation---including the \texttt{MinSearch} refinement chain and the \texttt{DerivFalse} counterexample.
 The artifacts are a standard Lean~4 project and pin their dependencies via \texttt{lean-toolchain} and \texttt{lake-manifest.json}; a typical build is \texttt{lake update} followed by \texttt{lake build}.
