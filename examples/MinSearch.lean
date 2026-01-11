@@ -11,13 +11,8 @@ import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically so
 import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 100 out of 121 subgoals!
 
 prove_obligations_of MinSearch
-next
-  simp only [Set.sep_setOf, Set.subset_univ, true_and, Set.mem_setOf_eq,
-    Set.singleton_subset_iff, Set.finite_singleton, and_true, Set.singleton_nonempty, imp_self,
-    implies_true]
-next
-  intros
-  rw [min.of_singleton]
+next grind
+next simp
 next
   intros
   exact FIN₁.of_union ‹_› (FIN₁.mono Set.diff_subset ‹_›)
@@ -25,7 +20,7 @@ next
   introv
   have : done ∪ add ⊆ SS := by grind
   generalize_proofs min_wd
-  exact this (min.mem min_wd)
+  grind
 
 prove_obligations_of MinSearch_r1
 next grind
@@ -37,7 +32,7 @@ next
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
-  exact FIN₁.of_insert (Set.mem_of_mem_inter_left h_10) (Set.mem_of_mem_inter_left h_1)
+  grind
 next grind
 next
   intros
