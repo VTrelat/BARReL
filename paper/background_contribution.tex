@@ -22,9 +22,9 @@ Obligations that remain---often those requiring non-trivial quantifier instantia
 B's mathematical language is based on classical set theory and first-order logic with equality.
 Specifications are written using the usual set-theoretic constructors such as comprehension, powerset, cartesian product, and an algebra of relations.
 Ordered pairs are first-class values (written as \emph{maplets} $x \mapsto y$), and relations are simply sets of such pairs, i.e.\@ $R \subseteq A \times B$.
-Functions are not primitive: a (partial) function $f$ from $A$ to $B$ (written $f \in A \pfun B$) is a relation $f \subseteq A \times B$ whose domain is contained in $A$ and which is \emph{functional}:
+Functions are not primitive: a partial function $f$ from $A$ to $B$ (written $f \in A \pfun B$) is a relation $f \subseteq A \times B$ whose domain is contained in $A$ and which is \emph{functional}:
 for all $x \in A$ and $y,z \in B$, if $(x \mapsto y) \in f$ and $(x \mapsto z) \in f$ then $y = z$.
-Total, injective, and surjective variants are defined similarly as usual.
+Total ($A \longrightarrow B$), injective (partial $A \pinj B$ and total $A \tinj B$), and surjective (partial $A \psurj B$ and total $A \tsurj B$) variants are defined similarly as usual.
 
 % That is, every value is a set that is constrained by some properties that define its shape.
 % For example, a (total) function $f$ from a set $A$ to a set $B$ (written $f \in A \longrightarrow B$) is a set of pairs in $A \times B$ satisfying the functionality property: for every $x \in A$ and $y,z \in B$, if $(x, y) \in f$ and $(x, z) \in f$ then $y = z$.
@@ -32,6 +32,11 @@ Total, injective, and surjective variants are defined similarly as usual.
 Although the underlying logic is set-theoretic and thus untyped, Atelier~B enforces a static well-formedness discipline often described as “typing”: every identifier and expression must be assigned a ``parent set'' that must be deducible for every constant, variable, and expression in a specification.
 This guarantees in particular that constructed sets are homogeneous and rules out ill-formed terms.
 These inferred parent sets provide exactly the information needed to interpret B expressions in Lean's typed logic in our translation.
+
+\begin{example}
+  The expression $1 + \top$ is well-formed in ZFC set theory---and definitionally equal to the set $\mathbb{B}$ of Booleans, or the natural number $2$---but it is not a valid expression in B.
+	Indeed, $1$ has parent set $\mathbb{Z}$ and $\top$ has parent set $\mathbb{B}$, and $+$ expects both its arguments to have parent set $\mathbb{Z}$.
+\end{example}
 
 \paragraph*{Foundations of B in Lean}
 %
@@ -47,7 +52,7 @@ For instance, the set $\{0, "hi"\}$ must be considered ill-formed by implementat
 We start by defining standard B operators directly in Lean---reusing their notations from B, in order for the POs to be easily understandable by B users---and typing them appropriately in Lean to keep their use as generic as possible.
 Some examples (the set of relations, the set of partial functions, the set of total injective functions and domain subtraction) are given in \cref{lst:B-sets-lean}.
 %
-\begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}, float]
+\begin{lstlisting}[label=lst:B-sets-lean, caption={Encoding of some B operators in Lean.}, float=t]
 abbrev rels {α β} (A : Set α) (B : Set β) : Set (SetRel α β) :=
   𝒫 (A ×ˢ B)
 scoped infixl:125 "  ⟷  " => rels
@@ -71,7 +76,7 @@ Both the definitions and theorems are readily available to end users when import
 \subsection{Encoding partial B operators}
 A central challenge in this setting is the use of \emph{partial} B operators, meaning that they are only defined when some \emph{well-definedness} (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ (of integers or reals) returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
-These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is undefined if no element of $S$ satisfy $P$.
+These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is unspecified\todo[Why underspecified?] if no element of $S$ satisfy $P$.
 The \emph{WD condition} of the corresponding operator is precisely that $P$ is satisfied by (at least) an element of $S$.
 
 Atelier B handles this partiality by generating the WD conditions of each partial operator used in a PO as side goals and assumes in the main goal that the partial operators are well-defined.
@@ -79,20 +84,25 @@ However, one must trust that these WD conditions actually correspond to the WD c
 Furthermore, these WD conditions are only generated for the goal itself but not during proof steps.
 This can lead to inconsistencies if the user is not careful enough for instance when instantiating quantified variables in the interactive prover\footnote{This is concretely illustrated below in \cref{sec:lean-ip-comparison}.}.
 
-Our approach in \barrel differs from Atelier B in that the dependency between the WD goals and the main goals is clear and explicit.
+Our approach in \barrel differs from Atelier B in that the dependency between the WD goals and the main goals is clear and explicit.\todo[Ask Stephan]
 %
 First, we do not rely on the WD conditions that are generated by Atelier B and instead generate our own to match the exact context in which they are inserted.
 This is not necessarily true of the WD conditions generated by Atelier B since they undergo some simplification steps or do not match exactly our encoding of some predicates and WD conditions.
+
+\begin{example}
+	\todo[Find a good example?]
+\end{example}
+
 In practice, our tool generates WD side goals that are equivalent to the WD side goals generated by Atelier B.
 The only difference is that Atelier~B already performs some simplification steps---like removing unnecessary hypotheses and basic simplification---on the WD goals at generation time, which may alter the PO, whereas our WD conditions are generated from the exact Lean context.
 % \footnote{\todo[Should this footnote be kept?] To be accurate, our WD conditions are generated from the exact Lean context whereas Atelier~B already performs simplification steps at this point, which may alter the PO.}
 %
-Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, in Lean) which explicitly depends on a proof that the predicate is satisfied by at least one element\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}.
+Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, in Lean, whose type is $\{\alpha : \mathtt{Sort}\ u\} \to \{p : \alpha \to \mathtt{Prop}\} \to (\exists\, x,\, p\ x) \to \alpha$) which explicitly depends on a proof that the predicate is satisfied by at least one element\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}.
 This means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
 The statement of this proof, which is the WD condition of the operator, is then generated as a side theorem (or a subgoal) which must be discharged for the main theorem to be fully proven, i.e.\@ not depend on the \texttt{sorryAx} axiom---the axiom that is introduced by admitted theorems.
 To illustrate this use of \texttt{Classical.choose}, the encoding (and WD conditions) of $\bmin{S}$ and function application $\bapp{F}{x}$ are given in \cref{lst:min-fn-app}.
 
-\begin{lstlisting}[label=lst:min-fn-app, caption={Encoding of the $\bmin{S}$ and $\bapp{F}{x}$ partial operators.}, float=t]
+\begin{lstlisting}[language=lean, mathescape=true, label=lst:min-fn-app, caption={Encoding of the $\bmin{S}$ and $\bapp{F}{x}$ partial operators.}, float=t]
 structure min.WD {α} [LinearOrder α] (S : Set α) : Prop where
   isBoundedBelow : ∃ x ∈ S, ∀ y ∈ S, x ≤ y
 
@@ -102,12 +112,11 @@ abbrev min {α} [LinearOrder α] (S : Set α) (wd : min.WD S) : α :=
 
 structure app.WD {α β} (f : SetRel α β) (x : α) : Prop where
   isPartialFunction : f ∈ dom f  ⟶  ran f
-  isInDomain : x ∈ dom f
+  isInDomain : x ∈ dom f -- $\textcolor{commentcolor}{\equiv\ \exists}$ y, (x, y) $$∈ f
 
 noncomputable 
 abbrev app {α β} (f : SetRel α β) (x : α) (wd : app.WD f x) : β :=
   Classical.choose wd.isInDomain
-scoped notation:290 F:290 "(" x:min ")'" wd:300 => app F x wd
 \end{lstlisting}
 
 \subsection{Inner Workings of \barrel and Automation}
@@ -120,7 +129,7 @@ First, the machine/system/refinement/implementation is parsed into the BXML form
 
 Although Atelier~B's \texttt{pog} can generate WD conditions for the given machine, we choose to rely on our own generation instead, since the WD conditions that are generated by \texttt{pog} may not exactly match the context in which they will appear in the Lean terms.
 Then, the resulting POs (in XML format) are parsed by \barrel into an Abstract Syntax Tree (AST) and normalized.
-Normalization ensures that B predicates like $P \land Q \Rightarrow R$ are treated the same as the logically equivalent predicate $P \Rightarrow Q \Rightarrow R$.
+Normalization\todo[Ask Stephan] ensures that B predicates like $P \land Q \Rightarrow R$ are treated the same as the logically equivalent predicate $P \Rightarrow Q \Rightarrow R$.
 Although it is unnecessary, we perform normalization of B terms solely for the purpose of generating Lean goals that overall require fewer conjunction destructions.
 The normalized B formulas are then transcribed into Lean terms using Lean's facilities for meta-programming and elaboration.
 However, a lot of bookkeeping has to happen in order to encode partial B operators, since they rely on WD conditions that must be inserted on the fly.
@@ -128,9 +137,8 @@ Instead of handling the bookkeeping ourselves, we let Lean handle it internally 
 We later assign the generated meta-variables with fresh theorem names whose propositions are extracted from the context of the meta-variable.
 %
 \begin{example}
-	\newcommand\metavar[1]{\ensuremath{?{#1}}}
 	%
-	Let us illustrate how WD conditions are handled by \barrel on the following (already normalized) B predicate: \[
+	Let us illustrate how WD conditions are handled by \barrel on the following (already normalized) B predicate, stating that every non-empty finite set of integers---i.e.\@ belonging to $\bfinone{\mathbb{Z}}$---whose elements are non-positive has a minimal element that is non-positive: \[
 		\forall S \cdot (S \in \bfinone{\mathbb{Z}} \Rightarrow (\forall x \cdot x \in S \Rightarrow x \le 0) \Rightarrow \bmin{S} \le 0)
 	\]
 	%
@@ -144,21 +152,21 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 	The new meta-variable $\metavar{m_1}$ is generated internally by \barrel, and contains $S : \mathtt{Set}\ \mathbb{Z}$, $h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}$ and $h_2 : \forall\, (x : \mathbb{Z})\ (h_3 : x \in S),\ x \le 0$ in its local context.
 	Although its type is $\mathtt{B.Builtins.min.WD}\ S$, its local context is implicitly universally quantified, hence the full application $\metavar{m_1}\ S\ h_1\ h_2$ in the goal.
 	%
-	A fresh theorem $wd$ is then generated from the type of $\metavar{m_1}$ universally quantified by its local context: \[
+	A fresh theorem statement $min\_wd_1$ is then generated---and remains to be proved---from the type of $\metavar{m_1}$ universally quantified by its local context: \[
 		\begin{split}
-			\mathtt{theorem}\ wd : \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                 \\
+			\mathtt{theorem}\ min\_wd_1 : \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                 \\
 			                                 & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min.WD}\ S
 		\end{split}
 	\]
-	$\metavar{m_1}$ is finally assigned $wd$, and substituted in $P$ to obtain the final goal to be proved by the user: \[
+	$\metavar{m_1}$ is finally assigned $min\_wd_1$, and substituted in $P$ to obtain the final goal to be proved by the user: \[
 		\begin{split}
 			\vdash \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                                       \\
-			                 & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min}\ S\ (wd\ S\ h_1\ h_2) \le 0
+			                 & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min}\ S\ (min\_wd_1\ S\ h_1\ h_2) \le 0
 		\end{split}
 	\]
 \end{example}
 
-All the previous steps are performed by the \texttt{import <type> <name> from <folder>} command of our tool.
+All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of our tool.
 \texttt{<type>} may be one of \texttt{machine}, \texttt{system}, \texttt{refinement}, \texttt{implementation} or \texttt{pog} depending on whether the file to be imported is a machine, system, refinement, implementation or straight up a POG file, and \texttt{<name>} is the file name without the extension.
 In the case of POG files, the first step converting into the BXML format is skipped.
 Finally, the command \texttt{prove\_obligations\_of <name>} gives back all the generated WD conditions and propositions to the user for them to prove them.
@@ -191,41 +199,43 @@ Its purpose is twofold:
 	\item provide reusable WD facts that discharge the side-goals generated for partial operators;
 	\item offer canonical rewrite lemmas that turn B-shaped expressions into ``Mathlib-friendly'' goals.
 \end{enumerate}
-For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant tag.
+For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant theorem category.
 
 \begin{lstlisting}[language=lean, caption={Some WD lemmas about extrema in our B library.}, label=lst:min-wd-lemmas, float]
-  @[grind ., wd_min]
-  theorem min.WD_singleton {α : Type _} [PartialOrder α] {a : α} :
-    min.WD {a} := ⋯
-  @[wd_min]
-  theorem min.WD_of_finite {α : Type _} [LinearOrder α] {S A : Set α}
-    (h : S ∈ FIN₁ A) : min.WD S := ⋯
-  @[grind ., wd_min]
-  theorem min.WD_interval {lo hi : ℤ} (h : lo ≤ hi) :
-    min.WD (lo..hi) := ⋯
+@[grind ., wd_min]
+theorem min.WD_singleton {α : Type _} [PartialOrder α] {a : α} :
+	min.WD {a} := ⋯
+@[wd_min]
+theorem min.WD_of_finite {α : Type _} [LinearOrder α] {S A : Set α}
+	(h : S ∈ FIN₁ A) : min.WD S := ⋯
+@[grind ., wd_min]
+theorem min.WD_interval {lo hi : ℤ} (h : lo ≤ hi) :
+	min.WD (lo..hi) := ⋯
 \end{lstlisting}
 
-The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}.
+The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}---with proofs replaced by $\leanpf$ for brevity.
 
 \begin{lstlisting}[language=lean, caption={Some membership lemmas about finite-sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
-  theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) :
-    lo .. hi ∈ FIN₁ INTEGER := ...
-  @[simp]
-  theorem min.of_singleton {α : Type _} [PartialOrder α] {a : α} :
-      min {a} (min.WD_singleton) = a := ...
-  @[grind ., simp]
-  theorem interval.min_eq {lo hi : Int} (h : lo ≤ hi) :
-      min (lo .. hi) (min.WD_interval h) = lo := ...
+theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) :
+	lo .. hi ∈ FIN₁ INTEGER := ⋯
+@[simp]
+theorem min.of_singleton {α : Type _} [PartialOrder α] {a : α} :
+	min {a} (min.WD_singleton) = a := ⋯
+@[grind ., simp]
+theorem interval.min_eq {lo hi : Int} (h : lo ≤ hi) :
+	min (lo .. hi) (min.WD_interval h) = lo := ⋯
 \end{lstlisting}
+\todo[Do we really want to explain how Lean handles attributes??]
 
 The remaining obligations---typically invariant preservation and refinement simulation goals---are left as interactive proof tasks, keeping the automation transparent and predictable while still removing most of the WD bookkeeping arising from B developments.
+\todo[Ask Stephan about: ``It would be interesting if you could comment on your experience with the implementation of this layer within Lean: was the provided infrastructure helpful, what's the size of the library that you implemented?'']
 
 \paragraph*{Trust boundary and guarantees}
 \barrel should be understood as a \emph{proof-producing backend} for the obligations it emits:
 once a proof script succeeds, the corresponding theorem is checked by Lean's kernel.
 Concretely, the remaining trusted assumptions are:
 \begin{itemize}
-	\item Lean's kernel, and its standard metatheory, including classical reasoning where used,
+	\item Lean's kernel, and its standard meta-theory,
 	\item the correctness of the external PO generation step performed by Atelier~B (\texttt{bxml}/\texttt{pog}) at \barrel's import phase,
 	\item the faithfulness of \barrel's set-theoretic embedding of B constructs and proof obligations to the intended B semantics.
 \end{itemize}

@@ -25,9 +25,13 @@
 \newcommand\pfun{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\to$\cr}}}
 \newcommand\pinj{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\rightarrowtail$\cr}}}
 \newcommand\tinj{\rightarrowtail}
+\newcommand\psurj{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\twoheadrightarrow$\cr}}}
+\newcommand\tsurj{\twoheadrightarrow}
 \newcommand\ndres{\mathbin{\rlap{\hbox{$-$}}{\lhd}}}
 
 \newcommand\leanpf{\cdot\mkern-5mu\cdot\mkern-5mu\cdot}
+
+\newcommand\metavar[1]{\ensuremath{?{#1}}}
 
 %%%% Listings 
 
@@ -141,3 +145,5 @@ literate=
 {↣}{{\ensuremath{\tinj}}}1,
 extendedchars=true
 }
+
+\newcommand\inlineb[1]{\lstinline[language=b, basicstyle=\normalsize\ttfamily]|#1|}
