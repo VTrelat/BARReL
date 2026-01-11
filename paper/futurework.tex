@@ -19,8 +19,7 @@ Extending \barrel's supported fragment typically requires, for each new B symbol
 	\item a WD predicate and corresponding WD generation rule for partial operators,
 	\item a small supporting lemma kit (equational rules, basic facts and WD lemmas) so that the automation layer remains effective.
 \end{itemize}
-
-
+%
 \begin{table}[t]
 	\caption{Current coverage of \barrel. Bold operators are partial and generate WD side goals.}
 	\label{tab:fragment}
@@ -51,16 +50,15 @@ Extending \barrel's supported fragment typically requires, for each new B symbol
 	\end{tabular}
 	\normalsize
 \end{table}
-
+%
 Table~\ref{tab:fragment} summarizes the current coverage and the partial operators for which \barrel generates WD obligations.
-Extending \barrel to cover more of the B mathematical language is mostly a matter of implementing the corresponding Lean definitions, and can be done incrementally as needed, as it has been done so far.
 Missing constructs include sequences (beyond size, there are many more operations like concatenation, head, tail, etc.), trees, quantified operators (union, intersection, summation, product), and more advanced operations like permutations, closures, etc.
 
 \paragraph*{Implementation metrics}
 
-Considering core tooling only, \barrel consists of \textbf{1{,}331} lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
+Considering core tooling only, \barrel consists of 1{,}331 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
 
-The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for \textbf{1{,}282} LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
+The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for 1{,}282 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
 
 \begin{table}[htb]
 	\caption{Implementation metrics of the artifacts containing \barrel.}
@@ -80,7 +78,7 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 Finally, the artifacts also contain examples from the paper and more that exercise \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
 
-\subsection{Reducing the number of WD side goals via subsumption}
+\subsection{Reducing the number of WD side goals via subsumption}\label{subsec:future-wd-subsumption}
 One challenge with \barrel is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
 This stems from a combination of multiple factors: \begin{itemize}
 	\item Atelier B is able to reason directly on the machine itself, while \barrel only knows about the obligations generated.
@@ -110,13 +108,14 @@ A concrete plan for extending \barrel's automation layer includes:
 	\item providing lemmas for common PO families and delegation to standard Mathlib automation and reasoning.
 \end{itemize}
 This would allow \barrel to discharge a larger fraction of proof obligations automatically, while keeping the overall architecture modular and maintainable.
+In the same vein towards modularity, one could also expect that \barrel provides only a generic interface for set/relational reasoning, allowing users to plug in their own implementations or strategies as needed.
 
 \subsection{Towards a fully verified backend}
 \label{sec:verified-backend}
 
 \barrel is designed as a proof-producing backend for the goals it emits, yet it currently still relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for B parsing and proof-obligation generation.
 A natural next step is to implement a PO generator \emph{in Lean} for the supported fragment, producing Lean propositions directly over \barrel's embedding---including proper WD handling---and to establish soundness guarantees stating that discharging these generated obligations entails invariant preservation and refinement correctness.
-First, this would first eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
+First, this would eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
 Secondly, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
 By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically inferred---in the B developments.
 
