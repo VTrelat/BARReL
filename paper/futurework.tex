@@ -117,7 +117,7 @@ In the same vein towards modularity, one could also expect that \barrel provide 
 A natural next step is to implement a PO generator \emph{in Lean} for the supported fragment, producing Lean propositions directly over \barrel's embedding---including proper WD handling---and to establish soundness guarantees stating that discharging these generated obligations entails invariant preservation and refinement correctness.
 First, this would eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
 Secondly, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
-By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically inferred---in the B developments.
+By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically deduced---in the B developments.
 
 In the same direction, one could lean toward soundness of the translation connecting B obligations to their Lean counterparts.
 While the current translation is intentionally syntax-directed and close to a one-to-one mapping into our embedding, making this correspondence explicit would further reduce the amount of trusted code in the backend, although this would require a significant formalization effort---including giving formal semantics to a fragment of Lean.
