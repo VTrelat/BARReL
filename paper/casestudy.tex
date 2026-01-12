@@ -89,8 +89,7 @@ The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-determ
 step =
   IF done ≠ S THEN
     ANY x WHERE x ∈ S - done THEN
-      done := done ∪ {x} ||
-      IF x < m THEN m := x END
+      done := done ∪ {x} || IF x < m THEN m := x END
     END
   END
 \end{lstlisting}
@@ -176,8 +175,8 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 
 \begin{table}[htb]
 	\centering
-	\small
-	\setlength{\tabcolsep}{4pt}
+	% \small
+	% \setlength{\tabcolsep}{5pt}
 	% \renewcommand{\arraystretch}{1.05}
 	\caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
 		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.

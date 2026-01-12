@@ -16,7 +16,10 @@
 
 %%%% B operators 
 
-\newcommand\bmin[1]{\ensuremath{\operatorname{min}(#1)}}
+\newcommand\bminop{\ensuremath{\operatorname{min}}}
+\newcommand\bmaxop{\ensuremath{\operatorname{max}}}
+\newcommand\bmin[1]{\ensuremath{\bminop(#1)}}
+\newcommand\bmax[1]{\ensuremath{\bmaxop(#1)}}
 \newcommand\bdom[1]{\ensuremath{\operatorname{dom}(#1)}}
 \newcommand\bapp[2]{\ensuremath{#1(#2)}}
 \newcommand\binterval[2]{\ensuremath{#1 .. #2}}
