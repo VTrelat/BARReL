@@ -64,7 +64,7 @@ It maintains a non-empty set \inlineb{done} of explored elements of \inlineb{S} 
 The operation \inlineb{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \inlineb{search_min} returns the candidate once all elements have been processed.
 
 Operations may carry a precondition (\inlineb{PRE}): the construct \mbox{\inlineb{ANY x WHERE P THEN S END}} non-deterministically chooses an arbitrary value satisfying \inlineb{P}.
-The notation \mbox{\inlineb{mi $\,\longleftarrow$ search_min}} indicates an output parameter, and \inlineb{||} denotes parallel assignment.
+The notation \mbox{\inlineb{mi $\,\longleftarrow$ search_min}} indicates that \inlineb{mi} is an output parameter, and \inlineb{||} denotes parallel assignment.
 
 \begin{lstlisting}[language=lean, float=t, caption={Lean goal corresponding to the first conjunct of the preservation of the invariant preservation for operation \inlineb{step} in \texttt{MinSearch.mch}.}, label={lst:minsearch-step-goal}]
 S done add : Set ℤ
@@ -185,23 +185,23 @@ Working with \barrel involves standard Lean workflow: B files are imported and P
 		Because Atelier~B and \barrel place WD obligations at different granularity (machine-level sharing vs.\ per-occurrence reification), ``\#WD'' counts are not expected to match one-to-one.}
 	\label{tab:case-study-stats}
 	\begin{tabular}{l|cc|cc|cc|cc}
-													 & \multicolumn{2}{c|}{\#PO (Atelier~B)} & \multicolumn{2}{c|}{\#PO (\barrel)}
-		                       & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)}                               \\
+		                       & \multicolumn{2}{c|}{\#PO (Atelier~B)} & \multicolumn{2}{c|}{\#PO (\barrel)}
+		                       & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)}                                               \\
 		\hline
-		File                   & Total & Auto                          & Total & Auto                       & Total & Auto & Total & Auto \\
+		File                   & Total                                 & Auto                                & Total & Auto & Total & Auto & Total & Auto \\
 		\hline
-		\texttt{MinSearch}     & 4 & 2
-		                       & 4 & 2
+		\texttt{MinSearch}     & 4                                     & 2
+		                       & 4                                     & 2
 		                       & 4                                     & 4
-		                       & 4                                     & 4                                                                \\
-		\texttt{MinSearch\_r1} & 19 & 15
-		                       & 19 & 15
+		                       & 4                                     & 4                                                                                \\
+		\texttt{MinSearch\_r1} & 19                                    & 15
+		                       & 19                                    & 15
 		                       & 2                                     & 2
-		                       & 42                                    & 42                                                               \\
-		\texttt{MinSearch\_r2} & 21 & 9
-		                       & 21 & 0
+		                       & 42                                    & 42                                                                               \\
+		\texttt{MinSearch\_r2} & 21                                    & 9
+		                       & 21                                    & 0
 		                       & 9                                     & 9
-		                       & 100                                   & 100                                                              \\
+		                       & 100                                   & 100                                                                              \\
 	\end{tabular}
 \end{table}
 
