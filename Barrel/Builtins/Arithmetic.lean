@@ -36,6 +36,14 @@ namespace B.Builtins
 
   section Lemmas
 
+    theorem min.def {α : Type _} [PartialOrder α] {S : Set α} (wd : min.WD S) :
+        ∀ y ∈ S, min S wd ≤ y :=
+      Classical.choose_spec wd.isBoundedBelow |>.2
+
+    theorem max.def {α : Type _} [PartialOrder α] {S : Set α} (wd : max.WD S) :
+        ∀ y ∈ S, y ≤ max S wd :=
+      Classical.choose_spec wd.isBoundedAbove |>.2
+
     @[grind =, simp]
     theorem NAT.eq_interval : NAT = (0 .. MAXINT) := rfl
 
@@ -684,4 +692,128 @@ namespace B.Builtins
         simp only [this, of_empty, sub_zero]
 
   end Lemmas
+
+  private theorem min.WD_iff_AtelierB_WD {S : Set ℤ} :
+      min.WD S ↔ S ≠ ∅ ∧ S ∩ (INTEGER \ NATURAL) ∈ FIN INTEGER where
+    mp := by
+      rintro ⟨m, m_in_S, m_is_lb⟩
+      and_intros
+      · exact ne_of_mem_of_not_mem' m_in_S _root_.id
+      · exact fun _ _ => trivial
+      · have hsubset : S ∩ (INTEGER \ NATURAL) ⊆ Set.Icc m (0 : ℤ) :=
+          fun x ⟨hxS, _, hx_not_nat⟩ ↦ ⟨m_is_lb x hxS, le_of_lt (lt_of_not_ge hx_not_nat)⟩
+        exact (Set.finite_Icc m 0).subset hsubset
+    mpr := by
+      rintro ⟨S_nemp, hS⟩
+      by_cases hNemp : (S ∩ (INTEGER \ NATURAL)).Nonempty
+      · have wd : min.WD (S ∩ (INTEGER \ NATURAL)) := by
+          set T := S ∩ (INTEGER \ NATURAL)
+          have _ := hS.2.to_subtype
+          have _ : Nonempty (↑T) := hNemp.to_subtype
+          obtain ⟨⟨x, hx⟩, hxmin⟩ := Finite.exists_min (@_root_.id (↑T))
+          refine ⟨x, hx, ?_⟩
+          intro y hy
+          exact hxmin ⟨y, hy⟩
+
+        have m_def := min.mem wd
+        simp only [Set.mem_inter_iff, Set.mem_diff, Set.mem_univ, Set.mem_setOf_eq, not_le,
+          true_and] at m_def
+        set m := min (S ∩ (INTEGER \ NATURAL)) wd
+        refine ⟨m, m_def.1, ?_⟩
+        intro y hy
+        obtain lt_zero | ge_zero := Int.lt_or_le y 0
+        · apply min.def wd y ⟨hy, trivial, ?_⟩
+          rwa [Set.mem_setOf_eq, not_le]
+        · exact le_trans (Int.le_of_lt m_def.right) ge_zero
+      · simp only [Set.nonempty_def, not_exists, Set.mem_inter_iff, Set.mem_diff, Set.mem_univ,
+          Set.mem_setOf_eq, not_le, true_and, not_and, not_lt] at hNemp
+        obtain ⟨a, haS⟩ := Set.nonempty_iff_ne_empty.2 S_nemp
+        have ha0 := hNemp a haS
+        have hex : ∃ n : ℕ, (n : ℤ) ∈ S := by
+          use Int.toNat a
+          rwa [Int.ofNat_toNat, Int.max_eq_left (hNemp a haS)]
+        let n0 : ℕ := Nat.find hex
+        have hn0 : (n0 : ℤ) ∈ S := Nat.find_spec hex
+        refine ⟨(n0 : ℤ), hn0, ?_⟩
+        · intro y hyS
+          have hy0 : (0 : ℤ) ≤ y := hNemp y hyS
+          have hpy : ↑(Int.toNat y) ∈ S := by
+            rwa [Int.ofNat_toNat, Int.max_eq_left hy0]
+          have : (n0 : ℤ) ≤ (Int.toNat y : ℤ) := (Int.ofNat_le).2 (Nat.find_min' hex hpy)
+          rw [←Int.le_toNat (hNemp y hyS)]
+          exact Nat.find_le hpy
+
+  private theorem max.WD_iff_AtelierB_WD {S : Set ℤ} :
+      max.WD S ↔ S ≠ ∅ ∧ S ∩ NATURAL ∈ FIN INTEGER where
+    mp := by
+      rintro ⟨m, m_in_S, m_is_lb⟩
+      and_intros
+      · exact ne_of_mem_of_not_mem' m_in_S _root_.id
+      · exact fun _ _ => trivial
+      · have hsubset : S ∩ NATURAL ⊆ Set.Icc (0 : ℤ) m :=
+          fun x ⟨hxS, hx_nat⟩ ↦ ⟨hx_nat, m_is_lb x hxS⟩
+        exact (Set.finite_Icc 0 m).subset hsubset
+    mpr := by
+      rintro ⟨S_nemp, hS⟩
+      by_cases hNemp : (S ∩ NATURAL).Nonempty
+      · have wd : max.WD (S ∩ NATURAL) := by
+          set T := S ∩ NATURAL
+          have _ := hS.2.to_subtype
+          have _ : Nonempty (↑T) := hNemp.to_subtype
+          obtain ⟨⟨x, hx⟩, hxmin⟩ := Finite.exists_max (@_root_.id (↑T))
+          refine ⟨x, hx, ?_⟩
+          intro y hy
+          exact hxmin ⟨y, hy⟩
+
+        have m_def := max.mem wd
+        simp only [Set.mem_inter_iff, Set.mem_setOf_eq] at m_def
+        set m := max (S ∩ NATURAL) wd
+        refine ⟨m, m_def.1, ?_⟩
+        intro y hy
+        obtain lt_zero | ge_zero := Int.lt_or_le y 0
+        · exact le_trans (le_of_lt lt_zero) m_def.2
+        · apply max.def wd y ⟨hy, ?_⟩
+          rwa [Set.mem_setOf_eq]
+      · simp only [Set.inter_nonempty_iff_exists_right, Set.mem_setOf_eq, not_exists,
+          not_and] at hNemp
+        refine { isBoundedAbove := ?_ }
+        let T : Set ℤ := (fun z : ℤ => -z) '' S
+        have T_nonempty : T.Nonempty := by
+          obtain ⟨a, haS⟩ := Set.nonempty_iff_ne_empty.2 S_nemp
+          exact ⟨-a, ⟨a, haS, rfl⟩⟩
+
+        have T_nonneg : ∀ t ∈ T, (0 : ℤ) ≤ t := by
+          intro t ht
+          obtain ⟨y, hyS, rfl⟩ := ht
+          have hy_not : ¬ (0 : ℤ) ≤ y := (hNemp y · hyS)
+          simp only [Int.neg_nonneg, ge_iff_le]
+          exact Int.le_of_not_le hy_not
+
+        obtain ⟨m, hmT, hmMin⟩ : ∃ m ∈ T, ∀ z ∈ T, m ≤ z := by
+          obtain ⟨aT, haT⟩ := T_nonempty
+          have ha0 : (0 : ℤ) ≤ aT := T_nonneg aT haT
+
+          have hex : ∃ n : ℕ, (n : ℤ) ∈ T := by
+            use Int.toNat aT
+            rwa [Int.ofNat_toNat, Int.max_eq_left ha0]
+
+          let n0 : ℕ := Nat.find hex
+          have hn0 : (n0 : ℤ) ∈ T := Nat.find_spec hex
+
+          use (n0 : ℤ), hn0
+          intro z hz
+          have hz0 : (0 : ℤ) ≤ z := T_nonneg z hz
+          have hpz : (Int.toNat z : ℤ) ∈ T := by
+            rwa [Int.ofNat_toNat, Int.max_eq_left hz0]
+          have hn0_le : n0 ≤ Int.toNat z := Nat.find_min' hex hpz
+          have : (n0 : ℤ) ≤ (Int.toNat z : ℤ) := (Int.ofNat_le).2 hn0_le
+          exact (Int.le_toNat (T_nonneg z hz)).mp hn0_le
+
+        obtain ⟨x, hxS, hxEq⟩ := hmT
+        use x, hxS
+        intro y hyS
+        have hm_le : m ≤ (-y : ℤ) := hmMin (-y) ⟨y, hyS, rfl⟩
+        have := neg_le_neg (le_of_eq_of_le hxEq hm_le)
+        rwa [neg_neg, neg_neg] at this
+
 end B.Builtins
