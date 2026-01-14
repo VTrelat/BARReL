@@ -60,7 +60,7 @@ Considering core tooling only, \barrel consists of 1{,}331 lines of code (LoC), 
 
 The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for 1{,}282 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
 
-\begin{table}[htb]
+\begin{table}[b]
 	\caption{Implementation metrics of the artifacts containing \barrel.}
 	\label{tab:implementation-metrics}
 	\centering
@@ -75,7 +75,7 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 	\end{tabular}
 \end{table}
 
-Finally, the artifacts also contain examples from the paper and more that exercise \barrel's workflow.
+Finally, the artifacts also contain all examples from the paper and more that exercise \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
 
 \subsection{Reducing the number of WD side goals via subsumption}\label{subsec:future-wd-subsumption}
@@ -113,10 +113,10 @@ In the same vein towards modularity, one could also expect that \barrel provide 
 \subsection{Towards a fully verified backend}
 \label{sec:verified-backend}
 
-\barrel is designed as a proof-producing backend for the goals it emits, yet it currently still relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for B parsing and proof-obligation generation.
-A natural next step is to implement a PO generator \emph{in Lean} for the supported fragment, producing Lean propositions directly over \barrel's embedding---including proper WD handling---and to establish soundness guarantees stating that discharging these generated obligations entails invariant preservation and refinement correctness.
+Although \barrel is a proof-producing backend for the obligations it emits, it currently still relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for parsing B machines and generating proof obligations.
+A natural next step is therefore to implement, \emph{in Lean}, a PO generator for the supported fragment that produces Lean propositions directly over \barrel's embedding---with correct handling of WD conditions---and to establish soundness guarantees stating that discharging these obligations entails invariant preservation and refinement correctness.
 First, this would eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
-Secondly, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
+Second, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
 By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically deduced---in the B developments.
 
 In the same direction, one could lean toward soundness of the translation connecting B obligations to their Lean counterparts.

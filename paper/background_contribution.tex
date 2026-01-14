@@ -14,7 +14,7 @@ Concretely, POs cover invariant preservation by the initialization and each oper
 In addition, the PO generator emits \emph{well-definedness} (WD) obligations for the many partial constructs of the language.
 
 POs can be discharged automatically using Atelier~B’s internal provers and by delegating to external backends.
-In particular, several approaches translate B obligations to SMT solvers such as Z3~\cite{z3} or cvc5~\cite{cvc5} via dedicated encodings, including the historical \emph{ppTransSMT}~\cite{DeharbeBSMT} and the more recent \emph{BEer}~\cite{beer} encodings.
+In particular, several approaches translate B obligations to SMT solvers such as Z3~\cite{z3} or cvc5~\cite{cvc5} via dedicated encodings, including the \emph{ppTransSMT}~\cite{DeharbeBSMT} and the more recent \emph{BEer}~\cite{beer} encodings.
 Obligations that remain---often those requiring non-trivial quantifier instantiation, refinement reasoning, or tedious WD bookkeeping---are typically discharged interactively using Atelier~B’s GUI-oriented prover, where the user guides rule applications and instantiations.
 
 \paragraph*{The B language in a nutshell}
@@ -76,7 +76,7 @@ Both the definitions and theorems are readily available to end users when import
 \subsection{Encoding partial B operators}
 A central challenge in this setting is the use of \emph{partial} B operators, meaning that they are only defined when some \emph{well-definedness} (WD) conditions are satisfied.
 A typical example of such an operator is the minimum operator $\bmin{S}$, which when given a set $S$ (of integers or reals) returns its smallest element (w.r.t.\@ the ordering $\le$ on integers or reals), if it exists, and is undefined otherwise.
-These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$ which is unspecified\todo[Why underspecified?] if no element of $S$ satisfy $P$.
+These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$, which is left unspecified if no element of $S$ satisfies $P$.
 The \emph{WD condition} of the corresponding operator is precisely that $P$ is satisfied by (at least) an element of $S$.
 
 Atelier B handles this partiality by generating the WD conditions of each partial operator used in a PO as side goals and assumes in the main goal that the partial operators are well-defined.
@@ -105,7 +105,7 @@ In practice, our tool generates WD side goals that are equivalent to the WD side
 The only difference is that Atelier~B may remove unnecessary hypotheses and perform basic simplification on the WD goals at generation time, which may alter the PO, whereas our WD conditions are generated from the exact Lean context.
 % \footnote{\todo[Should this footnote be kept?] To be accurate, our WD conditions are generated from the exact Lean context whereas Atelier~B already performs simplification steps at this point, which may alter the PO.}
 %
-Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, in Lean, whose type is \mbox{$\{\alpha : \mathtt{Sort}\ u\} \to \{p : \alpha \to \mathtt{Prop}\} \to (\exists\, x,\, p\ x) \to \alpha$}) which explicitly depends on a proof that the predicate is satisfied by at least one element\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}.
+Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, in Lean, whose type is \mbox{$\{\alpha : \mathtt{Sort}\ u\} \to \{p : \alpha \to \mathtt{Prop}\} \to (\exists\, x,\, p\ x) \to \alpha$}) which explicitly depends on a proof that the predicate is satisfied by at least one element.\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}
 This means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
 The statement of this proof, which is the WD condition of the operator, is then generated as a side theorem (or a subgoal) which must be discharged for the main theorem to be fully proven, i.e.\@ not depend on the \texttt{sorryAx} axiom---the axiom that is introduced by admitted theorems.
 To illustrate this use of \texttt{Classical.choose}, the encoding (and WD conditions) of $\bmin{S}$ and function application $\bapp{F}{x}$ are given in \cref{lst:min-fn-app}.
@@ -168,8 +168,8 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 	\]
 	$\metavar{m_1}$ is finally assigned $min\_wd_1$, and substituted in $P$ to obtain the final goal to be proved by the user: \[
 		\begin{split}
-			\vdash \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                                       \\
-			                 & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min}\ S\ (min\_wd_1\ S\ h_1\ h_2) \le 0
+			\vdash \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}) (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\                                      \\
+			                 & \quad \mathtt{B.Builtins.min}\ S\ (min\_wd_1\ S\ h_1\ h_2) \le 0
 		\end{split}
 	\]
 \end{example}
@@ -177,7 +177,7 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of our tool.
 \texttt{<type>} may be one of \texttt{machine}, \texttt{system}, \texttt{refinement}, \texttt{implementation} or \texttt{pog} depending on whether the file to be imported is a machine, system, refinement, implementation or straight up a POG file, and \texttt{<name>} is the file name without the extension.
 In the case of POG files, the first step converting into the BXML format is skipped.
-Finally, the command \texttt{prove\_obligations\_of <name>} gives back all the generated WD conditions and propositions to the user for them to prove them.
+Finally, the command \texttt{prove\_obligations\_of <name>} gives back all the generated WD conditions and propositions to the user for them to prove.
 Each WD condition and proposition is then inserted into the global context as a theorem, which the user can re-use instead of duplicating proofs or check for no use of the \texttt{sorryAx} axiom---so that every obligation is fully proven.
 
 
@@ -204,10 +204,10 @@ To those tags also correspond the names of the tactics that are run automaticall
 Beyond the core encoding of B primitives, \barrel comes with a curated---still small, but already well-furnished---library of theorems about built-in operators.
 Its purpose is twofold:
 \begin{enumerate}
-	\item provide reusable WD facts that discharge the side-goals generated for partial operators;
+	\item provide reusable WD facts that discharge the side goals generated for partial operators;
 	\item offer canonical rewrite lemmas that turn B-shaped expressions into ``Mathlib-friendly'' goals.
 \end{enumerate}
-For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of which being tagged with the relevant theorem category.
+For instance, in the arithmetic fragment used throughout our running examples, the library includes dedicated WD lemmas for the minimum operation, as shown in \cref{lst:min-wd-lemmas}, each of them being tagged with the relevant theorem category.
 
 \begin{lstlisting}[language=lean, caption={Some WD lemmas about extrema in our B library.}, label=lst:min-wd-lemmas, float]
 @[wd_min]
@@ -221,9 +221,9 @@ theorem min.WD_interval {lo hi : ℤ} (h : lo ≤ hi) :
 	min.WD (lo..hi) := ⋯
 \end{lstlisting}
 
-The library also provides basic membership results about finite-sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}---with proofs replaced by $\leanpf$ for brevity.
+The library also provides basic membership results about finite sets and intervals; and in the same spirit, ``computational'' equalities are exposed as rewrite rules, again all tagged appropriately to be picked up by relevant automation, as shown in \cref{lst:finset-interval-lemmas}---with proofs replaced by $\leanpf$ for brevity.
 
-\begin{lstlisting}[language=lean, caption={Some membership lemmas about finite-sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
+\begin{lstlisting}[language=lean, caption={Some membership lemmas about finite sets and intervals in our B library.}, label=lst:finset-interval-lemmas, float]
 theorem interval.FIN₁_mem {lo hi : ℤ} (h : lo ≤ hi) :
 	lo .. hi ∈ FIN₁ INTEGER := ⋯
 @[simp]
