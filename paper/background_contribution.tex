@@ -153,8 +153,8 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 	The first step of the pipeline is generating a Lean term while inserting meta-variables in place of WD conditions (where $h_1$, $h_2$ and $h_3$ are fresh identifiers):
 	\[
 		\begin{split}
-			P := \forall\, & (S : \mathtt{Set}\, \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                                                 \\
-			               & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min}\ S\ (\metavar{m_1}\ S\ h_1\ h_2) \le 0
+			P := \forall\, & (S : \mathtt{Set}\, \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}) (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
+			               & \quad \mathtt{B.Builtins.min}\ S\ (\metavar{m_1}\ S\ h_1\ h_2) \le 0
 		\end{split}
 	\]
 	The new meta-variable $\metavar{m_1}$ is generated internally by \barrel, and contains $S : \mathtt{Set}\ \mathbb{Z}$, $h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}$ and $h_2 : \forall\, (x : \mathbb{Z})\ (h_3 : x \in S),\ x \le 0$ in its local context.
@@ -162,8 +162,9 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 	%
 	A fresh theorem statement $min\_wd_1$ is then generated---and remains to be proved---from the type of $\metavar{m_1}$ universally quantified by its local context: \[
 		\begin{split}
-			\mathtt{theorem}\ min\_wd_1 : \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})                 \\
-			                                 & \quad (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \mathtt{B.Builtins.min.WD}\ S
+			&\mathtt{theorem}\ min\_wd_1 : \\
+			& \qquad \forall\, (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})  (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
+			& \qquad\qquad \mathtt{B.Builtins.min.WD}\ S
 		\end{split}
 	\]
 	$\metavar{m_1}$ is finally assigned $min\_wd_1$, and substituted in $P$ to obtain the final goal to be proved by the user: \[

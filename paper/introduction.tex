@@ -1,11 +1,13 @@
 \section{Introduction}
 
 The B method~\cite{Bmethod} and its associated toolsets, notably Atelier~B \cite{AtelierB}, have been used for decades in industrial developments where strong assurance arguments are required.
+The B method is a formal development methodology based on stepwise refinement of abstract high-level specifications into executable code, supported by a rich mathematical language rooted in set theory and first-order logic.
 B specifications are written as \emph{machines} with sets, constants, variables, invariants and operations; Atelier~B generates \emph{proof obligations} (POs) that guarantee, for example, invariant preservation and refinement correctness, and ships with automated and interactive provers tailored to this logic.
 In many certified developments, these tools are trusted as part of the verification chain.
 
 In parallel, interactive theorem provers have seen rapid adoption, driven by their expressive type theories, powerful automation, and growing libraries of reusable mathematics and verification components.
-Lean~4~\cite{lean} in particular offers a small trusted kernel, a rich standard library, and a meta-programming framework that makes it attractive both as a programming language and a proof assistant.
+Lean~4~\cite{lean} is based on the calculus of inductive constructions with quotients, and features a powerful dependently typed system.
+In particular, it offers a small trusted kernel, a rich standard library, and a meta-programming framework that makes it attractive both as a programming language and a proof assistant.
 However, despite B’s long-standing industrial role, support for using modern interactive theorem provers as backends for Atelier~B remains very limited: some previous work targets Isabelle~\cite{IsabelleHOL} but is either no longer maintained~\cite{Schmalz2012RodinIsabelle} or provides specific support~\cite{Wolff2024EB_Isabelle} for Event-B~\cite{AbrialEventB} in Rodin~\cite{AbrialRodin}.
 There were also developments in Rocq~\cite{Coq12} targeting PVS~\cite{Bodeveix2002BtoPVS}, focusing primarily on formalizing the semantics of B rather than providing an integrated backend.
 
