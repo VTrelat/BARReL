@@ -7,8 +7,9 @@ We evaluated the approach on a three-level refinement chain for minimum search, 
 From a trust perspective, \barrel reduces the trusted computing base by implementing the translation pipeline within Lean's metaprogramming framework as a natural, almost identical mapping from B constructs to Lean expressions relying only on Atelier~B for proof obligation generation.
 Future work includes reducing redundancy among well-definedness goals, e.g.\@ via subsumption, extending the covered fragment of B and the accompanying lemma library, and integrating a verified proof obligation generator within Lean itself.
 
-% \paragraph*{Artifacts availability}
-% A snapshot of \barrel is available at \url{https://anonymous.4open.science/r/BARReL}.
-% The archive contains the complete Lean~4 implementation of \barrel (B surface embedding, POG reader, encoder, discharger macros, and tactic layer), together with the sample B machines and Lean scripts used in the evaluation---including the \texttt{MinSearch} refinement chain and the \texttt{DerivFalse} counterexample.
+\paragraph*{Artifacts availability}
+A snapshot of \barrel is available at \url{https://anonymous.4open.science/r/BARReL}.
+The archive contains the complete Lean~4 implementation of \barrel (B surface embedding, POG reader, encoder, discharger macros, and tactic layer), together with the sample B machines and Lean scripts used in the evaluation.
+% ---including the \texttt{MinSearch} refinement chain and the \texttt{DerivFalse} counterexample.
 % The artifacts are a standard Lean~4 project and pin their dependencies via \texttt{lean-toolchain} and \texttt{lake-manifest.json}; a typical build is \texttt{lake update} followed by \texttt{lake build}.
 % To replay the end-to-end workflow that regenerates proof obligations from B sources, an Atelier~B installation providing \texttt{bxml} and \texttt{pog} is required; which then has to be pointed inside \barrel by setting the directory containing \texttt{bin/} and \texttt{include/} via \texttt{set\_option barrel.atelierb "<path>"}.
