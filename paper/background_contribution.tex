@@ -31,7 +31,7 @@ Total ($A \longrightarrow B$), injective (partial $A \pinj B$ and total $A \tinj
 % However, specifications written in the B method are still required to satisfy some typing predicates \todo[perhaps let's not talk about ``typing'' B?]: a ``parent set'' must be deducible for every constant and variable of a specification.
 Although the underlying logic is set-theoretic and thus untyped, Atelier~B enforces a static well-formedness discipline often described as “typing”: every identifier and expression must be assigned a ``parent set'' that must be deducible for every constant, variable, and expression in a specification.
 This guarantees in particular that constructed sets are homogeneous and rules out ill-formed terms.
-These inferred parent sets provide exactly the information needed to interpret B expressions in Lean's typed logic in our translation.
+These deduced parent sets provide exactly the information needed to interpret B expressions in Lean's typed logic in our translation.
 
 \begin{example}
   The expression $1 + \top$ is well-formed in ZFC set theory---and definitionally equal to the set $\mathbb{B}$ of Booleans, or the natural number $2$---but it is not a valid expression in B.
