@@ -251,6 +251,23 @@ namespace B.Builtins
           obtain ⟨y, ⟨hy, mem_f⟩, unq⟩ := h x hx
           exists y
 
+    theorem tfun_dom_ran_of_tfun {α} {β} {A : Set α} {B : Set β} {f : SetRel α β} (hf : f ∈ A ⟶ B) :
+      f ∈ dom f ⟶ ran f := by
+      rw [tfun_iff]
+      and_intros
+      · rintro ⟨x, y⟩ h
+        exact ⟨⟨y, h⟩, ⟨x, h⟩⟩
+      · rintro x ⟨y, h⟩
+        exists y, ⟨⟨x, h⟩, h⟩
+        rintro y' ⟨-, h'⟩
+        exact hf.1.2 h' h
+
+    @[wd_app]
+    theorem app.WD_of_tfun_tfun {α} {β} {δ} {A : Set α} {B : Set β} {C : Set δ}
+      {f : SetRel α (SetRel β δ)} (hf : f ∈ A ⟶ (B ⟶ C)) {x : α} (hx : x ∈ A) {y : β} (hy : y ∈ B) :
+      app.WD (f(x)'(app.WD_of_mem_tfun hf hx)) y :=
+        app.WD_of_mem_tfun (hf.1.1 (app.pair_app_mem (wd := app.WD_of_mem_tfun hf hx))).2 hy
+
     @[simp]
     theorem overload_dom_eq {α β : Type _} {R₁ R₂ : SetRel α β} :
         dom (R₁ <+ R₂) = dom R₁ ∪ dom R₂ := by
