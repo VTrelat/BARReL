@@ -6,8 +6,8 @@ We first recall the B method, then explain how \barrel handles well-definedness 
 \subsection{Background}
 
 \paragraph*{The B method and proof obligations}
-The B method is a state-based formal development approach centered on \emph{machines} and stepwise \emph{refinement}.
-A machine declares abstract sets and constants, a state described by variables constrained by an invariant, an initialization, and operations.
+The B method is a state-based formal development approach centered on \emph{abstract machines} and stepwise \emph{refinement}.
+A machine declares abstract sets and constants, a state described by variables constrained by an inductive invariant, an initialization, and operations.
 A development proceeds by refining an abstract machine into more concrete refinements down to an implementation, introducing representation data together with a \emph{gluing invariant} relating concrete and abstract states.
 From each machine and refinement step, Atelier~B generates \emph{proof obligations} (POs): logical sequents whose discharge guarantees that the model is consistent and that refinement is correct.
 Concretely, POs cover invariant preservation by the initialization and each operation under its precondition, and simulation-style obligations ensuring that concrete operations preserve the abstract behavior through the gluing invariant.
