@@ -1,4 +1,4 @@
-\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate, anonymous, numberwithinsect]{lipics-v2021}
+\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate, numberwithinsect]{lipics-v2021}
 %See lipics-v2021-authors-guidelines.pdf for further information.
 %for A4 paper format use option "a4paper", for US-letter use option "letterpaper"
 %for british hyphenation rules use option "UKenglish", for american hyphenation rules use option "USenglish"
@@ -11,7 +11,7 @@
 %for producing a PDF according the PDF/A standard, add "pdfa"
 
 %\pdfoutput=1 %uncomment to ensure pdflatex processing (mandatatory e.g. to submit to arXiv)
-%\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
+\hideLIPIcs  %uncomment to remove references to LIPIcs series (logo, DOI, ...), e.g. when preparing a pre-final version to be uploaded to arXiv or another public repository
 \usepackage[disable]{simplenotes}
 \usepackage{listings-lean2}
 \usepackage{tikz}
@@ -19,14 +19,16 @@
 % \usepackage{xcolor}
 % \usepackage{amssymb}
 
+\nolinenumbers
+
 \input{setup}
 
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
 \title{\barrel: A modern backend for Atelier B in Lean}
 
-\author{Ghilain Bergeron}{Universit\'e de Lorraine, CNRS, Inria, LORIA}{}{0009-0008-2814-3480}{}
-\author{Vincent Tr\'elat}{Université de Lorraine, CNRS, INRIA, Nancy, France}{}{0009-0006-4143-3939}{ANR project BLaSST (ANR-21-CE25-0010).}
+\author{Ghilain Bergeron}{Universit\'e de Lorraine, CNRS, Inria, LORIA, Nancy, France}{}{0009-0008-2814-3480}{}
+\author{Vincent Tr\'elat}{Universit\'e de Lorraine, CNRS, Inria, LORIA, Nancy, France}{}{0009-0006-4143-3939}{ANR project BLaSST (ANR-21-CE25-0010).}
 
 \authorrunning{G. Bergeron and V. Tr\'elat}
 
@@ -58,6 +60,9 @@
 \input{futurework}
 
 \input{conclusion}
+
+\paragraph*{Declaration of AI Use}
+We declare that no generative AI tools or large language models (LLMs) were used in the development of the tool, the Lean implementation, or the writing of this paper.
 
 \bibliography{ref}
 \end{document}
