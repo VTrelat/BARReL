@@ -1,4 +1,4 @@
-import BARReL
+import Barrel
 
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 

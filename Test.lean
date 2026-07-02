@@ -9,11 +9,10 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
-set_option barrel.show_auto_solved true
+-- set_option barrel.show_auto_solved true
 
 import machine Counter from "specs/"
 prove_obligations_of Counter
-next grind
 
 import machine Eval from "specs/"
 prove_obligations_of Eval
@@ -24,31 +23,23 @@ next
 
 import machine Finite from "specs/"
 prove_obligations_of Finite
-next
-  grind
 -- next
 --   intros
 --   exact interval.FIN_mem
 
 import machine Nat from "specs/"
 prove_obligations_of Nat
-next
-  grind
 -- next
 --   rintro _ ⟨_, _⟩
 --   assumption
 
 import machine Collect from "specs/"
 prove_obligations_of Collect
-next
-  grind
 -- next
 --   simp
 
 import machine Forall from "specs/"
 prove_obligations_of Forall
-next
-  grind
 -- next
 --   rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
 --   assumption
@@ -110,11 +101,11 @@ import machine Demo from "specs/"
 prove_obligations_of Demo
 -- next
 --   exact fun _ => id
-next
-  intro s₀ hs₀
-  apply FIN.of_inter
-  left
-  exact FIN.of_sub NAT.mem_FIN hs₀
+-- next
+--   intro s₀ hs₀
+--   apply FIN.of_inter
+--   left
+--   exact FIN.of_sub NAT.mem_FIN hs₀
 
 import machine Extensionality from "specs/"
 prove_obligations_of Extensionality
@@ -150,14 +141,10 @@ next
 import machine CounterMin from "specs/"
 
 prove_obligations_of CounterMin
-next grind
-next grind
-next grind
 next
   intros _ _
   rw [max.of_singleton, min.of_singleton]
   rfl
-next grind
 next
   rintro X z - - hz
   rw [interval.min_eq (neg_le_self hz),
@@ -207,8 +194,6 @@ assert_no_sorry CounterMin.Operation_inc_3
 
 import machine Collect2 from "specs/"
 prove_obligations_of Collect2
-next
-  grind
 
 import machine Lambda from "specs/"
 prove_obligations_of Lambda

@@ -7,6 +7,6 @@ MACHINE
   DerivFalse
 
 ASSERTIONS
-  # x. (x : INTEGER & not(x : INTEGER))
+  ∃ x. (x ∈ ℤ  ∧ ¬(x ∈ ℤ))
 
 END

@@ -2,58 +2,55 @@ import Barrel
 
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-set_option barrel.show_auto_solved true
-
 open B.Builtins
 
-import machine MinSearch from "specs/case_study"        -- 🎉 Automatically solved 4 out of 8 subgoals!
-import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically solved 52 out of 61 subgoals!
-import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 100 out of 121 subgoals!
+import machine MinSearch       from "specs/case_study"  -- 🎉 Automatically solved 4 out of 7 subgoals!
+import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically solved 22 out of 29 subgoals!
+import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 26 out of 47 subgoals!
 
 prove_obligations_of MinSearch
-next grind
-next simp
-next
+next -- Initialisation_1: xx = min {xx}
+  intros
+  rw [min.of_singleton]
+next -- Operation_step_2: done ∪ add ∈ FIN₁ SS
   intros
   exact FIN₁.of_union ‹_› (FIN₁.mono Set.diff_subset ‹_›)
-next
+next -- Operation_step_3: min (done ∪ add) ∈ SS
   introv
   have : done ∪ add ⊆ SS := by grind
   generalize_proofs min_wd
   grind
 
 prove_obligations_of MinSearch_r1
-next grind
-next
+next -- Initialisation_1: xx = min {xx}
   intros
-  apply_rules [MinSearch.Initialisation_1]
-next
+  rw [min.of_singleton]
+next -- Operation_step_3: done1 ∪ {xx} ∈ FIN₁ SS
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   grind
-next grind
-next
+next -- Operation_step_5: xx = min (done1 ∪ {xx})
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
-next
+next -- Operation_step_6: ∃ add, … ∧' min (done ∪ add) = xx
   intros
   expose_names
   subst_eqs
   exists {xx}, FIN₁.singleton_mem h_10, rfl
   simp only [Set.union_singleton]
   rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
-next
+next -- Operation_step_12: done1 ∪ {xx} ∈ FIN₁ SS
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   grind
-next
+next -- Operation_step_13: mm1 = min (done1 ∪ {xx})
   intros
   expose_names
   subst_eqs
@@ -62,7 +59,7 @@ next
   obtain hle | rfl := h_11
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
-next
+next -- Operation_step_14: ∃ add, … ∧' min (done ∪ add) = mm1
   intros
   expose_names
   subst_eqs
