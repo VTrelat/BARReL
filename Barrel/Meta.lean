@@ -16,6 +16,14 @@ initialize
   cache : EnvExtension (Lean.PersistentHashMap System.FilePath (Array (Name × String × Expr)))
     ← registerEnvExtension (pure .empty)
 
+/-- Per machine, the baseline for its progress card: `(total, autoProven, autoSorried)` —
+    the total subgoal count and how many the auto-discharge proved / sorried. Read by
+    `prove_obligations_of` so its live proof-progress bar starts from the right place. Kept in
+    an `EnvExtension` (not the runtime `IO.Ref`) so it is restored on incremental reuse. -/
+initialize
+  progressBaseline : EnvExtension (Lean.PersistentHashMap String (Nat × Nat × Nat))
+    ← registerEnvExtension (pure .empty)
+
 register_option barrel.atelierb : String := {
   defValue := ""
   descr := "Path to the Atelier-B distribution"

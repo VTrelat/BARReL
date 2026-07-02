@@ -38,27 +38,59 @@ namespace Barrel.Progress
 -/
 initialize state : IO.Ref (Array Json) ← IO.mkRef #[]
 
-def report (machine : String) (po nbPOs subgoals solved leftover skipped : Nat)
-    (current : String) (elapsedMs etaMs : Nat) (finished : Bool)
-    (summary : Json := .null) : BaseIO Unit := do
+private def findMachine? (arr : Array Json) (machine : String) : Option Nat :=
+  arr.findIdx? (λ j ↦ (j.getObjValAs? String "machine").toOption == some machine)
+
+/--
+  Publish an import's card. `total` is the subgoal count, `proven`/`sorried` the green/yellow
+  parts of the proof bar (auto-discharge results during the import phase). While `importing`
+  the card shows a blue bar filling by `po`/`nbPOs`; once `importing = false` the bar switches
+  to the `proven` / `sorried` / missing breakdown, which `reportProof` keeps updating.
+-/
+def report (machine : String) (total po nbPOs proven sorried : Nat)
+    (importing : Bool) (elapsedMs : Nat) (summary : Json := .null) : BaseIO Unit := do
   let entry := Json.mkObj [
     ("machine", .str machine),
+    ("total", toJson total),
     ("po", toJson po),
     ("nbPOs", toJson nbPOs),
-    ("subgoals", toJson subgoals),
-    ("solved", toJson solved),
-    ("leftover", toJson leftover),
-    ("skipped", toJson skipped),
-    ("current", .str current),
+    ("proven", toJson proven),
+    ("sorried", toJson sorried),
+    ("importing", toJson importing),
+    ("errored", toJson false),
     ("elapsedMs", toJson elapsedMs),
-    ("etaMs", toJson etaMs),
-    ("finished", toJson finished),
     ("summary", summary)
   ]
   state.modify fun arr =>
-    match arr.findIdx? (λ j ↦ (j.getObjValAs? String "machine").toOption == some machine) with
+    match findMachine? arr machine with
     | some idx => arr.set! idx entry
     | none => (if arr.size ≥ 32 then arr.extract 1 arr.size else arr).push entry
+
+/--
+  Update just the proof-progress counters of an existing card — used by
+  `prove_obligations_of` to fill the bar in live as each leftover goal is proven (green) or
+  sorried (yellow). Also clears the `errored` flag: while proofs are still being replayed the
+  goal state may yet change. No-op if the machine has no card yet.
+-/
+def reportProof (machine : String) (proven sorried : Nat) : BaseIO Unit :=
+  state.modify fun arr =>
+    match findMachine? arr machine with
+    | some idx =>
+      let c := (arr[idx]!).setObjVal! "proven" (toJson proven) |>.setObjVal! "sorried" (toJson sorried)
+        |>.setObjVal! "errored" (toJson false)
+      arr.set! idx c
+    | none => arr
+
+/--
+  Mark a machine's card as errored — its `prove_obligations_of` threw (a failing proof, or too
+  few / too many `next`s). This is what turns the badge red; until it fires the badge stays
+  gray, since the goal state may still change.
+-/
+def reportError (machine : String) : BaseIO Unit :=
+  state.modify fun arr =>
+    match findMachine? arr machine with
+    | some idx => arr.set! idx ((arr[idx]!).setObjVal! "errored" (toJson true))
+    | none => arr
 
 @[server_rpc_method]
 def get (_ : Json) : RequestM (RequestTask Json) :=
@@ -70,7 +102,7 @@ def get (_ : Json) : RequestM (RequestTask Json) :=
 -- enough to force a rebuild after editing the JS — the hash of this file's own text is
 -- unchanged, so Lake (correctly, by its own accounting) skips recompilation. Make a real
 -- edit here (e.g. bump the version note below) after touching the JS, or `lake clean`.
--- widget version: 11
+-- widget version: 16
 @[widget_module]
 def monitorWidget : Widget.Module where
   javascript := include_str ".." / "widget" / "barrelMonitor.js"

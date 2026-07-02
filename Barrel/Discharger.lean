@@ -125,14 +125,18 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   -- partial operators produce the same condition over and over across obligations, and
   -- re-generating (and re-proving!) it for each theorem is what blew up the subgoal count.
   let mut seenWDs : SeenWDs := {}
-  let mut autoDischarged := 0
+  -- Auto-discharge splits its successes into really-proven (green) and sorried (yellow, a
+  -- `barrel_solve` alternative can close a genuinely-`sorry` goal with `sorry`); their sum is
+  -- the "auto-solved" count.
+  let mut autoProven := 0
+  let mut autoSorried := 0
   let mut nbGoals := goals.size
   let mut i := 0
 
   let mut skipped := 0
   let mut dedups := 0
 
-  if progress then Barrel.Progress.report name 0 nbPOs 0 0 0 0 "" 0 0 false
+  if progress then Barrel.Progress.report name nbGoals 0 nbPOs 0 0 true 0
 
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"
@@ -224,7 +228,7 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
                 mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {reason} -/"
               ])
 
-            pure <| .inl PUnit.unit)
+            pure <| .inl e.hasSorry)
           fun ex => do
             trace[barrel.solve] m!"{Lean.crossEmoji} Failed! (spent {((← IO.getNumHeartbeats) - hb₀) / 1000} heartbeats)\n{ex.toMessageData}"
 
@@ -232,31 +236,34 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
         pure (r, ((← IO.getNumHeartbeats) - hb₀) / 1000)
 
       match gOrWd with
-      | .inl _ => autoDischarged := autoDischarged + 1
+      | .inl hadSorry => if hadSorry then autoSorried := autoSorried + 1 else autoProven := autoProven + 1
       | .inr (declName, reason, g, isWd) =>
         let goal := (declName, reason, g)
         if isWd then wds := wds.push goal else res := res.push goal
 
       if progress then
         let elapsed := (← IO.monoMsNow) - t0
-        let eta := elapsed * (nbPOs - (i + 1)) / (i + 1)
-        Barrel.Progress.report name (i + 1) nbPOs nbGoals autoDischarged (wds.size + res.size) skipped
-          declName.toString elapsed eta false
+        Barrel.Progress.report name nbGoals (i + 1) nbPOs autoProven autoSorried true elapsed
 
     i := i + 1
 
   let goals := wds ++ res
   let dt := (← IO.monoMsNow) - t0
+  let autoDischarged := autoProven + autoSorried
+
+  -- Remember the baseline so `prove_obligations_of` can continue this card's proof bar.
+  modifyEnv (progressBaseline.modifyState · λ m ↦ m.insert name (nbGoals, autoProven, autoSorried))
 
   let wdDistinct := nbGoals - (nbPOs - skipped)
   let pct := if nbGoals == 0 then 0 else autoDischarged * 1000 / nbGoals
   let rows : Array (String × String) := #[
     ("auto-solved", s!"{autoDischarged} / {nbGoals} ({pct / 10}.{pct % 10}%)"),
     ("WD goals", s!"{wdDistinct} unique (+{dedups} reused)"),
-    ("remaining", s!"{goals.size}")
+    ("remaining", s!"{goals.size}"),
+    ("import time", s!"{dt / 1000}.{dt % 1000 / 100} s")
   ]
   if progress then
-    Barrel.Progress.report name nbPOs nbPOs nbGoals autoDischarged goals.size skipped "" dt 0 true
+    Barrel.Progress.report name nbGoals nbPOs nbPOs autoProven autoSorried false dt
       (summary := Json.arr <| rows.map λ (l, v) ↦ Json.arr #[.str l, .str v])
 
   if skipped > 0 then
@@ -287,8 +294,19 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
     | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import`."
   let .some goals := cache.getState env |>.find? path
     | throwError "Impossible!"
+  -- Proof-bar baseline from the import: the auto-discharge results are already green/yellow;
+  -- each `next` we replay here fills in one more leftover, live.
+  let progress := (← getOptions).getBool `barrel.progress true
+  let (_total, autoProven, autoSorried) := progressBaseline.getState env |>.find? name |>.getD (goals.size, 0, 0)
+  let mut userProven := 0
+  let mut userSorried := 0
   let mut proofs_missing := 0
   let mut i := 0
+
+  -- Reset this card's proof bar to the auto-discharge baseline before replaying, so removing
+  -- `next`s (or providing fewer than before) drops those goals back to "missing" rather than
+  -- leaving a stale green fill from a previous elaboration.
+  if progress then Barrel.Progress.reportProof name autoProven autoSorried
 
   -- TODO: check how we can also replay the proofs that we already have
   for ⟨declName, r_reason, g'⟩ in goals do
@@ -297,42 +315,64 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
         if (← getOptions).getBool `barrel.show_goal_names true then
           logInfoAt tk m!"{declName}: {r_reason}"
 
-        -- Fresh heartbeat budget per obligation, so one expensive user proof does not eat
-        -- into the budget of the ones replayed after it.
-        liftTermElabM <| withCurrHeartbeats do -- <| withOptions (Elab.async.set · false) do
-          let g' ← instantiateMVars g'
-          if g'.hasExprMVar then
-            throwError "Resulting expression contains metavariables{indentExpr g'}"
+        -- Fresh heartbeat budget per obligation, so one expensive user proof does not eat into
+        -- the budget of the ones replayed after it. Any *thrown* error — a failing tactic,
+        -- metavariables, or a heartbeat/recursion timeout (a runtime exception, which is why we
+        -- catch inside `liftTermElabM` with `tryCatchRuntimeEx`: at `CommandElabM` level a plain
+        -- `tryCatch` re-throws runtime exceptions) — marks the card errored (→ red) before
+        -- re-raising, so the error still surfaces normally.
+        let hadSorry ← liftTermElabM <| withCurrHeartbeats <| tryCatchRuntimeEx
+          (do -- <| withOptions (Elab.async.set · false) do
+            let g' ← instantiateMVars g'
+            if g'.hasExprMVar then
+              throwError "Resulting expression contains metavariables{indentExpr g'}"
 
-          let e ← do
-            let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
-            synthesizeSyntheticMVarsNoPostponing
-            instantiateMVars e
+            let e ← do
+              let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
+              synthesizeSyntheticMVarsNoPostponing
+              instantiateMVars e
 
-          let levelParams := (collectLevelParams {} g').params ++ (collectLevelParams {} e).params
+            let levelParams := (collectLevelParams {} g').params ++ (collectLevelParams {} e).params
 
-          let decl : Declaration := .thmDecl {
-            name := declName
-            levelParams := levelParams.toList
-            type := g'
-            value := e
-          }
+            let decl : Declaration := .thmDecl {
+              name := declName
+              levelParams := levelParams.toList
+              type := g'
+              value := e
+            }
 
-          addDecl decl false
+            addDecl decl false
 
-          Lean.addDocStringOf false declName .missing
-            (mkNode ``Parser.Command.docComment #[
-              mkAtom "/--",
-              mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
-            ])
+            Lean.addDocStringOf false declName .missing
+              (mkNode ``Parser.Command.docComment #[
+                mkAtom "/--",
+                mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
+              ])
+
+            pure e.hasSorry)
+          (fun ex => do
+            if progress then Barrel.Progress.reportError name
+            throw ex)
+        if hadSorry then userSorried := userSorried + 1 else userProven := userProven + 1
+        if progress then
+          Barrel.Progress.reportProof name (autoProven + userProven) (autoSorried + userSorried)
     else
       proofs_missing := proofs_missing + 1
 
     i := i + 1
 
+  -- A `next` whose proof fails usually *logs* an error and recovers with `sorry` rather than
+  -- throwing, so consult the command's message log too: any error here means the card is red.
+  if progress && (← get).messages.hasErrors then
+    Barrel.Progress.reportError name
+
+  -- Too few / too many `next`s is also an error → red badge. (Until one of these throws the
+  -- card stays gray: the user may still be filling in proofs.)
   if proofs_missing > 0 then
+    if progress then Barrel.Progress.reportError name
     throwError s!"There still {if proofs_missing = 1 then "is" else "are"} {proofs_missing} goal{if proofs_missing = 1 then "" else "s"} to discharge."
   else if steps.size > goals.size then
+    if progress then Barrel.Progress.reportError name
     let `(discharger_command| next%$tk $_) := steps[i]! | unreachable!
     throwErrorAt tk "There are no more goals to discharge."
 
