@@ -36,4 +36,18 @@ register_option barrel.cache_dir : String := {
   descr := "Path to the cache directory for storing parsed POGs"
 }
 
+register_option barrel.progress : Bool := {
+  defValue := true
+  descr := "Show a live, self-updating progress card in the infoview for each `import` \
+    (auto-solved / remaining counts, a progress bar, and the summary table once finished). \
+    Set to false to suppress the panel and its reporting."
+}
+
+register_option barrel.summary : Bool := {
+  defValue := false
+  descr := "Log a summary table (solved/remaining counts, WD deduplication) as an info \
+    message after an `import` finishes. The same table is always shown in the live progress \
+    card; this option is for batch builds and logs."
+}
+
 -----------
