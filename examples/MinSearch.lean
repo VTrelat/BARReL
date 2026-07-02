@@ -4,9 +4,9 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 
 open B.Builtins
 
-import machine MinSearch       from "specs/case_study"  -- 🎉 Automatically solved 4 out of 7 subgoals!
-import refinement MinSearch_r1 from "specs/case_study"  -- 🎉 Automatically solved 22 out of 29 subgoals!
-import refinement MinSearch_r2 from "specs/case_study"  -- 🎉 Automatically solved 26 out of 47 subgoals!
+import machine MinSearch       from "specs/case_study"
+import refinement MinSearch_r1 from "specs/case_study"
+import refinement MinSearch_r2 from "specs/case_study"
 
 prove_obligations_of MinSearch
 next -- Initialisation_1: xx = min {xx}
