@@ -136,7 +136,11 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   let mut skipped := 0
   let mut dedups := 0
 
-  if progress then Barrel.Progress.report name nbGoals 0 nbPOs 0 0 true 0
+  if progress then
+    -- Evict any stale `importing` card left by a previous elaboration (e.g. the user changed
+    -- the imported file before its import finished), then post this import's fresh card.
+    Barrel.Progress.dropImporting
+    Barrel.Progress.report name nbGoals 0 nbPOs 0 0 true 0
 
   for g in goals do
     let declName := ns |>.str name |>.str s!"{g.name}_{i}"

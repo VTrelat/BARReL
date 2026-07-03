@@ -1,6 +1,8 @@
 import Lean.Widget.UserWidget
 import Lean.Widget.Commands
 import Lean.Server.Rpc.RequestHandling
+import Lean.Server.Requests
+import Barrel.Meta
 
 /-!
 # Live import progress for the infoview
@@ -92,10 +94,36 @@ def reportError (machine : String) : BaseIO Unit :=
     | some idx => arr.set! idx ((arr[idx]!).setObjVal! "errored" (toJson true))
     | none => arr
 
+/--
+  Drop any card still marked `importing` — a stale in-progress import left over from a previous
+  elaboration (e.g. the user changed the imported file mid-import). Safe to call at each
+  import's start: within one pass imports run sequentially, so every *current* earlier import
+  has already finished (`importing = false`) and only stale ones are still `importing = true`.
+-/
+def dropImporting : BaseIO Unit :=
+  state.modify (·.filter fun j ↦ (j.getObjValAs? Bool "importing").toOption != some true)
+
 @[server_rpc_method]
-def get (_ : Json) : RequestM (RequestTask Json) :=
+def get (_ : Json) : RequestM (RequestTask Json) := do
+  let doc ← RequestM.readDoc
   RequestM.asTask do
-    return Json.arr (← state.get)
+    -- The machines still imported in the current document: the discharger records each in the
+    -- `nameFromPath` env extension when its import finishes. Reading it from the latest
+    -- finished snapshot lets us drop cards for imports the user has since removed or changed.
+    let (snaps, _, _) ← doc.cmdSnaps.getFinishedPrefix
+    let current : List String :=
+      match snaps.getLast? with
+      | some snap => (nameFromPath.getState snap.env).toList.map Prod.fst
+      | none      => []
+    let cards ← state.get
+    -- Keep in-progress cards (not in `nameFromPath` yet) and done cards whose import still
+    -- exists; drop done cards for imports that are gone.
+    let visible := cards.filter fun c =>
+      (c.getObjValAs? Bool "importing").toOption == some true ||
+      (match (c.getObjValAs? String "machine").toOption with
+       | some m => current.contains m
+       | none   => true)
+    return Json.arr visible
 
 -- `include_str` reads `widget/barrelMonitor.js` at *this file's* elaboration time. Lake's
 -- incremental build traces content hashes, not mtimes, so `touch`ing this file is *not*
