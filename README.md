@@ -3,14 +3,6 @@
 
 BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the [PO XML format](https://www.atelierb.eu/wp-content/uploads/2023/10/pog-1.0.html) produced by Atelier B), converts the obligations into Lean terms, and lets you discharge them with Lean tactics.
 
-## Repository layout
-- [`B/`](B/): a lightweight Lean embedding of the B syntax and basic pretty-printing.
-- [`Barrel/`](Barrel/): the encoding layer: built-in B sets and relations ([`Builtins.lean`](Barrel/Builtins.lean)), translation to Lean expressions ([`Encoder.lean`](Barrel/Encoder.lean)), and the proof-obligation discharger macros ([`Discharger.lean`](Barrel/Discharger.lean)).
-- [`POGReader/`](POGReader/): XML parsing for Atelier B POG files ([`Parser.lean`](POGReader/Parser.lean)), schema definitions, and extraction of goals ([`Extractor.lean`](POGReader/Extractor.lean)).
-- [`Extra/`](Extra/): utility formatting helpers.
-- [`specs/`](specs/): sample B machines (`.mch`)
-- [`Test.lean`](Test.lean): an example script showing how to call the discharger on the sample machines.
-
 ## Prerequisites
 - Lean 4 (see [`lean-toolchain`](lean-toolchain) for version).
 - Mathlib (pulled automatically by Lake).
@@ -55,26 +47,22 @@ This machine generates 4 proof obligations from the invariant and operation `inc
   - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → max((-z)..z) = -min((-z)..z)`
 - _Well-formedness conditions_.
 
-In Lean, we can discharge them as follows (the first four obligations are well-formedness conditions):
+In Lean, `import machine` runs the auto-discharger (`barrel_solve`) over all 12 obligations. It closes 10 of them on its own — the eight well-formedness conditions and the two `∈ FIN₁` typing goals — leaving only the two equalities to prove by hand:
 
 ```lean
 import Barrel
 
 set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
 
-set_option barrel.show_auto_solved true -- for showing auto-solved goals
+open B.Builtins
 
-import machine CounterMin from "specs/" -- 🎉 Automatically solved 6 out of 12 subgoals!
+import machine CounterMin from "specs/"
 
 prove_obligations_of CounterMin
-next grind
-next grind
-next grind
 next
   intros _ _
   rw [max.of_singleton, min.of_singleton]
   rfl
-next grind
 next
   rintro X z - - hz
   rw [interval.min_eq (neg_le_self hz),
@@ -82,16 +70,44 @@ next
       Int.neg_neg]
 ```
 
+Each remaining obligation is presented as one `next` block; the live progress card in the infoview (see below) shows how many were solved automatically and how many are left.
+
 > [!NOTE]
 > By default, option `barrel.show_goal_names` is set to `true`, which will display the name of each proof obligation at each `next`, but it can be disabled with:
 > ```lean
 > set_option barrel.show_goal_names false
 > ```
 
+## Live progress in the editor
+Industrial POGs can take minutes to import, so each `import` reports into a self-updating **progress card** in the infoview, grouped under a foldable **BARReL state** pane (one card per machine)
+
+<p align="center">
+  <img src=".assets/progress-importing.png" alt="BARReL progress card while importing" width="600"/>
+  <br/><em>While importing: a spinner and a blue bar that fills as Atelier B's obligations stream in; green bar indicates auto-solved goals.</em>
+</p>
+
+<p align="center">
+  <img src=".assets/progress.png" alt="BARReL progress while discharging" width="600"/>
+  <br/><em>While discharging: yellow (contains <code>sorry</code>), red badge (missing goals).</em>
+</p>
+
+<p align="center">
+  <img src=".assets/progress-done.png" alt="BARReL progress card after discharging" width="600"/>
+  <br/><em>After discharging: green (all proved), with one card unfolded.</em>
+</p>
+
+Click a card to expand its summary table: auto-solved count and percentage, unique vs. reused well-formedness (WD) goals, and how many obligations remain.
+
+The panel is on by default; three options control the reporting:
+
+- `barrel.progress` (default `true`) — the live card. Set to `false` to suppress the panel and its reporting entirely.
+- `barrel.summary` (default `false`) — also log the summary table as a text message after each import, for batch builds and CI logs.
+- `barrel.show_auto_solved` (default `false`) — print the `🎉 Automatically solved N out of M subgoals!` message.
+
 ## Using the discharger
 Two commands are provided to discharge proof obligations from B machines:
 
-- `import (machine|system|refinement|pog) <name> from "<directory>` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it.
+- `import (machine|refinement|implementation|system|pog) <name> from "<directory>"` — call Atelier B (`bxml` then `pog`) to generate the POG on the fly, then consume it. Use `import pog <name>` to read a cached `.pog` directly and skip Atelier B.
 - `prove_obligations_of <name>` — discharge all proof obligations generated.
 
 `prove_obligations_of` expands to a sequence of proof goals. Provide one `next` block per goal with the tactic script you want to use:

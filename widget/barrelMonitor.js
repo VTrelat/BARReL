@@ -28,18 +28,46 @@ const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"
 const GREEN = 'var(--vscode-testing-iconPassed, #3c3)';
 const YELLOW = 'var(--vscode-charts-yellow, #d7ba00)';
 const RED = 'var(--vscode-testing-iconFailed, #f14c4c)';
-const BLUE = 'var(--vscode-progressBar-background, #0078d4)';
 const TRACK_GRAY = 'color-mix(in srgb, var(--vscode-foreground, #888) 12%, transparent)';
 const IMPORT_BLUE = 'color-mix(in srgb, var(--vscode-progressBar-background, #0078d4) 31%, transparent)';
 
-// All four states share one 14×14 footprint, so the badge never changes the card's height.
+// Every badge state sits in one fixed square slot, so the row height never changes between
+// states and the spinning barrel has room to rotate without its corners being clipped.
 const BADGE = { width: 14, height: 14, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box' };
+const SLOT = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 24, flexShrink: 0 };
+
+// BARReL's barrel logo (upright, hooped) used as the "importing" spinner: it turns on its
+// vertical axis — the staves scroll sideways past a fixed cylinder-shading gradient (dark
+// edges, bright centre) that sells the round surface. Brand golds/browns, not theme-derived.
+const BARREL_SVG = '<svg viewBox="0 0 26 34" width="17" height="22" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="importing">'
+  + '<defs><clipPath id="barrelClip"><path d="M6.3,6 C1.8,13 1.8,25 6.3,31 Q13,32.3 19.7,31 C24.2,25 24.2,13 19.7,6 Q13,7.3 6.3,6 Z"/></clipPath>'
+  + '<linearGradient id="barrelCyl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4a2905" stop-opacity=".5"/><stop offset=".2" stop-color="#4a2905" stop-opacity="0"/><stop offset=".4" stop-color="#fff5d0" stop-opacity=".4"/><stop offset=".5" stop-color="#fff5d0" stop-opacity=".12"/><stop offset=".72" stop-color="#4a2905" stop-opacity="0"/><stop offset="1" stop-color="#4a2905" stop-opacity=".5"/></linearGradient></defs>'
+  + '<g clip-path="url(#barrelClip)">'
+  + '<rect x="0" y="0" width="26" height="34" fill="#e8a62a"/>'
+  + '<g>'
+  + '<g fill="#c5871a"><rect x="-8" y="0" width="2.8" height="34"/><rect x="-2.4" y="0" width="2.8" height="34"/><rect x="3.2" y="0" width="2.8" height="34"/><rect x="8.8" y="0" width="2.8" height="34"/><rect x="14.4" y="0" width="2.8" height="34"/><rect x="20" y="0" width="2.8" height="34"/><rect x="25.6" y="0" width="2.8" height="34"/></g>'
+  + '<g stroke="#7a4a10" stroke-width=".45" opacity=".35"><line x1="-5.2" y1="0" x2="-5.2" y2="34"/><line x1=".4" y1="0" x2=".4" y2="34"/><line x1="6" y1="0" x2="6" y2="34"/><line x1="11.6" y1="0" x2="11.6" y2="34"/><line x1="17.2" y1="0" x2="17.2" y2="34"/><line x1="22.8" y1="0" x2="22.8" y2="34"/><line x1="28.4" y1="0" x2="28.4" y2="34"/></g>'
+  + '<animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="5.6 0" dur="1s" repeatCount="indefinite"/>'
+  + '</g>'
+  + '<rect x="0" y="0" width="26" height="34" fill="url(#barrelCyl)"/>'
+  + '<rect x="0" y="12.2" width="26" height="1.6" fill="#5a3106"/><rect x="0" y="12.2" width="26" height=".45" fill="#9a6a1c"/>'
+  + '<rect x="0" y="23.2" width="26" height="1.6" fill="#5a3106"/><rect x="0" y="23.2" width="26" height=".45" fill="#9a6a1c"/>'
+  + '</g>'
+  + '<path d="M6.3,6 C1.8,13 1.8,25 6.3,31 Q13,32.3 19.7,31 C24.2,25 24.2,13 19.7,6 Q13,7.3 6.3,6 Z" fill="none" stroke="#4a2905" stroke-width="1"/>'
+  + '<ellipse cx="13" cy="6" rx="6.6" ry="1.3" fill="#cd951c" stroke="#4a2905" stroke-width=".9"/>'
+  + '<ellipse cx="13" cy="6" rx="2.9" ry=".5" fill="#8a5c10" opacity=".5"/>'
+  + '</svg>';
+
+function BarrelSpinner() {
+  return React.createElement('span', {
+    style: { display: 'inline-flex', animation: 'barrel-bob 2s ease-in-out infinite' },
+    dangerouslySetInnerHTML: { __html: BARREL_SVG }
+  });
+}
 
 function StatusIcon({ st }) {
   if (st.importing) {
-    return React.createElement('span', {
-      style: { ...BADGE, display: 'inline-block', border: '2px solid ' + BLUE, borderTopColor: 'transparent', animation: 'barrel-spin 0.8s linear infinite' }
-    });
+    return React.createElement(BarrelSpinner, null);
   }
   if (st.total > 0 && st.proven >= st.total) {
     return React.createElement('span', {
@@ -107,7 +135,7 @@ function Row({ st, open, onToggle }) {
       onClick: () => onToggle(st.machine),
       style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }
     },
-      React.createElement(StatusIcon, { st }),
+      React.createElement('span', { style: SLOT }, React.createElement(StatusIcon, { st })),
       React.createElement('span', { style: { fontSize: 12, fontWeight: 600, flexShrink: 0, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, st.machine),
       React.createElement(ProgressBar, { st }),
       React.createElement('span', { style: { fontSize: 12, fontWeight: 600, flexShrink: 0 } }, meta),
@@ -149,7 +177,7 @@ export default function (_props) {
     })));
 
   return React.createElement(React.Fragment, null,
-    React.createElement('style', null, '@keyframes barrel-spin{to{transform:rotate(360deg)}}'),
+    React.createElement('style', null, '@keyframes barrel-bob{0%,100%{transform:translateY(-1.5px)}50%{transform:translateY(1.5px)}}'),
     React.createElement('details',
       { open: paneOpen, onToggle: e => setPaneOpen(e.currentTarget.open) },
       React.createElement('summary', { className: 'mv2 pointer non-selectable' }, 'BARReL state'),

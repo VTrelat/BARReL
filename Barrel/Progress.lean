@@ -130,7 +130,7 @@ def get (_ : Json) : RequestM (RequestTask Json) := do
 -- enough to force a rebuild after editing the JS — the hash of this file's own text is
 -- unchanged, so Lake (correctly, by its own accounting) skips recompilation. Make a real
 -- edit here (e.g. bump the version note below) after touching the JS, or `lake clean`.
--- widget version: 16
+-- widget version: 23
 @[widget_module]
 def monitorWidget : Widget.Module where
   javascript := include_str ".." / "widget" / "barrelMonitor.js"
