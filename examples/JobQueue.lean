@@ -39,9 +39,6 @@ next
   }
 next
   intros
-  exact FIN.of_empty
-next
-  intros
   expose_names
   simpa only [card.of_empty] using Int.le_of_lt h_1.1
 next
