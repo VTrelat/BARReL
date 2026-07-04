@@ -1,16 +1,16 @@
 import POGReader.Schema
-import Lean.Data.Xml.Parser
+import POGReader.Xml
 
 private abbrev throwError {α} : String → IO α := throw ∘ IO.Error.userError
 
-private partial def removeEmptyDeep : Lean.Xml.Element → Lean.Xml.Element
+private partial def removeEmptyDeep : B.Xml.Element → B.Xml.Element
   | ⟨n, a, c⟩ => ⟨n, a, c.filterMap λ
     | .Element e => .some <| .Element <| removeEmptyDeep e
-    | .Character str => if str.trim.isEmpty then .none else .some <| .Character str
+    | .Character str => if str.trimAscii.isEmpty then .none else .some <| .Character str
     | .Comment _ => .none
   ⟩
 
-private def Lean.Xml.Content.kind : Content → String
+private def B.Xml.Content.kind : Content → String
   | .Element ⟨n, _, _⟩ => s!"element (tag := {n})"
   | .Comment _ => "comment"
   | .Character _ => "raw text"
@@ -24,7 +24,7 @@ namespace B.POG
 
   variable (vars : IO.Ref Vars)
 
-  private partial def parseType : Lean.Xml.Element → IO Syntax.Typ
+  private partial def parseType : B.Xml.Element → IO Syntax.Typ
     | ⟨"Id", attrs, _⟩ => do
       unless attrs.contains "value" do throwError s!"Missing `value` attribute in type description"
       match attrs.get! "value" ++ attrs.getD "suffix" "" with
@@ -52,7 +52,7 @@ namespace B.POG
       | op => throwError s!"Unrecognized binary operator {op}"
     | ⟨n, _, _⟩ => throwError s!"Unknown type node {n}"
 
-  private def tryParseTypeInfos (nodes : Array Lean.Xml.Content) : IO (Array (Nat × Syntax.Typ)) := do
+  private def tryParseTypeInfos (nodes : Array B.Xml.Content) : IO (Array (Nat × Syntax.Typ)) := do
       let mut types := #[]
       for node in nodes do
         let .Element ⟨"Type", attrs, nodes⟩ := node | throwError s!"Unexpected node kind {node.kind}"
@@ -188,7 +188,7 @@ namespace B.POG
     | "UNION" => panic! "TODO"
     | op => throwError s!"Unrecognized quantifier {op}"
 
-  private def parseAndRegisterId (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO (String × Syntax.Typ)
+  private def parseAndRegisterId (types : Std.HashMap Nat Syntax.Typ) : B.Xml.Element → IO (String × Syntax.Typ)
     | ⟨"Id", attrs, _⟩ => do
       unless attrs.contains "value" do throwError s!"<Id> must contain an attribute `value`"
       unless attrs.contains "typref" do throwError s!"<Id> must contain an attribute `typref`"
@@ -214,7 +214,7 @@ namespace B.POG
     | .pow t => .pow (toTerm t)
     | .prod α β => .cprod (toTerm α) (toTerm β)
 
-  private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : Lean.Xml.Element → IO Syntax.Term
+  private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : B.Xml.Element → IO Syntax.Term
     | node@⟨"Id", attrs, _⟩ => (.var ∘ Prod.fst) <$> parseAndRegisterId vars types node
     | ⟨"Integer_Literal", attrs, _⟩ => do
       unless attrs.contains "value" do throwError s!"<Integer_Literal> must contain an attribute `value`"
@@ -383,7 +383,7 @@ namespace B.POG
     | "imext" => return .some .imext
     | ty => throwError s!"Unrecognized definition type {ty}"
 
-  private def parseDefine (types : Std.HashMap Nat Syntax.Typ) (nodes : Array Lean.Xml.Element) : (name : Schema.DefineType) → IO (Schema.Define name)
+  private def parseDefine (types : Std.HashMap Nat Syntax.Typ) (nodes : Array B.Xml.Element) : (name : Schema.DefineType) → IO (Schema.Define name)
     | .ctx => Function.uncurry .ctx <$> parseSetsAndTerms nodes
     | .seext => .seext <$> do
       let (terms, nodes) ← parseTerms nodes
@@ -427,7 +427,7 @@ namespace B.POG
       unless nodes.size = 0 do throwError s!"There must not be sets in `imext` definition"
       return terms
   where
-    parseSet : Lean.Xml.Element → IO Schema.Set
+    parseSet : B.Xml.Element → IO Schema.Set
       | ⟨"Set", _, nodes⟩ => do
         unless nodes.size >= 1 do throwError s!"<Set> must contain at least one child node"
         let .Element node@⟨"Id", attrs, _⟩ := nodes[0]! | throwError s!"First child node of <Set> must be a <Id>"
@@ -451,7 +451,7 @@ namespace B.POG
         return { name, values }
       | ⟨tag, _, _⟩ => throwError s!"Unrecognized tag {tag}"
 
-    parseSets (nodes : Array Lean.Xml.Element) : IO (Array Schema.Set × Array Lean.Xml.Element) := do
+    parseSets (nodes : Array B.Xml.Element) : IO (Array Schema.Set × Array B.Xml.Element) := do
       let mut sets := #[]
       let mut i := 0
       while _h : i < nodes.size do
@@ -462,7 +462,7 @@ namespace B.POG
           break
       return (sets, nodes[i:])
 
-    parseTerms (nodes : Array Lean.Xml.Element) : IO (Array Syntax.Term × Array Lean.Xml.Element) := do
+    parseTerms (nodes : Array B.Xml.Element) : IO (Array Syntax.Term × Array B.Xml.Element) := do
       let mut terms := #[]
       let mut i := 0
       while _h : i < nodes.size do
@@ -474,13 +474,13 @@ namespace B.POG
           break
       return (terms, nodes[i:])
 
-    parseSetsAndTerms (nodes : Array Lean.Xml.Element) : IO (Array Schema.Set × Array Syntax.Term) := do
+    parseSetsAndTerms (nodes : Array B.Xml.Element) : IO (Array Schema.Set × Array Syntax.Term) := do
       let (sets, nodes) ← parseSets nodes
       let (terms, nodes) ← parseTerms nodes
       unless nodes.size = 0 do throwError s!"Some nodes, which are not sets nor terms, remain"
       return (sets, terms)
 
-  private def parseSimpleGoal (nodes : Array Lean.Xml.Element) (types : Std.HashMap Nat Syntax.Typ) :
+  private def parseSimpleGoal (nodes : Array B.Xml.Element) (types : Std.HashMap Nat Syntax.Typ) :
       IO Schema.SimpleGoal := do
     let mut name := ""
     let mut refHyps := #[]
@@ -504,7 +504,7 @@ namespace B.POG
 
     return { name, refHyps, goal }
 
-  private def parseObligation (nodes : Array Lean.Xml.Element) (types : Std.HashMap Nat Syntax.Typ) :
+  private def parseObligation (nodes : Array B.Xml.Element) (types : Std.HashMap Nat Syntax.Typ) :
       IO Schema.ProofObligation := do
     let mut obligation : Schema.ProofObligation := ∅
     for ⟨name, attrs, nodes⟩ in nodes do
@@ -538,10 +538,10 @@ namespace B.POG
       | _ => throwError s!"Unexpected tag {name} in <Proof_Obligation>"
     return obligation
 
-  private def parseProofObligations : Lean.Xml.Element → IO Schema.ProofObligations
+  private def parseProofObligations : B.Xml.Element → IO Schema.ProofObligations
     | ⟨"Proof_Obligations", _, nodes⟩ => do
-      let mut defines' : Array Lean.Xml.Element := #[]
-      let mut obligations' : Array Lean.Xml.Element := #[]
+      let mut defines' : Array B.Xml.Element := #[]
+      let mut obligations' : Array B.Xml.Element := #[]
 
       -- First, try to parse all type infos
       let mut typeInfos := Std.HashMap.emptyWithCapacity
@@ -589,7 +589,7 @@ namespace B.POG
   def parse' (content : String) : IO Schema.ProofObligations := do
     let vars ← IO.mkRef ⟨∅, ∅⟩
 
-    IO.ofExcept (Lean.Xml.parse content)
+    IO.ofExcept (B.Xml.parse content)
       >>= parseProofObligations vars ∘ removeEmptyDeep
 
   omit vars in
