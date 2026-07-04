@@ -416,6 +416,11 @@ namespace B.Builtins
         let h : TSyntax ``binderIdent := ⟨h.raw[0]⟩
         `({ ($tup, $y:ident) | ($h : $P) ∧' $y:ident = $F })
 
+    private partial def unexpandLambda.getVars : TSyntax `term → Option (Array (TSyntax `ident))
+      | `(term| $x:ident) => .some #[x]
+      | `(term| ($t:term, $x:ident)) => unexpandLambda.getVars t |>.map (·.push x)
+      | _ => none
+
     @[app_unexpander setOf] meta def unexpandLambda : Lean.PrettyPrinter.Unexpander
       | `($_ fun $z₁:ident => match $z₂:ident with | ($tup, $y₁:ident) => $P:term ∧' $y₂:ident = $F:term) => do
         go z₁ z₂ y₁ y₂ tup .none P F
@@ -423,14 +428,9 @@ namespace B.Builtins
         go z₁ z₂ y₁ y₂ tup (.some h) P F
       | _ => throw ()
     where
-      getVars : TSyntax `term → Option (Array (TSyntax `ident))
-        | `(term| $x:ident) => .some #[x]
-        | `(term| ($t:term, $x:ident)) => getVars t |>.map (·.push x)
-        | _ => throw ()
-
       go z₁ z₂ y₁ y₂ tup (h : Option (TSyntax ``binderIdent)) P F := do
         if z₁ == z₂ && y₁ == y₂ then
-          if let .some vars := getVars tup then
+          if let .some vars := unexpandLambda.getVars tup then
             match h with
             | .none => `(𝜆 ($vars,*) • ($P:term | $F))
             | .some h => `(𝜆 ($vars,*) • ($h : $P:term | $F))

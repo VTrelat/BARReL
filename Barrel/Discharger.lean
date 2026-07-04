@@ -67,7 +67,7 @@ private def findWD (canon : Expr) (seen : SeenWDs) : TermElabM (Option Name) := 
   return .none
 
 private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandElabM ParserResult := do
-  let atelierBDir := System.FilePath.mk <| (← getOptions).getString `barrel.atelierb
+  let atelierBDir := System.FilePath.mk <| barrel.atelierb.get (← getOptions)
 
   let mchName := nameOf mchPath
 
@@ -76,7 +76,7 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
     cmd := (atelierBDir/"bin"/"bxml").toString
     args := #["-I", dir.toString, "-a", mchPath.toString]
   }
-  let cacheDir := (← getOptions).getString `barrel.cache_dir
+  let cacheDir := barrel.cache_dir.get (← getOptions)
   let tmp ← do
     if cacheDir.isEmpty then
       IO.FS.createDirAll (dir/".barrel")

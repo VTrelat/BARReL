@@ -9,34 +9,17 @@ import refinement MinSearch_r1 from "specs/case_study"
 import refinement MinSearch_r2 from "specs/case_study"
 
 prove_obligations_of MinSearch
-next -- Initialisation_1: xx = min {xx}
-  intros
-  rw [min.of_singleton]
 next -- Operation_step_2: done ∪ add ∈ FIN₁ SS
   intros
   exact FIN₁.of_union ‹_› (FIN₁.mono Set.diff_subset ‹_›)
-next -- Operation_step_3: min (done ∪ add) ∈ SS
-  introv
-  have : done ∪ add ⊆ SS := by grind
-  generalize_proofs min_wd
-  grind
 
 prove_obligations_of MinSearch_r1
-next -- Initialisation_1: xx = min {xx}
-  intros
-  rw [min.of_singleton]
 next -- Operation_step_3: done1 ∪ {xx} ∈ FIN₁ SS
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   grind
-next -- Operation_step_5: xx = min (done1 ∪ {xx})
-  intros
-  expose_names
-  subst_eqs
-  simp only [Set.union_singleton]
-  rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
 next -- Operation_step_6: ∃ add, … ∧' min (done ∪ add) = xx
   intros
   expose_names
