@@ -20,6 +20,13 @@ private structure ParserResult where
 private def nameOf (mchPath : System.FilePath) : String :=
   mchPath.fileStem.get!
 
+/-- Operation-group name for a POG goal, used to cluster the per-obligation map cells: the
+    part before `_step_` (e.g. `Operation_step_6` ↦ `Operation`), else the whole name. -/
+private def deriveOp (name : String) : String :=
+  match name.splitOn "_step_" with
+  | x :: _ :: _ => x
+  | _ => name
+
 private def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Option System.FilePath := .none) : CommandElabM ParserResult := do
   let pog : String ← IO.FS.readFile pogPath
   let goals ← B.POG.extractGoals <$> B.POG.parse' pog
@@ -136,6 +143,12 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   let mut skipped := 0
   let mut dedups := 0
 
+  -- Per-obligation map for the progress card: one `{d, n, op, st, line, char}` entry per
+  -- subgoal, filled as each is auto-discharged or left pending. `nsPrefix` trims the
+  -- namespace/machine prefix off declNames for a compact cell label.
+  let nsPrefix := (ns.str name).toString ++ "."
+  let mut obligations : Array Json := #[]
+
   if progress then
     -- Evict any stale `importing` card left by a previous elaboration (e.g. the user changed
     -- the imported file before its import finished), then post this import's fresh card.
@@ -192,6 +205,7 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
         continue
     seenWDs := seen
     dedups := dedups + (rawWDs - wds'.size)
+    let opName := deriveOp g.name
 
     nbGoals := nbGoals + wds'.size
     let try_discharge := wds'.push (declName, reason, g', false)
@@ -245,6 +259,17 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
         let goal := (declName, reason, g)
         if isWd then wds := wds.push goal else res := res.push goal
 
+      -- Record this subgoal's cell: green (auto), yellow (auto-sorry) or neutral (pending,
+      -- to be filled by `prove_obligations_of`). Matched back by `d` (the declName) at replay.
+      let dnStr := declName.toString
+      let short := if dnStr.startsWith nsPrefix then (dnStr.drop nsPrefix.length).toString else dnStr
+      let stStr := match gOrWd with
+        | .inl hadSorry => if hadSorry then "sorry" else "auto"
+        | .inr _ => "pending"
+      obligations := obligations.push <| Json.mkObj [
+        ("d", .str dnStr), ("n", .str short),
+        ("op", .str opName), ("st", .str stStr), ("line", .null), ("char", .null)]
+
       if progress then
         let elapsed := (← IO.monoMsNow) - t0
         Barrel.Progress.report name nbGoals (i + 1) nbPOs autoProven autoSorried true elapsed
@@ -269,6 +294,7 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   if progress then
     Barrel.Progress.report name nbGoals nbPOs nbPOs autoProven autoSorried false dt
       (summary := Json.arr <| rows.map λ (l, v) ↦ Json.arr #[.str l, .str v])
+      (obligations := obligations)
 
   if skipped > 0 then
     logWarning s!"Skipped {skipped} proof obligation{if skipped = 1 then "" else "s"} that could not be encoded."
@@ -306,6 +332,8 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
   let mut userSorried := 0
   let mut proofs_missing := 0
   let mut i := 0
+  -- For turning each `next` token's position into 0-indexed LSP line/character (cell jump).
+  let fileMap ← getFileMap
 
   -- Reset this card's proof bar to the auto-discharge baseline before replaying, so removing
   -- `next`s (or providing fewer than before) drops those goals back to "missing" rather than
@@ -318,6 +346,11 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
       if let `(discharger_command| next%$tk $tac:tacticSeq) := step then
         if (← getOptions).getBool `barrel.show_goal_names true then
           logInfoAt tk m!"{declName}: {r_reason}"
+
+        -- Source position of this `next` (0-indexed LSP coords) for the cell's click-to-jump.
+        let (jLine, jChar) := match tk.getPos? with
+          | some p => let q := fileMap.toPosition p; (q.line - 1, q.column)
+          | none => (0, 0)
 
         -- Fresh heartbeat budget per obligation, so one expensive user proof does not eat into
         -- the budget of the ones replayed after it. Any *thrown* error — a failing tactic,
@@ -359,11 +392,16 @@ private def obligations2theorems (name : String) (steps : TSyntaxArray `discharg
             throw ex)
         if hadSorry then userSorried := userSorried + 1 else userProven := userProven + 1
         if progress then
+          Barrel.Progress.reportObligation name declName.toString
+            (if hadSorry then "sorry" else "hand") jLine jChar
           Barrel.Progress.reportProof name (autoProven + userProven) (autoSorried + userSorried)
     else
       proofs_missing := proofs_missing + 1
 
     i := i + 1
+
+  -- Replay done: clear the active flag so the card re-collapses (unless the user opened it).
+  if progress then Barrel.Progress.reportActive name false
 
   -- A `next` whose proof fails usually *logs* an error and recovers with `sorry` rather than
   -- throwing, so consult the command's message log too: any error here means the card is red.
