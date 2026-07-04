@@ -3,13 +3,19 @@
  *
  * A global panel widget (registered in Barrel/Progress.lean): polls
  * `Barrel.Progress.get` every 300 ms and stacks one collapsible card per
- * imported machine inside a foldable "Progress" pane (like the infoview's own
- * "Tactic state" / "All Messages"). Each card's bar is layered: a light-blue fill
- * grows with import progress and stays full once imported, then green (proven) +
- * yellow (sorried) segments sit on top — which `prove_obligations_of` keeps filling
- * live as each `next` is discharged. Right of the bar: "<proven> / <total>". Renders
- * nothing until an import reports. Open states (pane and each card) live in React
- * state so they survive the poll re-renders.
+ * imported machine inside a foldable "BARReL state" pane (like the infoview's own
+ * "Tactic state" / "All Messages"). Each card's summary bar is *segmented*: a
+ * light-blue import fill underneath, then green (auto-solved) + teal (proved by
+ * hand) + yellow (sorried) on top — so the auto/by-hand split is legible even while
+ * the card is collapsed. Right of the bar: "<proven> / <total>".
+ *
+ * Expanding a card reveals its summary table *and* a per-obligation map: one small
+ * cell per subgoal, grouped by operation, colored by status. The map is only
+ * rendered while its card is open, so a build with many components stays a light
+ * stack of one-line rows. The card being replayed by `prove_obligations_of`
+ * auto-expands (its `active` flag) so you watch cells flip live, then re-collapses
+ * when done. Clicking a cell that has a source position (a replayed `next`) jumps
+ * the editor there via the infoview EditorContext.
  *
  * Plain React.createElement (no JSX, no build step): this file is embedded
  * verbatim into the Lean library with `include_str`.
@@ -18,7 +24,7 @@
  * "widget version" note in Barrel/Progress.lean (or `lake build -f Barrel`).
  */
 import * as React from 'react';
-import { useRpcSession } from '@leanprover/infoview';
+import { useRpcSession, EditorContext } from '@leanprover/infoview';
 
 const BORDER = 'color-mix(in srgb, var(--vscode-foreground, #888) 20%, transparent)';
 const CHECK_SVG = '<svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="var(--vscode-editor-background, #fff)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 6.5 12 13 4"></polyline></svg>';
@@ -26,9 +32,11 @@ const CROSS_SVG = '<svg width="8" height="8" viewBox="0 0 16 16" fill="none" str
 const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 6 8 10 12 6"></polyline></svg>';
 
 const GREEN = 'var(--vscode-testing-iconPassed, #3c3)';
+const TEAL = 'var(--vscode-terminal-ansiCyan, #29b0a6)';
 const YELLOW = 'var(--vscode-charts-yellow, #d7ba00)';
 const RED = 'var(--vscode-testing-iconFailed, #f14c4c)';
 const TRACK_GRAY = 'color-mix(in srgb, var(--vscode-foreground, #888) 12%, transparent)';
+const PENDING = 'color-mix(in srgb, var(--vscode-foreground, #888) 24%, transparent)';
 const IMPORT_BLUE = 'color-mix(in srgb, var(--vscode-progressBar-background, #0078d4) 31%, transparent)';
 
 // Every badge state sits in one fixed square slot, so the row height never changes between
@@ -90,23 +98,27 @@ function StatusIcon({ st }) {
   return React.createElement('span', { style: { ...BADGE, display: 'inline-block', background: BORDER } });
 }
 
-// A layered "double bar": light-gray track underneath; a light-blue layer showing import
-// progress (grows po/nbPOs while importing, stays full once done); and, on top, the green
-// (proven) + yellow (sorried) proof segments. So after import you see green | remaining blue
-// | gray = proven within imported within total.
+// A layered, segmented bar: light-gray track underneath; a light-blue layer showing import
+// progress (grows po/nbPOs while importing, stays full once done); and on top the proof
+// segments green (auto-solved) | teal (proved by hand) | yellow (sorried). `auto` is the
+// green baseline captured at import; teal = proven − auto is what the user has since proved.
 function ProgressBar({ st }) {
   const outer = { flex: 1, position: 'relative', height: 5, borderRadius: 2, overflow: 'hidden' };
   const track = React.createElement('div', { style: { position: 'absolute', inset: 0, background: TRACK_GRAY } });
   const seg = (left, width, color) => React.createElement('div', { style: { position: 'absolute', left: left + '%', top: 0, height: '100%', width: width + '%', background: color } });
   const importPct = st.importing ? (st.nbPOs > 0 ? Math.min(100, Math.round(100 * st.po / st.nbPOs)) : 0) : 100;
   const total = st.total > 0 ? st.total : 1;
-  const g = Math.min(100, Math.round(100 * st.proven / total));
-  const y = Math.min(100 - g, Math.round(100 * st.sorried / total));
+  const auto = st.auto === undefined ? st.proven : st.auto;
+  const hand = Math.max(0, st.proven - auto);
+  const g = Math.min(100, Math.round(100 * auto / total));
+  const t = Math.min(100 - g, Math.round(100 * hand / total));
+  const y = Math.min(100 - g - t, Math.round(100 * st.sorried / total));
   return React.createElement('div', { style: outer },
     track,
     seg(0, importPct, IMPORT_BLUE),
     seg(0, g, GREEN),
-    seg(g, y, YELLOW));
+    seg(g, t, TEAL),
+    seg(g + t, y, YELLOW));
 }
 
 function StatRow({ label, value, divider = true }) {
@@ -115,7 +127,41 @@ function StatRow({ label, value, divider = true }) {
     React.createElement('span', null, value));
 }
 
-function Row({ st, open, onToggle }) {
+const CELL_COLOR = { auto: GREEN, hand: TEAL, sorry: YELLOW, pending: PENDING };
+const CELL_LABEL = { auto: 'auto-solved', hand: 'proved by hand', sorry: 'sorried', pending: 'pending' };
+
+// The per-obligation map: one cell per subgoal, grouped by operation, colored by status.
+// Rendered only while its card is open (see Row), so collapsed cards cost nothing. A cell
+// that carries a source position (a replayed `next`) jumps the editor there on click.
+function ObligationMap({ obs, pos, ec }) {
+  if (!Array.isArray(obs) || obs.length === 0) return null;
+  const order = [];
+  const groups = {};
+  for (const o of obs) {
+    const k = o.op || '';
+    if (!(k in groups)) { groups[k] = []; order.push(k); }
+    groups[k].push(o);
+  }
+  return React.createElement('div', { style: { padding: '4px 2px 2px' } },
+    order.map(k => React.createElement('div', { key: k, style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, marginTop: 5 } },
+      React.createElement('span', { style: { fontSize: 11, opacity: 0.55, fontFamily: 'var(--vscode-editor-font-family, monospace)', marginRight: 6, minWidth: 66, flexShrink: 0 } }, k),
+      groups[k].map((o, idx) => {
+        const jumpable = o.line !== null && o.line !== undefined && !!pos && !!ec;
+        return React.createElement('span', {
+          key: idx,
+          title: o.n + ' — ' + (CELL_LABEL[o.st] || o.st),
+          onClick: jumpable ? () => { ec.revealPosition({ uri: pos.uri, line: o.line, character: o.char || 0 }); } : undefined,
+          style: {
+            width: 13, height: 13, borderRadius: 3, boxSizing: 'border-box',
+            background: CELL_COLOR[o.st] || PENDING,
+            cursor: jumpable ? 'pointer' : 'default'
+          }
+        });
+      })
+    )));
+}
+
+function Row({ st, open, onToggle, pos, ec }) {
   // Right of the bar: proof state "<proven> / <total>", same font/size as the machine name.
   const meta = st.proven + ' / ' + st.total;
 
@@ -130,6 +176,17 @@ function Row({ st, open, onToggle }) {
     ];
   }
 
+  // Expanded content: sit the per-obligation map on the left (~60%) and the stat table on the
+  // right (~33%) side by side, so the stats no longer stack under the map and the card is
+  // shorter. Wraps to stacked on a narrow infoview, and stays stacked when there's no map yet
+  // (during import). The live goal keeps its own native pane above — not re-rendered here.
+  const hasMap = Array.isArray(st.obligations) && st.obligations.length > 0;
+  const body = hasMap
+    ? React.createElement('div', { style: { padding: '2px 14px 8px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' } },
+        React.createElement('div', { style: { flex: '3 1 150px', minWidth: 150, order: 0 } }, React.createElement(ObligationMap, { obs: st.obligations, pos, ec })),
+        React.createElement('div', { style: { flex: '1 1 150px', minWidth: 150, maxWidth: 280, order: 1 } }, detail))
+    : React.createElement('div', { style: { padding: '2px 14px 8px' } }, detail);
+
   return React.createElement('div', { style: { border: '2px solid ' + BORDER, borderRadius: 6, overflow: 'hidden' } },
     React.createElement('div', {
       onClick: () => onToggle(st.machine),
@@ -143,12 +200,19 @@ function Row({ st, open, onToggle }) {
         style: { display: 'inline-flex', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' },
         dangerouslySetInnerHTML: { __html: CHEVRON_SVG }
       })),
-    open ? React.createElement('div', { style: { borderTop: '1px solid ' + BORDER } },
-      React.createElement('div', { style: { padding: '2px 14px 6px' } }, detail)) : null);
+    open ? React.createElement('div', { style: { borderTop: '1px solid ' + BORDER } }, body) : null);
 }
 
-export default function (_props) {
+function LegendItem({ color, label }) {
+  return React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, opacity: 0.7 } },
+    React.createElement('span', { style: { width: 10, height: 10, borderRadius: 3, background: color, display: 'inline-block' } }),
+    label);
+}
+
+export default function (props) {
   const rs = useRpcSession();
+  const ec = React.useContext(EditorContext);
+  const pos = props && props.pos;
   const [sts, setSts] = React.useState([]);
   const [openMap, setOpen] = React.useState({});
   const [paneOpen, setPaneOpen] = React.useState(true);
@@ -163,23 +227,39 @@ export default function (_props) {
     return () => { live = false; clearInterval(id); };
   }, [rs]);
 
-  // Global panel: stack every reported card inside a foldable "Progress" pane (like the
-  // infoview's own "Tactic state" / "All Messages"). Renders nothing until an import reports,
-  // so an idle panel is invisible. Park the cursor on any already-elaborated line (e.g. the
-  // file header) to watch imports fill in live.
+  // Global panel: stack every reported card inside a foldable "BARReL state" pane. Renders
+  // nothing until an import reports, so an idle panel is invisible. Park the cursor on any
+  // already-elaborated line (e.g. the file header) to watch imports fill in live.
   if (!sts || sts.length === 0) return null;
 
-  const cards = sts.map((st, i) => React.createElement('div', { key: st.machine, style: { marginBottom: i < sts.length - 1 ? 10 : 0 } },
-    React.createElement(Row, {
-      st,
-      open: !!openMap[st.machine],
-      onToggle: m => setOpen(o => ({ ...o, [m]: !o[m] }))
-    })));
+  // A card auto-expands while it is `active` (being replayed by `prove_obligations_of`),
+  // unless the user has explicitly toggled it — then their choice wins.
+  const isOpen = st => Object.prototype.hasOwnProperty.call(openMap, st.machine) ? openMap[st.machine] : !!st.active;
 
+  const cards = sts.map((st, i) => {
+    const open = isOpen(st);
+    return React.createElement('div', { key: st.machine, style: { marginBottom: i < sts.length - 1 ? 10 : 0 } },
+      React.createElement(Row, {
+        st, open, pos, ec,
+        onToggle: m => setOpen(o => ({ ...o, [m]: !open }))
+      }));
+  });
+
+  const legend = React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 12, padding: '2px 4px 8px' } },
+    React.createElement(LegendItem, { color: GREEN, label: 'auto-solved' }),
+    React.createElement(LegendItem, { color: TEAL, label: 'by hand' }),
+    React.createElement(LegendItem, { color: YELLOW, label: 'sorried' }),
+    React.createElement(LegendItem, { color: PENDING, label: 'pending' }));
+
+  // The panel renders below "Tactic state" in the same infoview column, so cap the card
+  // stack at a fraction of the viewport with its own scrollbar: the live goal above it stays
+  // in view no matter how many components are imported or how many maps are expanded.
   return React.createElement(React.Fragment, null,
     React.createElement('style', null, '@keyframes barrel-bob{0%,100%{transform:translateY(-1.5px)}50%{transform:translateY(1.5px)}}'),
     React.createElement('details',
       { open: paneOpen, onToggle: e => setPaneOpen(e.currentTarget.open) },
       React.createElement('summary', { className: 'mv2 pointer non-selectable' }, 'BARReL state'),
-      React.createElement('div', { style: { padding: '4px 10px' } }, cards)));
+      React.createElement('div', { style: { padding: '4px 10px' } },
+        legend,
+        React.createElement('div', { style: { maxHeight: '48vh', overflowY: 'auto', overflowX: 'hidden' } }, cards))));
 }

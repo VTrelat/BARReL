@@ -50,18 +50,30 @@ private def findMachine? (arr : Array Json) (machine : String) : Option Nat :=
   to the `proven` / `sorried` / missing breakdown, which `reportProof` keeps updating.
 -/
 def report (machine : String) (total po nbPOs proven sorried : Nat)
-    (importing : Bool) (elapsedMs : Nat) (summary : Json := .null) : BaseIO Unit := do
+    (importing : Bool) (elapsedMs : Nat) (summary : Json := .null)
+    (obligations : Array Json := #[]) : BaseIO Unit := do
   let entry := Json.mkObj [
     ("machine", .str machine),
     ("total", toJson total),
     ("po", toJson po),
     ("nbPOs", toJson nbPOs),
     ("proven", toJson proven),
+    -- Green baseline captured at import: `proven` is auto-only during the import phase, so
+    -- `auto = proven` here; the replay bumps `proven` past `auto` and the gap is the
+    -- by-hand (teal) part. Lets the card split auto-solved from user-proved.
+    ("auto", toJson proven),
     ("sorried", toJson sorried),
     ("importing", toJson importing),
     ("errored", toJson false),
+    -- `true` while `prove_obligations_of` is replaying this card, so the widget can
+    -- auto-expand the card under active work and re-collapse it when done.
+    ("active", toJson false),
     ("elapsedMs", toJson elapsedMs),
-    ("summary", summary)
+    ("summary", summary),
+    -- One entry per subgoal `{d, n, op, st, line, char}`: declName, short label, operation
+    -- group, status (auto|sorry|hand|pending), and the source position of its `next` (once
+    -- known) for click-to-jump. Populated in the final import report.
+    ("obligations", Json.arr obligations)
   ]
   state.modify fun arr =>
     match findMachine? arr machine with
@@ -79,7 +91,7 @@ def reportProof (machine : String) (proven sorried : Nat) : BaseIO Unit :=
     match findMachine? arr machine with
     | some idx =>
       let c := (arr[idx]!).setObjVal! "proven" (toJson proven) |>.setObjVal! "sorried" (toJson sorried)
-        |>.setObjVal! "errored" (toJson false)
+        |>.setObjVal! "errored" (toJson false) |>.setObjVal! "active" (toJson true)
       arr.set! idx c
     | none => arr
 
@@ -91,7 +103,34 @@ def reportProof (machine : String) (proven sorried : Nat) : BaseIO Unit :=
 def reportError (machine : String) : BaseIO Unit :=
   state.modify fun arr =>
     match findMachine? arr machine with
-    | some idx => arr.set! idx ((arr[idx]!).setObjVal! "errored" (toJson true))
+    | some idx => arr.set! idx (((arr[idx]!).setObjVal! "errored" (toJson true)).setObjVal! "active" (toJson false))
+    | none => arr
+
+/--
+  Flip a single obligation cell in a machine's per-obligation map — used by
+  `prove_obligations_of` to turn a `pending` leftover into `hand` (proved) or `sorry` as each
+  `next` is replayed, and to record the source position (`line`/`char`, 0-indexed LSP coords)
+  of that `next` for click-to-jump. Also marks the card `active`. No-op if the card, or an
+  obligation with this `decl`, is absent.
+-/
+def reportObligation (machine decl st : String) (line char : Nat) : BaseIO Unit :=
+  state.modify fun arr =>
+    match findMachine? arr machine with
+    | some idx =>
+      let c := arr[idx]!
+      let obs : Array Json := (c.getObjValAs? (Array Json) "obligations").toOption.getD #[]
+      let obs := obs.map fun (o : Json) =>
+        if (o.getObjValAs? String "d").toOption == some decl then
+          o.setObjVal! "st" (.str st) |>.setObjVal! "line" (toJson line) |>.setObjVal! "char" (toJson char)
+        else o
+      arr.set! idx ((c.setObjVal! "obligations" (Json.arr obs)).setObjVal! "active" (toJson true))
+    | none => arr
+
+/-- Set a card's `active` flag (whether `prove_obligations_of` is currently replaying it). -/
+def reportActive (machine : String) (active : Bool) : BaseIO Unit :=
+  state.modify fun arr =>
+    match findMachine? arr machine with
+    | some idx => arr.set! idx ((arr[idx]!).setObjVal! "active" (toJson active))
     | none => arr
 
 /--
@@ -130,7 +169,7 @@ def get (_ : Json) : RequestM (RequestTask Json) := do
 -- enough to force a rebuild after editing the JS — the hash of this file's own text is
 -- unchanged, so Lake (correctly, by its own accounting) skips recompilation. Make a real
 -- edit here (e.g. bump the version note below) after touching the JS, or `lake clean`.
--- widget version: 23
+-- widget version: 29
 @[widget_module]
 def monitorWidget : Widget.Module where
   javascript := include_str ".." / "widget" / "barrelMonitor.js"
