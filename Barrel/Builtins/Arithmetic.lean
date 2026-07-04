@@ -4,6 +4,7 @@ import Barrel.Builtins.Function
 import Barrel.Builtins.Relation
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Finite.Basic
+import Mathlib.Data.Set.Card
 import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Data.Int.Interval
@@ -664,13 +665,23 @@ namespace B.Builtins
 
     @[grind ., wd_card]
     theorem card.WD_of_sdiff {α : Type _} {S T : Set α} (hS : card.WD S) : card.WD (S \ T) where
-      isFinite := Set.Finite.diff hS.isFinite
+      isFinite := Set.Finite.sdiff hS.isFinite
 
     @[simp]
     theorem card.of_sdiff {α : Type _} {S T : Set α} (hS : card.WD S) :
         card (S \ T) (card.WD_of_sdiff hS) =
           card S hS - card (S ∩ T) (WD_of_inter (Or.inl hS)) := by
-      admit
+      simp only [card]
+      rw [← Set.ncard_eq_toFinset_card', ← Set.ncard_eq_toFinset_card',
+        ← Set.ncard_eq_toFinset_card']
+      have hSfin : S.Finite := hS.isFinite
+      have key : ((S \ T) ∪ (S ∩ T)) = S := by
+        ext x; simp only [Set.mem_union, Set.mem_sdiff, Set.mem_inter_iff]; tauto
+      have hdisj : Disjoint (S \ T) (S ∩ T) := by
+        rw [Set.disjoint_left]; rintro x ⟨_, hxT⟩ ⟨_, hxT'⟩; exact hxT hxT'
+      have hu := Set.ncard_union_eq hdisj hSfin.sdiff (hSfin.inter_of_left _)
+      rw [key] at hu
+      omega
 
     @[simp]
     theorem card.of_diff_singleton {α : Type _} {S : Set α} (a : α) (hS : card.WD S) :
@@ -716,7 +727,7 @@ namespace B.Builtins
           exact hxmin ⟨y, hy⟩
 
         have m_def := min.mem wd
-        simp only [Set.mem_inter_iff, Set.mem_diff, Set.mem_univ, Set.mem_setOf_eq, not_le,
+        simp only [Set.mem_inter_iff, Set.mem_sdiff, Set.mem_univ, Set.mem_setOf_eq, not_le,
           true_and] at m_def
         set m := min (S ∩ (INTEGER \ NATURAL)) wd
         refine ⟨m, m_def.1, ?_⟩
@@ -725,7 +736,7 @@ namespace B.Builtins
         · apply min.def wd y ⟨hy, trivial, ?_⟩
           rwa [Set.mem_setOf_eq, not_le]
         · exact le_trans (Int.le_of_lt m_def.right) ge_zero
-      · simp only [Set.nonempty_def, not_exists, Set.mem_inter_iff, Set.mem_diff, Set.mem_univ,
+      · simp only [Set.nonempty_def, not_exists, Set.mem_inter_iff, Set.mem_sdiff, Set.mem_univ,
           Set.mem_setOf_eq, not_le, true_and, not_and, not_lt] at hNemp
         obtain ⟨a, haS⟩ := Set.nonempty_iff_ne_empty.2 S_nemp
         have ha0 := hNemp a haS
