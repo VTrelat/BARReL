@@ -11,7 +11,7 @@ import refinement MinSearch_r2 from "specs/case_study"
 prove_obligations_of MinSearch
 next -- Operation_step_2: done ∪ add ∈ FIN₁ SS
   intros
-  exact FIN₁.of_union ‹_› (FIN₁.mono Set.diff_subset ‹_›)
+  exact FIN₁.of_union ‹_› (FIN₁.mono Set.sdiff_subset ‹_›)
 
 prove_obligations_of MinSearch_r1
 next -- Operation_step_3: done1 ∪ {xx} ∈ FIN₁ SS
@@ -129,7 +129,7 @@ next
   subst_eqs
   exists tab(ii1+1)'(app.WD_of_mem_tfun h_4.2 ⟨Int.le_add_one h_12.1, h_18⟩)
   use ?_, ?_, ?_
-  · simp only [Set.mem_diff, Set.mem_setOf_eq, SetRel.mem_image, Set.mem_Icc, not_exists, not_and,
+  · simp only [Set.mem_sdiff, Set.mem_setOf_eq, SetRel.mem_image, Set.mem_Icc, not_exists, not_and,
     and_imp]
     and_intros
     · exact ⟨ii1 + 1, app.pair_app_mem⟩
