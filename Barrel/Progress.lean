@@ -142,6 +142,35 @@ def reportActive (machine : String) (active : Bool) : BaseIO Unit :=
 def dropImporting : BaseIO Unit :=
   state.modify (·.filter fun j ↦ (j.getObjValAs? Bool "importing").toOption != some true)
 
+/--
+  Read-time reconciliation of a settled card against the environment. Removing a `next` (or the
+  whole `prove_obligations_of`) leaves the `import` above it cached, so nothing re-runs to reset
+  the card — yet the discharged theorems vanish from the environment. So for a card that is
+  neither importing nor being actively replayed, any obligation whose theorem is now absent
+  reverts to `pending` (clearing its jump position), and `auto`/`proven`/`sorried` are recomputed
+  from the reconciled cells. Auto-solved cells are unaffected: their theorems live in the (still
+  cached) import. Skipped while `active`, where the in-flight decls aren't in a finished snapshot
+  yet and the live `IO.Ref` reports are authoritative.
+-/
+private def reconcileCard (env : Environment) (c : Json) : Json :=
+  let importing := (c.getObjValAs? Bool "importing").toOption.getD false
+  let active := (c.getObjValAs? Bool "active").toOption.getD false
+  if importing || active then c else
+    let obs : Array Json := (c.getObjValAs? (Array Json) "obligations").toOption.getD #[]
+    if obs.isEmpty then c else
+      let obs := obs.map fun (o : Json) =>
+        let d := (o.getObjValAs? String "d").toOption.getD ""
+        if (env.find? d.toName).isSome then o
+        else o.setObjVal! "st" (.str "pending") |>.setObjVal! "line" Json.null |>.setObjVal! "char" Json.null
+      let cnt := fun (s : String) => obs.foldl (fun n o => if (o.getObjValAs? String "st").toOption == some s then n + 1 else n) 0
+      let autoN := cnt "auto"
+      let handN := cnt "hand"
+      let sorriedN := cnt "sorry"
+      c.setObjVal! "obligations" (Json.arr obs)
+        |>.setObjVal! "auto" (toJson autoN)
+        |>.setObjVal! "proven" (toJson (autoN + handN))
+        |>.setObjVal! "sorried" (toJson sorriedN)
+
 @[server_rpc_method]
 def get (_ : Json) : RequestM (RequestTask Json) := do
   let doc ← RequestM.readDoc
@@ -150,8 +179,9 @@ def get (_ : Json) : RequestM (RequestTask Json) := do
     -- `nameFromPath` env extension when its import finishes. Reading it from the latest
     -- finished snapshot lets us drop cards for imports the user has since removed or changed.
     let (snaps, _, _) ← doc.cmdSnaps.getFinishedPrefix
+    let lastSnap := snaps.getLast?
     let current : List String :=
-      match snaps.getLast? with
+      match lastSnap with
       | some snap => (nameFromPath.getState snap.env).toList.map Prod.fst
       | none      => []
     let cards ← state.get
@@ -162,14 +192,64 @@ def get (_ : Json) : RequestM (RequestTask Json) := do
       (match (c.getObjValAs? String "machine").toOption with
        | some m => current.contains m
        | none   => true)
+    -- Self-heal settled cards whose leftovers had their proofs removed (see `reconcileCard`).
+    let visible := match lastSnap with
+      | some snap => visible.map (reconcileCard snap.env)
+      | none      => visible
     return Json.arr visible
+
+/--
+  Build a `prove_obligations_of` skeleton for a machine: the command header followed by one
+  `next -- <name>: <reason>` / `sorry` pair per outstanding leftover, in the exact order
+  `prove_obligations_of` consumes them (the `cache` order — WD leftovers first, then main
+  goals), which is *not* the map's display order. Returns `{ text, line, char }`: the skeleton
+  and a deterministic end-of-file insertion point (0-indexed LSP coords) so the widget's button
+  never depends on where the editor cursor happens to be. `text` is `""` when there are no
+  recorded leftovers.
+-/
+@[server_rpc_method]
+def skeleton (params : Json) : RequestM (RequestTask Json) := do
+  let doc ← RequestM.readDoc
+  RequestM.asTask do
+    let machine := (params.getObjValAs? String "machine").toOption.getD ""
+    let (snaps, _, _) ← doc.cmdSnaps.getFinishedPrefix
+    let text : String :=
+      match snaps.getLast? with
+      | none => ""
+      | some snap =>
+        match nameFromPath.getState snap.env |>.find? machine with
+        | none => ""
+        | some path =>
+          match cache.getState snap.env |>.find? path with
+          | none => ""
+          | some goals => Id.run do
+            -- Render the machine name as a valid identifier token: a digit-leading or otherwise
+            -- non-identifier name (e.g. a numeric POG name `00004`) must be guillemet-escaped as
+            -- `«00004»`, or the generated `prove_obligations_of «00004»` would not parse. The same
+            -- escaped prefix strips the declName down to its short label for the comment.
+            let mchIdent := (Name.mkSimple machine).toString
+            let mut lines := #[s!"prove_obligations_of {mchIdent}"]
+            for (declName, reason, _) in goals do
+              let dn := declName.toString
+              let short := (dn.splitOn (mchIdent ++ ".")).getLastD dn
+              let reason := reason.replace "\n" " "
+              lines := lines.push s!"next -- {short}: {reason}"
+              lines := lines.push "  sorry"
+            return "\n".intercalate lines.toList
+    -- Deterministic insertion point: end of file (0-indexed LSP coords).
+    let fm := doc.meta.text
+    let eof := fm.toPosition ⟨fm.source.utf8ByteSize⟩
+    return Json.mkObj [
+      ("text", .str text),
+      ("line", toJson (eof.line - 1)),
+      ("char", toJson eof.column)]
 
 -- `include_str` reads `widget/barrelMonitor.js` at *this file's* elaboration time. Lake's
 -- incremental build traces content hashes, not mtimes, so `touch`ing this file is *not*
 -- enough to force a rebuild after editing the JS — the hash of this file's own text is
 -- unchanged, so Lake (correctly, by its own accounting) skips recompilation. Make a real
 -- edit here (e.g. bump the version note below) after touching the JS, or `lake clean`.
--- widget version: 29
+-- widget version: 31
 @[widget_module]
 def monitorWidget : Widget.Module where
   javascript := include_str ".." / "widget" / "barrelMonitor.js"
