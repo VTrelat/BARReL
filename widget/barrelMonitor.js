@@ -30,6 +30,7 @@ const BORDER = 'color-mix(in srgb, var(--vscode-foreground, #888) 20%, transpare
 const CHECK_SVG = '<svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="var(--vscode-editor-background, #fff)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 6.5 12 13 4"></polyline></svg>';
 const CROSS_SVG = '<svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="var(--vscode-editor-background, #fff)" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>';
 const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 6 8 10 12 6"></polyline></svg>';
+const PLUS_SVG = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"></line><line x1="3" y1="8" x2="13" y2="8"></line></svg>';
 
 const GREEN = 'var(--vscode-testing-iconPassed, #3c3)';
 const TEAL = 'var(--vscode-terminal-ansiCyan, #29b0a6)';
@@ -161,7 +162,37 @@ function ObligationMap({ obs, pos, ec }) {
     )));
 }
 
-function Row({ st, open, onToggle, pos, ec }) {
+// Fetches the correctly-ordered prove_obligations_of skeleton from the server and drops it in
+// at the cursor. Server-side generation guarantees the `next` order matches what the command
+// consumes (cache order), which the display array does not.
+function SkeletonButton({ machine, rs, ec, pos }) {
+  const [busy, setBusy] = React.useState(false);
+  const onClick = e => {
+    e.stopPropagation();
+    if (busy || !ec || !pos) return;
+    setBusy(true);
+    rs.call('Barrel.Progress.skeleton', { machine })
+      .then(r => {
+        // r = { text, line, char }: the server picks a fixed end-of-file insertion point, so
+        // this never depends on (or silently no-ops on) the editor's current cursor.
+        if (!r || !r.text) return;
+        const at = { textDocument: { uri: pos.uri }, position: { line: r.line, character: r.char } };
+        return ec.api.insertText('\n' + r.text + '\n', 'here', at)
+          .then(() => ec.revealPosition({ uri: pos.uri, line: r.line, character: r.char }));
+      })
+      .catch(() => { })
+      .then(() => setBusy(false));
+  };
+  return React.createElement('div', {
+    onClick,
+    title: 'Append a prove_obligations_of skeleton (one sorried next per remaining goal) at the end of the file',
+    style: { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '4px 10px', fontSize: 12, cursor: busy ? 'default' : 'pointer', borderRadius: 4, border: '1px solid ' + BORDER, opacity: busy ? 0.5 : 0.85, userSelect: 'none' }
+  },
+    React.createElement('span', { style: { display: 'inline-flex' }, dangerouslySetInnerHTML: { __html: PLUS_SVG } }),
+    busy ? 'inserting…' : 'proof skeleton');
+}
+
+function Row({ st, open, onToggle, pos, ec, rs }) {
   // Right of the bar: proof state "<proven> / <total>", same font/size as the machine name.
   const meta = st.proven + ' / ' + st.total;
 
@@ -181,10 +212,12 @@ function Row({ st, open, onToggle, pos, ec }) {
   // shorter. Wraps to stacked on a narrow infoview, and stays stacked when there's no map yet
   // (during import). The live goal keeps its own native pane above — not re-rendered here.
   const hasMap = Array.isArray(st.obligations) && st.obligations.length > 0;
+  const pending = hasMap ? st.obligations.filter(o => o.st === 'pending').length : 0;
+  const skelBtn = pending > 0 ? React.createElement(SkeletonButton, { machine: st.machine, rs, ec, pos }) : null;
   const body = hasMap
     ? React.createElement('div', { style: { padding: '2px 14px 8px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' } },
         React.createElement('div', { style: { flex: '3 1 150px', minWidth: 150, order: 0 } }, React.createElement(ObligationMap, { obs: st.obligations, pos, ec })),
-        React.createElement('div', { style: { flex: '1 1 150px', minWidth: 150, maxWidth: 280, order: 1 } }, detail))
+        React.createElement('div', { style: { flex: '1 1 150px', minWidth: 150, maxWidth: 280, order: 1 } }, detail, skelBtn))
     : React.createElement('div', { style: { padding: '2px 14px 8px' } }, detail);
 
   return React.createElement('div', { style: { border: '2px solid ' + BORDER, borderRadius: 6, overflow: 'hidden' } },
@@ -240,7 +273,7 @@ export default function (props) {
     const open = isOpen(st);
     return React.createElement('div', { key: st.machine, style: { marginBottom: i < sts.length - 1 ? 10 : 0 } },
       React.createElement(Row, {
-        st, open, pos, ec,
+        st, open, pos, ec, rs,
         onToggle: m => setOpen(o => ({ ...o, [m]: !open }))
       }));
   });
