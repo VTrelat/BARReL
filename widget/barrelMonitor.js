@@ -12,9 +12,9 @@
  * Expanding a card reveals its summary table *and* a per-obligation map: one small
  * cell per subgoal, grouped by operation, colored by status. The map is only
  * rendered while its card is open, so a build with many components stays a light
- * stack of one-line rows. The card being replayed by `prove_obligations_of`
+ * stack of one-line rows. The card whose obligation is being elaborated
  * auto-expands (its `active` flag) so you watch cells flip live, then re-collapses
- * when done. Clicking a cell that has a source position (a replayed `next`) jumps
+ * when done. Clicking a cell that has a source position (an obligation command) jumps
  * the editor there via the infoview EditorContext.
  *
  * Plain React.createElement (no JSX, no build step): this file is embedded
@@ -84,7 +84,7 @@ function StatusIcon({ st }) {
       dangerouslySetInnerHTML: { __html: CHECK_SVG }
     });
   }
-  // A thrown error (failing proof, missing/extra `next`s) → red cross.
+  // A failing proof or incomplete `qed` → red cross.
   if (st.errored) {
     return React.createElement('span', {
       style: { ...BADGE, display: 'inline-flex', background: RED, alignItems: 'center', justifyContent: 'center' },
@@ -133,7 +133,7 @@ const CELL_LABEL = { auto: 'auto-solved', hand: 'proved by hand', sorry: 'sorrie
 
 // The per-obligation map: one cell per subgoal, grouped by operation, colored by status.
 // Rendered only while its card is open (see Row), so collapsed cards cost nothing. A cell
-// that carries a source position (a replayed `next`) jumps the editor there on click.
+// that carries a source position (an obligation command) jumps the editor there on click.
 function ObligationMap({ obs, pos, ec }) {
   if (!Array.isArray(obs) || obs.length === 0) return null;
   const order = [];
@@ -162,9 +162,8 @@ function ObligationMap({ obs, pos, ec }) {
     )));
 }
 
-// Fetches the correctly-ordered prove_obligations_of skeleton from the server and drops it in
-// at the cursor. Server-side generation guarantees the `next` order matches what the command
-// consumes (cache order), which the display array does not.
+// Append named commands for the pending obligations and a final qed at the end of the file.
+// Names make the scaffold stable when some obligations already have proofs.
 function SkeletonButton({ machine, rs, ec, pos }) {
   const [busy, setBusy] = React.useState(false);
   const onClick = e => {
@@ -185,7 +184,7 @@ function SkeletonButton({ machine, rs, ec, pos }) {
   };
   return React.createElement('div', {
     onClick,
-    title: 'Append a prove_obligations_of skeleton (one sorried next per remaining goal) at the end of the file',
+    title: 'Append named obligation commands with sorry placeholders and a final qed at the end of the file',
     style: { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '4px 10px', fontSize: 12, cursor: busy ? 'default' : 'pointer', borderRadius: 4, border: '1px solid ' + BORDER, opacity: busy ? 0.5 : 0.85, userSelect: 'none' }
   },
     React.createElement('span', { style: { display: 'inline-flex' }, dangerouslySetInnerHTML: { __html: PLUS_SVG } }),
@@ -212,13 +211,12 @@ function Row({ st, open, onToggle, pos, ec, rs }) {
   // shorter. Wraps to stacked on a narrow infoview, and stays stacked when there's no map yet
   // (during import). The live goal keeps its own native pane above — not re-rendered here.
   const hasMap = Array.isArray(st.obligations) && st.obligations.length > 0;
-  const pending = hasMap ? st.obligations.filter(o => o.st === 'pending').length : 0;
-  const skelBtn = pending > 0 ? React.createElement(SkeletonButton, { machine: st.machine, rs, ec, pos }) : null;
+  const skelBtn = !st.importing && !st.finalized ? React.createElement(SkeletonButton, { machine: st.machine, rs, ec, pos }) : null;
   const body = hasMap
     ? React.createElement('div', { style: { padding: '2px 14px 8px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' } },
         React.createElement('div', { style: { flex: '3 1 150px', minWidth: 150, order: 0 } }, React.createElement(ObligationMap, { obs: st.obligations, pos, ec })),
         React.createElement('div', { style: { flex: '1 1 150px', minWidth: 150, maxWidth: 280, order: 1 } }, detail, skelBtn))
-    : React.createElement('div', { style: { padding: '2px 14px 8px' } }, detail);
+    : React.createElement('div', { style: { padding: '2px 14px 8px' } }, detail, skelBtn);
 
   return React.createElement('div', { style: { border: '2px solid ' + BORDER, borderRadius: 6, overflow: 'hidden' } },
     React.createElement('div', {
@@ -265,7 +263,7 @@ export default function (props) {
   // already-elaborated line (e.g. the file header) to watch imports fill in live.
   if (!sts || sts.length === 0) return null;
 
-  // A card auto-expands while it is `active` (being replayed by `prove_obligations_of`),
+  // A card auto-expands while it is `active` (elaborating an obligation),
   // unless the user has explicitly toggled it — then their choice wins.
   const isOpen = st => Object.prototype.hasOwnProperty.call(openMap, st.machine) ? openMap[st.machine] : !!st.active;
 

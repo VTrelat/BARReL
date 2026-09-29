@@ -23,8 +23,7 @@ mp
 □
 ```
 -/
-prove_obligations_of DerivFalse
-next
+next obligation of DerivFalse by
   exists B.Builtins.min ∅ ?_
   · -- unprovable
     admit
@@ -34,5 +33,7 @@ next
       generalize_proofs wd at *
       obtain ⟨_, contr, _⟩ := wd
       contradiction
+
+qed DerivFalse
 
 assert_no_sorry DerivFalse.AssertionLemmas_0 -- error

@@ -5,3 +5,6 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 open B.Builtins
 
 import machine CounterMin from "specs/"
+
+-- Automation proves every obligation; publish the resulting theorems.
+qed CounterMin

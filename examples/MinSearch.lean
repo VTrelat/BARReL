@@ -5,35 +5,36 @@ set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Conten
 open B.Builtins
 
 import machine MinSearch       from "specs/case_study"
-import refinement MinSearch_r1 from "specs/case_study"
-import refinement MinSearch_r2 from "specs/case_study"
 
-prove_obligations_of MinSearch
-next -- Operation_step_2: done ∪ add ∈ FIN₁ SS
+next obligation by -- Operation_step_2: done ∪ add ∈ FIN₁ SS
   intros
   exact FIN₁.of_union ‹_› (FIN₁.mono Set.sdiff_subset ‹_›)
 
-prove_obligations_of MinSearch_r1
-next -- Operation_step_3: done1 ∪ {xx} ∈ FIN₁ SS
+qed
+
+import refinement MinSearch_r1 from "specs/case_study"
+import refinement MinSearch_r2 from "specs/case_study"
+
+next obligation of MinSearch_r1 by -- Operation_step_3: done1 ∪ {xx} ∈ FIN₁ SS
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   grind
-next -- Operation_step_6: ∃ add, … ∧' min (done ∪ add) = xx
+next obligation of MinSearch_r1 by -- Operation_step_6: ∃ add, … ∧' min (done ∪ add) = xx
   intros
   expose_names
   subst_eqs
   exists {xx}, FIN₁.singleton_mem h_10, rfl
   simp only [Set.union_singleton]
   rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_of_lt h_11)]
-next -- Operation_step_12: done1 ∪ {xx} ∈ FIN₁ SS
+next obligation of MinSearch_r1 by -- Operation_step_12: done1 ∪ {xx} ∈ FIN₁ SS
   intros
   expose_names
   subst_eqs
   simp only [Set.union_singleton]
   grind
-next -- Operation_step_13: mm1 = min (done1 ∪ {xx})
+next obligation of MinSearch_r1 by -- Operation_step_13: mm1 = min (done1 ∪ {xx})
   intros
   expose_names
   subst_eqs
@@ -42,7 +43,7 @@ next -- Operation_step_13: mm1 = min (done1 ∪ {xx})
   obtain hle | rfl := h_11
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
-next -- Operation_step_14: ∃ add, … ∧' min (done ∪ add) = mm1
+next obligation of MinSearch_r1 by -- Operation_step_14: ∃ add, … ∧' min (done ∪ add) = mm1
   intros
   expose_names
   subst_eqs
@@ -53,42 +54,43 @@ next -- Operation_step_14: ∃ add, … ∧' min (done ∪ add) = mm1
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_false _ _ (eq_false <| Int.not_le.mpr hle)]
   · rw [min.of_insert _ (by wd_min), ←h_8, ite_cond_eq_true _ _ (eq_true <| Int.le_refl _)]
 
-prove_obligations_of MinSearch_r2
-next
+qed MinSearch_r1
+
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   exact ⟨Int.le_refl 1, h_2.1⟩
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   apply app.mem_ran
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   use 1, ⟨Int.le_refl 1, Int.le_refl 1⟩, app.pair_app_mem
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   rw [interval.of_singleton_eq, Set.mem_singleton_iff] at h_6
   subst jj
   apply le_refl
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   rw [tfun_dom_eq h_4.2]
   exact ⟨Int.le_refl 1, h_2.1⟩
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   rw [tfun_dom_eq h_4.2]
   exact h_4.2.1
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -101,7 +103,7 @@ next
   · intro h
     symm
     exact app.of_pair_eq _ h
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -123,7 +125,7 @@ next
     obtain rfl := h_4.1.2 hxi' app.pair_app_mem
     rw [Int.add_one_le_iff] at hi'
     nomatch lt_irrefl _ hi'
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -166,17 +168,17 @@ next
       · exact le_trans (Int.le_of_lt h_19) (h_17 jj ⟨le_jj, hjj⟩)
       · exact le_refl _
   · nofun
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   exact ⟨Int.le_add_one h_12.1, h_18⟩
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   apply app.mem_ran
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -194,7 +196,7 @@ next
     exists i', hi'
     obtain rfl := app.of_pair_eq wd_i' hxᵢ
     exact hxi'
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -207,13 +209,13 @@ next
   specialize h_17 i' hi'
   rw [hxi'] at h_17
   nomatch lt_irrefl _ (Int.lt_of_le_of_lt h_17 h_19)
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   simp
   use ii1 + 1, ⟨Int.le_add_one h_12.1, Int.le_refl (ii1 + 1)⟩, app.pair_app_mem
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -223,7 +225,7 @@ next
   · specialize h_17 jj ⟨le_jj, h_21⟩
     exact le_trans (Int.le_of_lt h_19) h_17
   · exact le_refl _
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -263,12 +265,12 @@ next
     · simp only [SetRel.mem_image, Set.mem_Icc] at h_16 ⊢
       obtain ⟨i, ⟨hi₁, hi₂⟩, hxi⟩ := h_16
       use i, ⟨hi₁, Int.le_add_one hi₂⟩, hxi
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
   exact ⟨Int.le_add_one h_12.1, h_18⟩
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -283,7 +285,7 @@ next
     rw [SetRel.mem_image] at hx
     obtain ⟨i, ⟨hi, hi'⟩, hx⟩ := hx
     exists i, ⟨hi, Int.le_trans hi' h_18⟩
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -291,7 +293,7 @@ next
   · rintro i ⟨h, h'⟩
     exact ⟨h, Int.le_add_one h'⟩
   · exact h_16
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -302,7 +304,7 @@ next
   · apply h_17
     exact ⟨le_jj, h_21⟩
   · exact h_19
-next
+next obligation of MinSearch_r2 by
   intros
   expose_names
   subst_eqs
@@ -311,3 +313,5 @@ next
     exact le_antisymm h_18 h_12.2
   rw [tfun.ran_eq h_4.2] at h_19
   contradiction
+
+qed MinSearch_r2

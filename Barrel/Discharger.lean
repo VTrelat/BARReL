@@ -3,14 +3,11 @@ import Lean.Elab.BuiltinTerm
 import Mathlib.Util.WhatsNew
 import Barrel.Encoder
 import POGReader.Basic
-import Barrel.Meta
+import Barrel.Context
 import Barrel.Tactics
 import Barrel.Progress
 
 open Lean Elab Term Command
-
-declare_syntax_cat discharger_command
-syntax withPosition("next " Parser.Tactic.tacticSeqIndentGt) : discharger_command
 
 private structure ParserResult where
   path : System.FilePath
@@ -116,18 +113,16 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
   -- Then parse the POG and generate the goals
   pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
-private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
-  let ⟨path, name, goals⟩ := res
-
-  let ns ← getCurrNamespace
+private def pog2obligations (res : ParserResult) (contextName : Name) :
+    CommandElabM (Array Barrel.Obligation × Array Name) := do
+  let ⟨_, name, goals⟩ := res
 
   let t0 ← IO.monoMsNow
   let nbPOs := goals.size
   let progress := (← getOptions).getBool `barrel.progress true
 
-  -- let mut wds := #[]
-  let mut res := #[]
-  let mut wds : Array (Name × String × Expr) := #[]
+  let mut res : Array Barrel.Obligation := #[]
+  let mut wds : Array Barrel.Obligation := #[]
   -- Every WD condition generated so far in this import, auto-solved or not: repeated
   -- partial operators produce the same condition over and over across obligations, and
   -- re-generating (and re-proving!) it for each theorem is what blew up the subgoal count.
@@ -140,13 +135,13 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   let mut nbGoals := goals.size
   let mut i := 0
 
-  let mut skipped := 0
+  let mut skipped : Array Name := #[]
   let mut dedups := 0
 
   -- Per-obligation map for the progress card: one `{d, n, op, st, line, char}` entry per
   -- subgoal, filled as each is auto-discharged or left pending. `nsPrefix` trims the
   -- namespace/machine prefix off declNames for a compact cell label.
-  let nsPrefix := (ns.str name).toString ++ "."
+  let nsPrefix := contextName.toString ++ "."
   let mut obligations : Array Json := #[]
 
   if progress then
@@ -156,15 +151,16 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
     Barrel.Progress.report name nbGoals 0 nbPOs 0 0 true 0
 
   for g in goals do
-    let declName := ns |>.str name |>.str s!"{g.name}_{i}"
+    let declName := contextName.str s!"{g.name}_{i}"
 
     -- Encoding runs with its own heartbeat budget and its failures (unsupported construct,
     -- ill-typed translation, timeout) are confined to this obligation: on large industrial
     -- POGs a single unencodable goal must not abort the import of the thousands of others.
     let enc? : Option (Name × String × Expr × Array (Name × String × Expr × Bool) × SeenWDs × Nat) ←
-      liftTermElabM <| withCurrHeartbeats <| tryCatchRuntimeEx
-      (do
-        let (g', wds'') ← g.toExpr
+      liftTermElabM <| withCurrHeartbeats <| withOptions (Elab.async.set · false) do
+      let saved ← saveState
+      tryCatchRuntimeEx (do
+        let (g', wds'') ← withDeclName declName g.toExpr
 
         let mut seen := seenWDs
         let mut wds' : Array (Name × String × Expr × Bool) := #[]
@@ -194,12 +190,13 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
         trace[barrel] "Generated theorem: {g'}"
 
         pure <| .some (declName, g.reason, g', wdsFinal, seenFinal, wds''.size))
-      fun ex => do
-        logWarning m!"Failed to encode proof obligation `{declName}` ({g.reason}), skipping it:{indentD ex.toMessageData}"
-        pure .none
+        fun ex => do
+          saved.restore
+          logWarning m!"Failed to encode proof obligation `{declName}` ({g.reason}), skipping it:{indentD ex.toMessageData}"
+          pure .none
 
     let .some (declName, reason, g', wds', seen, rawWDs) := enc?
-      | skipped := skipped + 1
+      | skipped := skipped.push declName
         nbGoals := nbGoals - 1
         i := i + 1
         continue
@@ -217,19 +214,20 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
       -- *runtime* exception, which an ordinary `try … catch` re-throws: without it a single
       -- diverging `barrel_solve` attempt aborts the whole `import` command instead of just
       -- leaving its obligation to the user.
-      let (gOrWd, _hb) ← liftTermElabM <| withCurrHeartbeats do -- <| withOptions (Elab.async.set · false) do
+      let (gOrWd, _hb) ← liftTermElabM <| withCurrHeartbeats <| withOptions (Elab.async.set · false) do
         let hb₀ ← IO.getNumHeartbeats
+        let saved ← saveState
         let r : _ ⊕ _ ← tryCatchRuntimeEx
           (do
             -- TODO: we should split on `isWd` to apply relevant tactics
             trace[barrel.solve] m!"Trying to solve theorem {declName} (isWd: {isWd}):{indentExpr g}"
-            let e ← withoutErrToSorry do
+            let e ← withDeclName declName <| withoutErrToSorry do
               Meta.check g
               instantiateMVars =<< elabTermAndSynthesize (← `(term| by barrel_solve)) (.some g)
 
             trace[barrel.solve] m!"{Lean.checkEmoji} Success! (spent {((← IO.getNumHeartbeats) - hb₀) / 1000} heartbeats)"
 
-            let levelParams := (collectLevelParams {} g).params ++ (collectLevelParams {} e).params
+            let levelParams := (collectLevelParams (collectLevelParams {} g) e).params
 
             let decl : Declaration := .thmDecl {
               name := declName
@@ -238,6 +236,9 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
               value := e
             }
 
+            ensureNoUnassignedMVars decl
+            if (← getThe Core.State).messages.hasErrors then
+              throwError "Automatic proof reported errors"
             addDecl decl false
 
             Lean.addDocStringOf false declName .missing
@@ -246,25 +247,30 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
                 mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {reason} -/"
               ])
 
-            pure <| .inl e.hasSorry)
+            pure <| .inl e)
           fun ex => do
+            saved.restore
             trace[barrel.solve] m!"{Lean.crossEmoji} Failed! (spent {((← IO.getNumHeartbeats) - hb₀) / 1000} heartbeats)\n{ex.toMessageData}"
 
             pure <| .inr (declName, reason, g, isWd)
         pure (r, ((← IO.getNumHeartbeats) - hb₀) / 1000)
 
-      match gOrWd with
-      | .inl hadSorry => if hadSorry then autoSorried := autoSorried + 1 else autoProven := autoProven + 1
-      | .inr (declName, reason, g, isWd) =>
-        let goal := (declName, reason, g)
-        if isWd then wds := wds.push goal else res := res.push goal
+      let proof? := match gOrWd with
+        | .inl e => some e
+        | .inr _ => none
+      if let some e := proof? then
+        if e.hasSorry then autoSorried := autoSorried + 1 else autoProven := autoProven + 1
+      let goal : Barrel.Obligation := {
+        name := declName, reason, type := g, isWd, proof?, auto := proof?.isSome
+        progressIndex? := some obligations.size }
+      if isWd then wds := wds.push goal else res := res.push goal
 
       -- Record this subgoal's cell: green (auto), yellow (auto-sorry) or neutral (pending,
-      -- to be filled by `prove_obligations_of`). Matched back by `d` (the declName) at replay.
+      -- to be filled by an `obligation` command). Matched back by `d` (the declName) at replay.
       let dnStr := declName.toString
       let short := if dnStr.startsWith nsPrefix then (dnStr.drop nsPrefix.length).toString else dnStr
       let stStr := match gOrWd with
-        | .inl hadSorry => if hadSorry then "sorry" else "auto"
+        | .inl e => if e.hasSorry then "sorry" else "auto"
         | .inr _ => "pending"
       obligations := obligations.push <| Json.mkObj [
         ("d", .str dnStr), ("n", .str short),
@@ -280,15 +286,12 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
   let dt := (← IO.monoMsNow) - t0
   let autoDischarged := autoProven + autoSorried
 
-  -- Remember the baseline so `prove_obligations_of` can continue this card's proof bar.
-  modifyEnv (progressBaseline.modifyState · λ m ↦ m.insert name (nbGoals, autoProven, autoSorried))
-
-  let wdDistinct := nbGoals - (nbPOs - skipped)
+  let wdDistinct := nbGoals - (nbPOs - skipped.size)
   let pct := if nbGoals == 0 then 0 else autoDischarged * 1000 / nbGoals
   let rows : Array (String × String) := #[
     ("auto-solved", s!"{autoDischarged} / {nbGoals} ({pct / 10}.{pct % 10}%)"),
     ("WD goals", s!"{wdDistinct} unique (+{dedups} reused)"),
-    ("remaining", s!"{goals.size}"),
+    ("remaining", s!"{goals.filter (·.proof?.isNone) |>.size}"),
     ("import time", s!"{dt / 1000}.{dt % 1000 / 100} s")
   ]
   if progress then
@@ -296,8 +299,8 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
       (summary := Json.arr <| rows.map λ (l, v) ↦ Json.arr #[.str l, .str v])
       (obligations := obligations)
 
-  if skipped > 0 then
-    logWarning s!"Skipped {skipped} proof obligation{if skipped = 1 then "" else "s"} that could not be encoded."
+  if !skipped.isEmpty then
+    logWarning s!"Skipped {skipped.size} proof obligations that could not be encoded; `qed` will refuse this import."
   if (← getOptions).getBool `barrel.show_auto_solved && autoDischarged > 0 then
     logInfo s!"🎉 Automatically solved {autoDischarged} out of {nbGoals} subgoals!"
 
@@ -314,109 +317,130 @@ private def pog2obligations (res : ParserResult) : CommandElabM PUnit := do
     lines := lines.push (hbar "└" "┴" "┘")
     logInfo <| "\n".intercalate lines.toList
 
-  let absPath ← IO.FS.realPath path
-  modifyEnv (nameFromPath.modifyState · λ map ↦ map.insert name absPath)
-  modifyEnv (cache.modifyState · λ map ↦ map.insert absPath goals)
+  return (goals, skipped)
 
-private def obligations2theorems (name : String) (steps : TSyntaxArray `discharger_command) : CommandElabM PUnit := do
-  let env ← getEnv
-  let .some path := nameFromPath.getState env |>.find? name
-    | throwError "Machine or POG named {name} not found.\nMake sure to import it with `import`."
-  let .some goals := cache.getState env |>.find? path
-    | throwError "Impossible!"
-  -- Proof-bar baseline from the import: the auto-discharge results are already green/yellow;
-  -- each `next` we replay here fills in one more leftover, live.
-  let progress := (← getOptions).getBool `barrel.progress true
-  let (_total, autoProven, autoSorried) := progressBaseline.getState env |>.find? name |>.getD (goals.size, 0, 0)
-  let mut userProven := 0
-  let mut userSorried := 0
-  let mut proofs_missing := 0
-  let mut i := 0
-  -- For turning each `next` token's position into 0-indexed LSP line/character (cell jump).
-  let fileMap ← getFileMap
+/-- Resolve an explicit import in the current namespace, or the latest imported context. -/
+private def resolveContext (id? : Option (TSyntax `ident)) : CommandElabM Barrel.ImportContext := do
+  let state := Barrel.obligationContexts.getState (← getEnv)
+  let name ← match id? with
+    | none =>
+      match state.latest? with
+      | some name => pure name
+      | none => throwError "No B machine or POG has been imported."
+    | some id => do
+      let name := id.getId.eraseMacroScopes
+      let mut ns ← getCurrNamespace
+      repeat
+        let candidate := ns ++ name
+        if state.contexts.contains candidate then break
+        if ns.isAnonymous then
+          throwErrorAt id "Machine or POG `{name}` not found. Import it first."
+        ns := ns.getPrefix
+      pure (ns ++ name)
+  let some ctx := state.contexts.find? name | throwError "Import context `{name}` not found."
+  return ctx
 
-  -- Reset this card's proof bar to the auto-discharge baseline before replaying, so removing
-  -- `next`s (or providing fewer than before) drops those goals back to "missing" rather than
-  -- leaving a stale green fill from a previous elaboration.
-  if progress then Barrel.Progress.reportProof name autoProven autoSorried
+private def saveContext (ctx : Barrel.ImportContext) (latest := false) : CommandElabM Unit :=
+  modifyEnv (Barrel.obligationContexts.modifyState · fun state =>
+    { state with contexts := state.contexts.insert ctx.name ctx
+                 latest? := if latest then some ctx.name else state.latest? })
 
-  -- TODO: check how we can also replay the proofs that we already have
-  for ⟨declName, r_reason, g'⟩ in goals do
-    if let .some (step : TSyntax `discharger_command) := steps[i]? then
-      if let `(discharger_command| next%$tk $tac:tacticSeq) := step then
-        if (← getOptions).getBool `barrel.show_goal_names true then
-          logInfoAt tk m!"{declName}: {r_reason}"
+private def ensureOpen (ctx : Barrel.ImportContext) : CommandElabM Unit := do
+  if ctx.finalized then
+    throwError "Import `{ctx.name}` has already been finalized by `qed`."
 
-        -- Source position of this `next` (0-indexed LSP coords) for the cell's click-to-jump.
-        let (jLine, jChar) := match tk.getPos? with
-          | some p => let q := fileMap.toPosition p; (q.line - 1, q.column)
-          | none => (0, 0)
+private def reportContext (ctx : Barrel.ImportContext) : CommandElabM Unit := do
+  if barrel.progress.get (← getOptions) then
+    Barrel.Progress.reportProof ctx.name.toString ctx.bookkeeping.proven ctx.bookkeeping.sorried
+    Barrel.Progress.reportActive ctx.name.toString false
 
-        -- Fresh heartbeat budget per obligation, so one expensive user proof does not eat into
-        -- the budget of the ones replayed after it. Any *thrown* error — a failing tactic,
-        -- metavariables, or a heartbeat/recursion timeout (a runtime exception, which is why we
-        -- catch inside `liftTermElabM` with `tryCatchRuntimeEx`: at `CommandElabM` level a plain
-        -- `tryCatch` re-throws runtime exceptions) — marks the card errored (→ red) before
-        -- re-raising, so the error still surfaces normally.
-        let hadSorry ← liftTermElabM <| withCurrHeartbeats <| tryCatchRuntimeEx
-          (do -- <| withOptions (Elab.async.set · false) do
-            let g' ← instantiateMVars g'
-            if g'.hasExprMVar then
-              throwError "Resulting expression contains metavariables{indentExpr g'}"
+private def findObligation (ctx : Barrel.ImportContext) (id? : Option (TSyntax `ident)) :
+    CommandElabM Nat := do
+  match id? with
+  | none =>
+    let some i := ctx.nextObligation?
+      | throwError "There are no more obligations to discharge for `{ctx.name}`."
+    return i
+  | some id =>
+    let name := id.getId.eraseMacroScopes
+    let some i := ctx.findObligation? name
+      | throwErrorAt id "Obligation `{name}` not found in `{ctx.name}`."
+    if ctx.obligations[i]!.proof?.isSome then
+      throwErrorAt id "Obligation `{ctx.obligations[i]!.name}` is already proved."
+    return i
 
-            let e ← do
-              let e ← elabTerm (← `(term| by%$tk $tac)) (.some g') (catchExPostpone := false)
-              synthesizeSyntheticMVarsNoPostponing
-              instantiateMVars e
+private def withContextProgress (ctx : Barrel.ImportContext) (action : CommandElabM Unit) :
+    CommandElabM Unit := do
+  let progress := barrel.progress.get (← getOptions)
+  if progress then Barrel.Progress.reportActive ctx.name.toString true
+  try
+    action
+  catch ex =>
+    if progress then Barrel.Progress.reportError ctx.name.toString
+    throw ex
+  finally
+    if progress then Barrel.Progress.reportActive ctx.name.toString false
 
-            let levelParams := (collectLevelParams {} g').params ++ (collectLevelParams {} e).params
+private def proveObligation (ctx : Barrel.ImportContext) (id? : Option (TSyntax `ident))
+    (proof : Term) (ref : Syntax) : CommandElabM Unit := withContextProgress ctx do
+  ensureOpen ctx
+  let i ← findObligation ctx id?
+  let obligation := ctx.obligations[i]!
+  let global ← getEnv
+  let ((value, position), localEnv) ← withoutModifyingEnv' do
+    setEnv (← liftCoreM <| Barrel.workingEnvironment ctx global)
+    -- A WD theorem must exist before Lean can check a type referring to its constant.
+    let missing := obligation.type.getUsedConstants.filter ctx.isPendingName
+    unless missing.isEmpty do
+      throwErrorAt ref "Obligation `{obligation.name}` depends on unproved obligations: {missing.toList}. Prove them first."
+    if barrel.show_goal_names.get (← getOptions) then
+      logInfoAt ref m!"{obligation.name}: {obligation.reason}"
+    let value ← liftTermElabM <| withCurrHeartbeats <|
+        withOptions (Elab.async.set · false) <| withoutErrToSorry <|
+        withDeclName obligation.name do
+      Meta.check obligation.type
+      let value ← elabTermAndSynthesize proof (some obligation.type)
+      let value ← instantiateMVars value
+      -- Explicit `sorry` remains a Lean admission; tactic errors must never advance the queue.
+      if (← getThe Core.State).messages.hasErrors then
+        throwError "Proof of `{obligation.name}` reported errors; obligation remains unproved."
+      let params := collectLevelParams (collectLevelParams {} obligation.type) value
+      let decl := Declaration.thmDecl {
+        name := obligation.name, levelParams := params.params.toList,
+        type := obligation.type, value }
+      ensureNoUnassignedMVars decl
+      addDecl decl
+      Lean.addDocStringOf false obligation.name .missing
+        (mkNode ``Parser.Command.docComment #[mkAtom "/--",
+          mkAtom s!"Machine `{ctx.name}`, proof obligation `{obligation.name}`: {obligation.reason} -/"])
+      return value
+    let fm ← getFileMap
+    let position := ref.getPos?.map fun p =>
+      let pos := fm.toPosition p
+      (pos.line - 1, pos.column)
+    pure (value, position)
+  let some ctx := ctx.markProof? i value position
+    | throwError "Obligation `{obligation.name}` is no longer pending."
+  let ctx := { ctx with baseEnv := global, localEnv }
+  saveContext ctx
+  if barrel.progress.get (← getOptions) then
+    let (line, char) := position.getD (0, 0)
+    Barrel.Progress.reportObligation ctx.name.toString obligation.name.toString
+      (if value.hasSorry then "sorry" else "hand") line char obligation.progressIndex?
+  reportContext ctx
 
-            let decl : Declaration := .thmDecl {
-              name := declName
-              levelParams := levelParams.toList
-              type := g'
-              value := e
-            }
-
-            addDecl decl false
-
-            Lean.addDocStringOf false declName .missing
-              (mkNode ``Parser.Command.docComment #[
-                mkAtom "/--",
-                mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {r_reason} -/"
-              ])
-
-            pure e.hasSorry)
-          (fun ex => do
-            if progress then Barrel.Progress.reportError name
-            throw ex)
-        if hadSorry then userSorried := userSorried + 1 else userProven := userProven + 1
-        if progress then
-          Barrel.Progress.reportObligation name declName.toString
-            (if hadSorry then "sorry" else "hand") jLine jChar
-          Barrel.Progress.reportProof name (autoProven + userProven) (autoSorried + userSorried)
-    else
-      proofs_missing := proofs_missing + 1
-
-    i := i + 1
-
-  -- Replay done: clear the active flag so the card re-collapses (unless the user opened it).
-  if progress then Barrel.Progress.reportActive name false
-
-  -- A `next` whose proof fails usually *logs* an error and recovers with `sorry` rather than
-  -- throwing, so consult the command's message log too: any error here means the card is red.
-  if progress && (← get).messages.hasErrors then
-    Barrel.Progress.reportError name
-
-  -- Too few / too many `next`s is also an error → red badge. (Until one of these throws the
-  -- card stays gray: the user may still be filling in proofs.)
-  if proofs_missing > 0 then
-    if progress then Barrel.Progress.reportError name
-    throwError s!"There still {if proofs_missing = 1 then "is" else "are"} {proofs_missing} goal{if proofs_missing = 1 then "" else "s"} to discharge."
-  else if steps.size > goals.size then
-    if progress then Barrel.Progress.reportError name
-    let `(discharger_command| next%$tk $_) := steps[i]! | unreachable!
-    throwErrorAt tk "There are no more goals to discharge."
+private def finalizeContext (ctx : Barrel.ImportContext) : CommandElabM Unit :=
+    withContextProgress ctx do
+  ensureOpen ctx
+  if ctx.bookkeeping.pending != 0 || !ctx.skipped.isEmpty then
+    let names := ctx.obligations.filterMap fun ob => if ob.proof?.isNone then some ob.name else none
+    throwError "Cannot finalize `{ctx.name}`: {ctx.bookkeeping.pending} unproved obligations {names.toList}; {ctx.skipped.size} unencoded obligations {ctx.skipped.toList}."
+  -- Merge onto the current environment, preserving declarations added since the import.
+  -- Nothing is published until the entire merge has passed kernel verification.
+  let env ← liftCoreM <| Barrel.mergeContext ctx.baseEnv ctx.localEnv (← getEnv)
+  setEnv env
+  saveContext { ctx with finalized := true }
+  reportContext ctx
 
 declare_syntax_cat import_kind
 syntax "machine" : import_kind
@@ -433,27 +457,58 @@ private def extFromKind : TSyntax `import_kind → MacroM String
   | `(import_kind| pog) => pure "pog"
   | _ => Macro.throwUnsupported
 
-/--
-  Process a B machine/system/pog and add the theorems to be discharged into the environment.
+/-- Import a B component into its own context; `qed` publishes its declarations. -/
+syntax "import " import_kind ppSpace ident (" from " str)? : command
 
-  Live progress is shown by the global panel widget registered in `Barrel.Progress` (active
-  from the file's first line, so it is already on screen when this — possibly long — command
-  starts): each obligation here reports into a shared `IO.Ref`, and the widget polls it. Park
-  the cursor on any already-elaborated line to watch the cards fill in live.
--/
-@[incremental]
-elab "import " kind:import_kind ppSpace name:ident " from " path:str : command => do
-  let name := name.getId.getString!
+elab_rules : command
+| `(command| import $kind:import_kind $name:ident $[from $path:str]?) => do
+  let localName := name.getId.eraseMacroScopes
+  let contextName := (← getCurrNamespace) ++ localName
+  if (Barrel.obligationContexts.getState (← getEnv)).contexts.contains contextName then
+    throwErrorAt name "Machine or POG `{contextName}` has already been imported."
   let ext ← liftMacroM <| extFromKind kind
-  let path := System.FilePath.mk path.getString
-  let filePath := path/System.FilePath.addExtension name ext
-  -- TODO: verify a snapshot etc, so that the files are only re-generated/re-parsed when changed or the first time
-  pog2obligations =<< match ext with
-    | "pog" => pog2goals name filePath
-    | _ => mch2goals name path filePath
+  let path := System.FilePath.mk (path.map (·.getString) |>.getD ".")
+  let fileName := localName.toString (escape := false)
+  let filePath := path/System.FilePath.addExtension fileName ext
+  let baseEnv ← getEnv
+  let ((obligations, skipped), localEnv) ← withoutModifyingEnv' do
+    let parsed ← match ext with
+      | "pog" => pog2goals contextName.toString filePath
+      | _ => mch2goals contextName.toString path filePath
+    pog2obligations parsed contextName
+  saveContext {
+    name := contextName, path := ← IO.FS.realPath filePath, baseEnv, localEnv,
+    obligations, skipped } (latest := true)
 
-/--
-  Provide the proofs for the theorems generated from a given machine.
--/
-elab "prove_obligations_of " name:ident ppLine steps:withPosition((colEq discharger_command)*) : command => do
-  obligations2theorems name.getId.getString! steps
+declare_syntax_cat obligation_proof
+syntax "from " term : obligation_proof
+syntax "by " Parser.Tactic.tacticSeq : obligation_proof
+
+/-- Prove a single pending obligation, by its name or by its position in the import. -/
+syntax (name := obligationCommand)
+  ("next ")? "obligation" (ppSpace ident)? (" of " ident)?
+  ppSpace obligation_proof : command
+
+@[command_elab obligationCommand]
+def elabObligation : CommandElab := fun stx => do
+  let isNext := !stx[0].isNone
+  let id? : Option (TSyntax `ident) := if stx[2].isNone then none else some ⟨stx[2][0]⟩
+  let machine? : Option (TSyntax `ident) := if stx[3].isNone then none else some ⟨stx[3][1]⟩
+  if isNext && id?.isSome then
+    throwErrorAt stx "`next obligation` cannot specify an obligation name. Use `obligation <name>` instead."
+  if !isNext && id?.isNone then
+    throwErrorAt stx "Specify an obligation name, or use `next obligation`."
+  let proof : Term ← if stx[4][0].getAtomVal == "from" then
+      pure ⟨stx[4][1]⟩
+    else
+      let tac : TSyntax `Lean.Parser.Tactic.tacticSeq := ⟨stx[4][1]⟩
+      `(term| by%$(stx[4][0]) $tac)
+  let ctx ← resolveContext machine?
+  proveObligation ctx id? proof stx
+
+/-- Check completeness and publish the selected import's local declarations atomically. -/
+syntax "qed" (ppSpace ident)? : command
+
+elab_rules : command
+| `(command| qed $[$name:ident]?) => do
+  finalizeContext (← resolveContext name)

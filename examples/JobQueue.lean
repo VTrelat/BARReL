@@ -8,20 +8,19 @@ open B.Builtins
 
 import machine JobQueue from "specs/"
 
-prove_obligations_of JobQueue
-next
+next obligation of JobQueue by
   intros
   expose_names
   exact min.WD_of_finite_image_tfun h_4 ⟨h_3, Set.nonempty_iff_ne_empty.mpr h_6⟩
-next
+next obligation of JobQueue by
   intros
   expose_names
   exact max.WD_of_finite_image_tfun h_4 ⟨h_3, Set.nonempty_iff_ne_empty.mpr h_6⟩
-next exact fun JOB Limit MaxDeadline Ready deadline j h h_9 h_10 h_11 h_12 h_13 h_14 h_15 h_16 =>
+next obligation of JobQueue by exact fun JOB Limit MaxDeadline Ready deadline j h h_9 h_10 h_11 h_12 h_13 h_14 h_15 h_16 =>
   JobQueue.Operation_enqueue_2.wd_0 JOB Limit Limit Ready deadline Limit h h_9 h_9 h_11 h_12
-next barrel_solve
-next barrel_solve
-next
+next obligation of JobQueue by barrel_solve
+next obligation of JobQueue by barrel_solve
+next obligation of JobQueue by
   intros
   rw [Set.union_singleton]
   apply min.WD_of_finite_image_tfun <;> {
@@ -29,7 +28,7 @@ next
     | assumption
     | apply FIN₁.of_insert <;> assumption
   }
-next
+next obligation of JobQueue by
   intros
   rw [Set.union_singleton]
   apply max.WD_of_finite_image_tfun <;> {
@@ -37,22 +36,22 @@ next
     | assumption
     | apply FIN₁.of_insert <;> assumption
   }
-next
+next obligation of JobQueue by
   intros
   expose_names
   simpa only [card.of_empty] using Int.le_of_lt h_1.1
-next
+next obligation of JobQueue by
   intros
   expose_names
   rw [Set.union_singleton]
   exact FIN.of_insert h_7 h_3
-next
+next obligation of JobQueue by
   intros
   expose_names
   generalize_proofs at *
   simp
   rwa [card.of_insert _ ‹_›, ite_cond_eq_false _ _ (eq_false h_8)]
-next
+next obligation of JobQueue by
   intros
   expose_names
   simp only [Set.union_singleton]
@@ -65,7 +64,7 @@ next
       exact h_4.1.1 hj |>.2
     exact this (min.mem min_wd_insert)
   assumption
-next
+next obligation of JobQueue by
   intros
   expose_names
   simp only [Set.union_singleton]
@@ -90,3 +89,5 @@ next
   · rw [Set.not_nonempty_iff_eq_empty] at Ready_nemp
     subst Ready
     simpa
+
+qed JobQueue

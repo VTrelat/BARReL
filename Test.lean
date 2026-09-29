@@ -12,69 +12,67 @@ open B.Builtins
 -- set_option barrel.show_auto_solved true
 
 import machine Counter from "specs/"
-prove_obligations_of Counter
+
+qed Counter
 
 import machine Eval from "specs/"
-prove_obligations_of Eval
-next
+next obligation of Eval by
   intros X Y _ _
   exists ∅, ∅, ∅
   exists ?_, ?_ <;> simp
 
+qed Eval
+
 import machine Finite from "specs/"
-prove_obligations_of Finite
--- next
+-- next obligation of Finite by
 --   intros
 --   exact interval.FIN_mem
 
+qed Finite
+
 import machine Nat from "specs/"
-prove_obligations_of Nat
--- next
+-- next obligation of Nat by
 --   rintro _ ⟨_, _⟩
 --   assumption
 
+qed Nat
+
 import machine Collect from "specs/"
-prove_obligations_of Collect
--- next
+-- next obligation of Collect by
 --   simp
 
+qed Collect
+
 import machine Forall from "specs/"
-prove_obligations_of Forall
--- next
+-- next obligation of Forall by
 --   rintro x1 x2 x3 ⟨⟨_, _⟩, _⟩ _
 --   assumption
 
+qed Forall
+
 import machine Exists from "specs/"
-prove_obligations_of Exists
-next
+next obligation of Exists by
   exists 0
 
+qed Exists
+
 import machine Injective from "specs/"
-prove_obligations_of Injective
--- next
+-- next obligation of Injective by
 --   rintro X Y F x y _ _ ⟨_, F_tot⟩ x_mem_X _
 --   exact app.WD_of_mem_tfun F_tot x_mem_X
--- next
+-- next obligation of Injective by
 --   rintro X Y F x y _ _ ⟨_, F_tot⟩ _ y_mem_X
 --   exact app.WD_of_mem_tfun F_tot y_mem_X
-next
-  rintro X Y F x y _ _ ⟨⟨_, F_inj⟩, F_tot⟩ x_mem_X y_mem_X F_eq
-  generalize_proofs wd_x wd_y at F_eq
-  apply F_inj
-  · exact app.pair_app_mem (wd := wd_x)
-  · rw [F_eq]
-    exact app.pair_app_mem (wd := wd_y)
-
+qed Injective
 
 import machine HO from "specs/"
-prove_obligations_of HO
--- next
+-- next obligation of HO by
 --   intros X Y x _ _ _ _ _ x_mem_X _ _ _ _ G G_fun
 --   exact app.WD_of_mem_tfun G_fun x_mem_X
--- next
+-- next obligation of HO by
 --   intros X Y x _ _ F _ _ x_mem_X _ _ _ F_fun _ _
 --   exact app.WD_of_mem_tfun F_fun x_mem_X
-next
+next obligation of HO by
   intros X Y x y₀ y₁ F _ _ x_mem_X y₀_mem_Y y₁_mem_Y y₀_neq_y₁ F_fun
 
   by_cases hF : (x, y₀) ∈ F
@@ -97,59 +95,31 @@ next
       rw [app.of_pair_iff wd_x, ←ne_eq, ne_comm, ne_eq] at hF
       simpa
 
+qed HO
+
 import machine Demo from "specs/"
-prove_obligations_of Demo
--- next
+-- next obligation of Demo by
 --   exact fun _ => id
--- next
---   intro s₀ hs₀
---   apply FIN.of_inter
---   left
---   exact FIN.of_sub NAT.mem_FIN hs₀
+obligation Initialisation_1 of Demo by
+  intro s₀ hs₀
+  apply FIN.of_inter
+  left
+  exact FIN.of_sub NAT.mem_FIN hs₀
+
+qed Demo
 
 import machine Extensionality from "specs/"
-prove_obligations_of Extensionality
--- next
+-- next obligation of Extensionality by
 --   intros X Y F _ _ _ F_fun _ x hx
 --   exact app.WD_of_mem_tfun F_fun hx
--- next
+-- next obligation of Extensionality by
 --   intros X Y _ G _ _ _ G_fun x hx
 --   exact app.WD_of_mem_tfun G_fun hx
-next
-  intros X Y F G _ _ F_fun G_fun ext
-  ext ⟨x, y⟩
-
-  specialize ext x
-  constructor <;> intro h
-  · have hx : x ∈ X := by
-      rw [←tfun_dom_eq F_fun]
-      exact mem_dom_of_pair_mem h
-
-    specialize ext hx
-    generalize_proofs wd_F wd_G at ext
-    rw [app.of_pair_iff ‹_›] at h ⊢
-    symm
-    rwa [h] at ext
-  · have hx : x ∈ X := by
-      rw [←tfun_dom_eq G_fun]
-      exact mem_dom_of_pair_mem h
-    specialize ext hx
-    generalize_proofs wd_F wd_G at ext
-    rw [app.of_pair_iff ‹_›] at h ⊢
-    rwa [h] at ext
+qed Extensionality
 
 import machine CounterMin from "specs/"
 
-prove_obligations_of CounterMin
-next
-  intros _ _
-  rw [max.of_singleton, min.of_singleton]
-  rfl
-next
-  rintro X z - - hz
-  rw [interval.min_eq (neg_le_self hz),
-      interval.max_eq (neg_le_self hz),
-      Int.neg_neg]
+qed CounterMin
 
 #check CounterMin.Initialisation_0
 #check CounterMin.Initialisation_1
@@ -162,12 +132,11 @@ assert_no_sorry CounterMin.Operation_inc_2
 assert_no_sorry CounterMin.Operation_inc_3
 
 -- import machine Pixels from "specs/"
--- prove_obligations_of Pixels
--- next
+-- next obligation of Pixels by
 --   rintro Colors Red Green Blue
 --     pixels pixel pp hpixel rfl rfl Colors_card hpp color _ h₂
 --   exact app.WD_of_mem_tfun hpp h₂
--- next
+-- next obligation of Pixels by
 --   rintro Colors Red Green Blue _ rfl rfl Colors_card
 --   and_intros
 --   · rintro x (rfl|rfl|rfl) <;> simp
@@ -181,23 +150,25 @@ assert_no_sorry CounterMin.Operation_inc_3
 --       exists 0
 --       simp
 --     }
--- next
+-- next obligation of Pixels by
 --   admit
--- next
+-- next obligation of Pixels by
 --   simp_intro .. [*]
 --   -- grind
 --   admit
--- next
+-- next obligation of Pixels by
 --   simp_intro .. [*]
 --   -- grind
 --   admit
+
+-- qed Pixels
 
 import machine Collect2 from "specs/"
-prove_obligations_of Collect2
+
+qed Collect2
 
 import machine Lambda from "specs/"
-prove_obligations_of Lambda
-next
+next obligation of Lambda by
   and_intros
   · rintro ⟨⟨a, b⟩, c⟩ ⟨⟨_, _⟩, rfl⟩
     grind
@@ -208,12 +179,13 @@ next
     refine ⟨x + y, ?_, ⟨x_mem, y_mem⟩, rfl⟩
     grind
 
+qed Lambda
+
 import machine Eta from "specs/"
-prove_obligations_of Eta
--- next
+-- next obligation of Eta by
 --   intros X Y F _ _ F_tfun x _ x_mem
 --   exact app.WD_of_mem_tfun F_tfun x_mem
-next
+next obligation of Eta by
   intros X Y F _ _ F_tfun
   ext ⟨x, y⟩
   dsimp
@@ -230,3 +202,5 @@ next
     constructor
     · rwa [app.of_pair_iff (wd₁ x_mem_dom), eq_comm] at h
     · assumption
+
+qed Eta
