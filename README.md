@@ -98,7 +98,7 @@ Industrial POGs can take minutes to import, so each `import` reports into a self
   <br/><em>After discharging: green (all proved), with one card unfolded.</em>
 </p>
 
-Click a card to expand its summary table: auto-solved count and percentage, unique vs. reused well-formedness (WD) goals, and how many obligations remain. Cells with a proof command jump to its source location when clicked. The **proof skeleton** button appends one named `obligation ... of ... by` command per pending goal and a final `qed`. Its `sorry` placeholders must be replaced to obtain complete proofs.
+Click a card to expand its summary table: auto-solved count and percentage, unique well-definedness (WD) goals and avoided duplicate allocations, and how many obligations remain. Cells with a proof command jump to its source location when clicked. The **proof skeleton** button appends one named `obligation ... of ... by` command per pending goal and a final `qed`. Its `sorry` placeholders must be replaced to obtain complete proofs.
 
 Progress follows each import's local context, including proofs not yet published by `qed`. Removing or changing a proof command restores the corresponding cell from the current command snapshot.
 
@@ -153,6 +153,8 @@ As in ordinary Lean declarations, an explicit `sorry` is accepted with a warning
 5. **Publish**: `qed` checks completeness and adds the import's declarations to the current global environment, preserving declarations published by other interleaved imports.
 
 Each import stores a base and a working `Lean.Environment` in an environment extension restored with Lean's command snapshots. An obligation command reuses the checked working environment when only BARReL bookkeeping has changed. A conservative identity check compares every other environment field and extension state, so intervening declarations or attribute changes trigger the existing full rebase. `qed` always performs the full merge onto the current global environment. The merge rejects name collisions, checks replayed declarations against the kernel environment, and copies helper metadata such as matcher information needed by `split` and simplification. Tactic elaboration remains synchronous. Lean already reuses whole unchanged commands in an unchanged prefix, including their resulting environment; after an earlier command changes, subsequent commands are elaborated again. Goal selection and dependency membership use cached name indices; a pending cursor and maintained proof counters avoid rescanning the full obligation list for each command. These caches live in the same command snapshots as the proofs, so edits and failed commands restore them together.
+
+The encoder shares WD proof metavariables throughout an import. At each partial operator, it closes the WD condition over the current variables and hypotheses and looks it up before allocating a metavariable. Matching conditions reuse the same proof metavariable even while it remains unproved. Conditions that become equal only after type inference finishes are merged inside the encoder. Failed encodings restore both the Lean state and the WD cache; successful encodings export named obligations for the discharger.
 
 ## Sample models
 The `specs/` folder contains small machines used during development:

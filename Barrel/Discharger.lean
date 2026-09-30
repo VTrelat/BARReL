@@ -34,42 +34,6 @@ private def pog2goals (name : String) (pogPath : System.FilePath) (mchPath : Opt
     goals
   }
 
-/--
-  Canonical form for WD-condition lookup: binder names and `mdata` are erased. Bound
-  variables are de Bruijn indices, so `==` on canonical forms is α-equivalence — enough to
-  recognize the verbatim duplicates the encoder produces for repeated partial operators,
-  without any `isDefEq` call.
--/
-private partial def canonWD : Expr → Expr
-  | .forallE _ t b bi => .forallE .anonymous (canonWD t) (canonWD b) bi
-  | .lam _ t b bi     => .lam .anonymous (canonWD t) (canonWD b) bi
-  | .letE _ t v b nd  => .letE .anonymous (canonWD t) (canonWD v) (canonWD b) nd
-  | .app f a          => .app (canonWD f) (canonWD a)
-  | .mdata _ e        => canonWD e
-  | .proj n i e       => .proj n i (canonWD e)
-  | e                 => e
-
-/--
-  All WD conditions seen so far in this import — auto-solved *and* leftover ones — keyed by
-  the hash of their canonical form, so the lookup is a bucket scan instead of an `isDefEq`
-  sweep over every previous condition.
--/
-private abbrev SeenWDs := Std.HashMap UInt64 (Array (Name × Expr))
-
-private def SeenWDs.insert' (seen : SeenWDs) (n : Name) (canon : Expr) : SeenWDs :=
-  seen.insert canon.hash ((seen.getD canon.hash #[]).push (n, canon))
-
-private def findWD (canon : Expr) (seen : SeenWDs) : TermElabM (Option Name) := do
-  let .some bucket := seen[canon.hash]? | return .none
-  for (n, e) in bucket do
-    if e == canon then
-      return n
-    -- Hash collision, or a reducibility variant `==` cannot see: confirm with `isDefEq`.
-    -- A runtime timeout here must count as "no match", not kill the enclosing import.
-    if ← tryCatchRuntimeEx (Meta.isDefEq e canon) (fun _ ↦ pure false) then
-      return n
-  return .none
-
 private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandElabM ParserResult := do
   let atelierBDir := System.FilePath.mk <| barrel.atelierb.get (← getOptions)
 
@@ -114,7 +78,7 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
   pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
 private def pog2obligations (res : ParserResult) (contextName : Name) :
-    CommandElabM (Array Barrel.Obligation × Array Name) := do
+    CommandElabM (Array Barrel.Obligation × Array Name) := liftTermElabM do
   let ⟨_, name, goals⟩ := res
 
   let t0 ← IO.monoMsNow
@@ -123,10 +87,9 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
 
   let mut res : Array Barrel.Obligation := #[]
   let mut wds : Array Barrel.Obligation := #[]
-  -- Every WD condition generated so far in this import, auto-solved or not: repeated
-  -- partial operators produce the same condition over and over across obligations, and
-  -- re-generating (and re-proving!) it for each theorem is what blew up the subgoal count.
-  let mut seenWDs : SeenWDs := {}
+  -- The whole import shares one metavariable context. Encoder cache hits reuse the
+  -- original closed proof metavariable, including when its obligation is still pending.
+  let mut encoder : B.Encoder.State := {}
   -- Auto-discharge splits its successes into really-proven (green) and sorried (yellow, a
   -- `barrel_solve` alternative can close a genuinely-`sorry` goal with `sorry`); their sum is
   -- the "auto-solved" count.
@@ -136,7 +99,6 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
   let mut i := 0
 
   let mut skipped : Array Name := #[]
-  let mut dedups := 0
 
   -- Per-obligation map for the progress card: one `{d, n, op, st, line, char}` entry per
   -- subgoal, filled as each is auto-discharged or left pending. `nsPrefix` trims the
@@ -156,56 +118,26 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
     -- Encoding runs with its own heartbeat budget and its failures (unsupported construct,
     -- ill-typed translation, timeout) are confined to this obligation: on large industrial
     -- POGs a single unencodable goal must not abort the import of the thousands of others.
-    let enc? : Option (Name × String × Expr × Array (Name × String × Expr × Bool) × SeenWDs × Nat) ←
-      liftTermElabM <| withCurrHeartbeats <| withOptions (Elab.async.set · false) do
+    let enc? ← withCurrHeartbeats <| withOptions (Elab.async.set · false) do
       let saved ← saveState
       tryCatchRuntimeEx (do
-        let (g', wds'') ← withDeclName declName g.toExpr
-
-        let mut seen := seenWDs
-        let mut wds' : Array (Name × String × Expr × Bool) := #[]
-        let mut j := 0
-        for ⟨g', mvar⟩ in wds'' do
-          let n_wd := declName.str s!"wd_{j}"
-          j := j + 1
-
-          let g' ← instantiateMVars g'
-          let canon := canonWD g'
-          if let .some n ← findWD canon seen then
-            trace[barrel.wd] "Found duplicated WD theorem: using {n} instead"
-            mvar.assign (.const n [])
-          else do
-            mvar.assign (.const n_wd [])
-            seen := seen.insert' n_wd canon
-            wds' := wds'.push (n_wd, "Assertion is well-defined", g', true)
-
-        -- A condition may mention WD metavariables that were only assigned later in the
-        -- loop above (nested partial operators), so re-instantiate before anything is
-        -- persisted across `liftTermElabM` boundaries, and register the *final* canonical
-        -- forms — a metavariable from a dead `MetavarContext` must never leak.
-        let wdsFinal ← wds'.mapM λ (n, r, e, b) ↦ do pure (n, r, ← instantiateMVars e, b)
-        let seenFinal := wdsFinal.foldl (λ s (n, _, e, _) ↦ s.insert' n (canonWD e)) seenWDs
-
-        let g' ← instantiateMVars g'
-        trace[barrel] "Generated theorem: {g'}"
-
-        pure <| .some (declName, g.reason, g', wdsFinal, seenFinal, wds''.size))
+        pure <| some (← g.toExpr declName encoder))
         fun ex => do
           saved.restore
           logWarning m!"Failed to encode proof obligation `{declName}` ({g.reason}), skipping it:{indentD ex.toMessageData}"
-          pure .none
+          pure none
 
-    let .some (declName, reason, g', wds', seen, rawWDs) := enc?
+    let some (g', newWDs, encoder') := enc?
       | skipped := skipped.push declName
         nbGoals := nbGoals - 1
         i := i + 1
         continue
-    seenWDs := seen
-    dedups := dedups + (rawWDs - wds'.size)
+    encoder := encoder'
+    let wds' := newWDs.map fun (n, e) => (n, "Assertion is well-defined", e, true)
     let opName := deriveOp g.name
 
     nbGoals := nbGoals + wds'.size
-    let try_discharge := wds'.push (declName, reason, g', false)
+    let try_discharge := wds'.push (declName, g.reason, g', false)
 
     -- NOTE: Now try and solve it automatically...if possible
     for (declName, reason, g, isWd) in try_discharge do
@@ -214,7 +146,7 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
       -- *runtime* exception, which an ordinary `try … catch` re-throws: without it a single
       -- diverging `barrel_solve` attempt aborts the whole `import` command instead of just
       -- leaving its obligation to the user.
-      let (gOrWd, _hb) ← liftTermElabM <| withCurrHeartbeats <| withOptions (Elab.async.set · false) do
+      let (gOrWd, _hb) ← withCurrHeartbeats <| withOptions (Elab.async.set · false) do
         let hb₀ ← IO.getNumHeartbeats
         let saved ← saveState
         let r : _ ⊕ _ ← tryCatchRuntimeEx
@@ -290,7 +222,7 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
   let pct := if nbGoals == 0 then 0 else autoDischarged * 1000 / nbGoals
   let rows : Array (String × String) := #[
     ("auto-solved", s!"{autoDischarged} / {nbGoals} ({pct / 10}.{pct % 10}%)"),
-    ("WD goals", s!"{wdDistinct} unique (+{dedups} reused)"),
+    ("WD goals", s!"{wdDistinct} unique ({encoder.hits} allocations avoided)"),
     ("remaining", s!"{goals.filter (·.proof?.isNone) |>.size}"),
     ("import time", s!"{dt / 1000}.{dt % 1000 / 100} s")
   ]

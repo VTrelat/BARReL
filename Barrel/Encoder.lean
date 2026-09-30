@@ -6,6 +6,84 @@ open Std Lean Meta Elab Term
 
 namespace B
 
+  namespace Encoder
+
+  /-- Ignore binder names and source metadata when comparing closed WD conditions. -/
+  private partial def canonWD : Expr → Expr
+    | .forallE _ t b bi => .forallE .anonymous (canonWD t) (canonWD b) bi
+    | .lam _ t b bi => .lam .anonymous (canonWD t) (canonWD b) bi
+    | .letE _ t v b nd => .letE .anonymous (canonWD t) (canonWD v) (canonWD b) nd
+    | .app f a => .app (canonWD f) (canonWD a)
+    | .mdata _ e => canonWD e
+    | .proj n i e => .proj n i (canonWD e)
+    | e => e
+
+  /-- One closed proof metavariable, allocated only on a WD cache miss. -/
+  structure WD where
+    name : Name
+    type : Expr
+    proof : Expr
+    deriving Inhabited
+
+  /-- Import-local encoder state; its metavariables belong to the enclosing `TermElabM`. -/
+  structure State where
+    wds : Array WD := #[]
+    seen : Std.HashMap Expr Expr := {}
+    names : Std.HashMap MVarId Name := {}
+    allocations : Nat := 0
+    hits : Nat := 0
+    nextWD : Nat := 0
+
+  abbrev M := StateT State TermElabM
+
+  /-- Export named references without assigning the proof metavariables used by the encoder. -/
+  def State.export (s : State) (e : Expr) : Expr :=
+    e.replace fun e => do
+      guard e.isMVar
+      return mkConst (← s.names[e.mvarId!]?)
+
+  /-- Resolve provisional types and merge WDs whose equality depended on later type inference. -/
+  def State.refresh (s : State) (firstWD : Nat) : TermElabM State := do
+    let fresh := s.wds[firstWD:].toArray
+    let mut s := { s with wds := s.wds.extract 0 firstWD }
+    -- Rebuild in dependency order, without matching an entry against itself or a later WD.
+    for wd in fresh do
+      s := { s with seen := s.seen.erase (canonWD wd.type) }
+    for wd in fresh do
+      let type ← instantiateMVars wd.type
+      let key := canonWD type
+      if let some proof := s.seen[key]? then
+        wd.proof.mvarId!.assign proof
+        s := { s with names := s.names.insert wd.proof.mvarId! s.names[proof.mvarId!]! }
+      else
+        s := { s with
+          wds := s.wds.push { wd with type }
+          seen := s.seen.insert key wd.proof }
+    return s
+
+  /-- Close over the proof context before lookup, and apply the shared proof to that context. -/
+  private def wellDefined (type : Expr) : M Expr := do
+    let locals := (← getLCtx).getFVars
+    let args ← locals.filterM fun x => return !(← x.fvarId!.isLetVar)
+    let type ← instantiateMVars (← mkForallFVars locals type)
+    let key := canonWD type
+    let s ← get
+    modify fun s => { s with nextWD := s.nextWD + 1 }
+    if let some proof := s.seen[key]? then
+      modify fun s => { s with hits := s.hits + 1 }
+      return mkAppN proof args
+    let name := (← getDeclName?).get!.str s!"wd_{s.nextWD}"
+    let proof ← mkFreshExprMVarAt {} #[] type .syntheticOpaque
+    trace[barrel.wd] "New WD metavariable {name}: {indentExpr type}"
+    modify fun s => { s with
+      wds := s.wds.push { name, type, proof }
+      seen := s.seen.insert key proof
+      names := s.names.insert proof.mvarId! name
+      allocations := s.allocations + 1 }
+    return mkAppN proof args
+
+  end Encoder
+
   def reservedVarToExpr : (k : String) → TermElabM Lean.Expr
     | "MININT", _ => return mkConst ``Builtins.MININT
     | "MAXINT", _ => return mkConst ``Builtins.MAXINT
@@ -27,9 +105,10 @@ namespace B
     | .pow α => mkApp (.const ``Set [0]) (α.toExpr)
     | .prod α β => mkApp2 (.const ``Prod [0, 0]) α.toExpr β.toExpr
 
-  private def newMVar (type? : Option Lean.Expr) : MetaM Expr := do
-    -- let mvar ← pure Int.mkType
-    let mvar ← Meta.mkFreshExprMVar type?
+  private def newMVar (type : Lean.Expr) : MetaM Expr := do
+    -- B types do not depend on term variables. Keep the lambda result type outside
+    -- their scope so closing a WD cannot raise it before result-type inference finishes.
+    let mvar ← Meta.mkFreshExprMVarAt {} #[] type
     trace[barrel] "New metavariable {mvar}"
     return mvar
 
@@ -49,13 +128,13 @@ namespace B
     return e.toExpr
 
   mutual
-    partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : TermElabM Expr := do
+    partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : Encoder.M Expr := do
       mkAppM f #[← t₁.toExpr, ← t₂.toExpr]
 
-    partial def makeUnary (f : Name) (t : Syntax.Term) : TermElabM Expr := do
+    partial def makeUnary (f : Name) (t : Syntax.Term) : Encoder.M Expr := do
       mkAppM f #[← t.toExpr]
 
-    partial def Syntax.Term.toExpr : Syntax.Term → TermElabM Expr
+    partial def Syntax.Term.toExpr : Syntax.Term → Encoder.M Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
       | .uminus x => makeUnary ``Neg.neg x
@@ -132,7 +211,7 @@ namespace B
 
         mkAppM ``setOf #[lam]
       | .all xs P => do
-        let rec go_forall : List (String × Syntax.Typ) → TermElabM Expr
+        let rec go_forall : List (String × Syntax.Typ) → Encoder.M Expr
           | [] => P.toExpr
           | ⟨x, t⟩ :: xs => do
             withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
@@ -140,7 +219,7 @@ namespace B
 
         go_forall xs.toList
       | .exists xs P => do
-        let rec go_exists : List (String × Syntax.Typ) → TermElabM Expr
+        let rec go_exists : List (String × Syntax.Typ) → Encoder.M Expr
           | [] => P.toExpr
           | ⟨x, t⟩ :: xs => do
             let lam ← withLocalDeclD (Name.mkStr1 x) (t.toExpr) fun y ↦ do
@@ -242,67 +321,54 @@ namespace B
         makeBinary (if isPartial then ``B.Builtins.bijPFun else ``B.Builtins.bijTFun) A B
       | .min S => do
         let S ← S.toExpr
-        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.min.WD #[S]
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.min.WD #[S])
         mkAppM ``B.Builtins.min #[S, wdMVar]
       | .max S => do
         let S ← S.toExpr
-        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.max.WD #[S]
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.max.WD #[S])
         mkAppM ``B.Builtins.max #[S, wdMVar]
       | .app f x => do
         let f ← f.toExpr
         let x ← x.toExpr
-        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.app.WD #[f, x]
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.app.WD #[f, x])
         mkAppM ``B.Builtins.app #[f, x, wdMVar]
       | .size E => do
         let E ← E.toExpr
-        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.size.WD #[E]
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.size.WD #[E])
         mkAppM ``B.Builtins.size #[E, wdMVar]
       | .fin S => makeUnary ``B.Builtins.FIN S
       | .fin₁ S => makeUnary ``B.Builtins.FIN₁ S
       | .card S => do
         let S ← S.toExpr
-        let wdMVar ← liftMetaM ∘ newMVar =<< mkAppM ``B.Builtins.card.WD #[S]
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.card.WD #[S])
         mkAppM ``B.Builtins.card #[S, wdMVar]
 
   end
 
-  def POG.Goal.toExpr (sg : POG.Goal) : TermElabM (Expr × Array (Expr × MVarId)) := do
-    -- trace[barrel.pog] s!"Encoding: {goal}"
-
-    let vars : Array (Name × (Array Expr → TermElabM Expr)) :=
-      sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
-
-    let g ← Meta.withLocalDeclsD vars λ vars ↦ do
-      -- let rec goHyp : List Syntax.Term → TermElabM Expr
-      --   | [] => checkpoint sg.goal.toExpr pure
-      --   | t :: ts => checkpoint t.toExpr λ t ↦ mkForall `_ .default t <$> goHyp ts
-
-      trace[barrel] "Decoded goal: {sg.goal}"
-
-      let g ← sg.goal.toExpr
-
-      trace[barrel] "Generated goal (no quantified variable): {indentExpr g}"
-
-      let g ← liftMetaM (mkForallFVars vars (usedOnly := true) g)
-              >>= Term.ensureHasType (.some <| .sort 0)
-      Meta.check g
-      instantiateMVars g
-
-    let mvars := g.collectMVars {} |>.result
-
-    trace[barrel] "Generated goal: {indentExpr g}"
-
-    let mut wds := #[]
-    let mut i := 0
-
-    for mvar in mvars do
-      let ty ← mvar.withContext do
-        liftMetaM ∘ mkForallFVars (← getLCtx).getFVars =<< mvar.getType
-
-      trace[barrel.wd] "WD metavariable to solve {sg.name}.wd_{(i : Nat)} (?{mvar.name}):{indentExpr ty}"
-
-      wds := wds.push (ty, mvar)
-
-    return (g, wds)
+  /-- Encode one goal, allocating only previously unseen WDs in the shared import session. -/
+  def POG.Goal.toExpr (sg : POG.Goal) (declName : Name) (state : Encoder.State) :
+      TermElabM (Expr × Array (Name × Expr) × Encoder.State) := withDeclName declName do
+    let firstWD := state.wds.size
+    let (g, state) ← (do
+      let vars : Array (Name × (Array Expr → Encoder.M Expr)) :=
+        sg.vars.map λ ⟨x, τ⟩ ↦ ⟨.mkStr1 x, λ _ ↦ pure τ.toExpr⟩
+      withLocalDeclsD vars fun vars => do
+        trace[barrel] "Decoded goal: {sg.goal}"
+        let g ← sg.goal.toExpr
+        let g ← mkForallFVars vars g (usedOnly := true)
+        let g ← Term.ensureHasType (some <| .sort 0) g
+        Meta.check g
+        instantiateMVars g : Encoder.M Expr).run { state with nextWD := 0 }
+    let state ← state.refresh firstWD
+    let wds ← state.wds[firstWD:].toArray.mapM fun wd => do
+      let type := state.export (← instantiateMVars wd.type)
+      if type.hasMVar || type.hasFVar then
+        throwError "Unresolved variables in WD obligation `{wd.name}`"
+      pure (wd.name, type)
+    let g := state.export (← instantiateMVars g)
+    if g.hasMVar || g.hasFVar then
+      throwError "Unresolved variables in proof obligation `{declName}`"
+    trace[barrel] "Generated theorem: {g}"
+    return (g, wds, state)
 
 end B
