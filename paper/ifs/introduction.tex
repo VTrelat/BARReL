@@ -36,7 +36,7 @@ The translation pipeline is organized into clearly separated components: a light
 		\draw[arr] (B mch) -- node[above=-4mm, midway] {\scriptsize Parsing} (B bxml);
 		\draw[arr] (B bxml) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize generation} (pos);
 		\draw[arr] (pos) -- node[above=-6mm, midway] {\scriptsize PO\\[-.6ex]\scriptsize encoding} (thms);
-		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.5mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
+		\draw[arr, shorten <=7pt, shorten >=7pt] (thms.south) arc[start angle=220, end angle=500, x radius=9.2mm, y radius=9.5mm] node[midway, fill=white, minimum height=0pt, inner sep=2pt] {\scriptsize Proving};
 	\end{tikzpicture}
 	\caption{High-level picture of \barrel.}
 	\label{fig:barrel-archi}

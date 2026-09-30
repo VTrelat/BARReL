@@ -17,9 +17,12 @@ This chain exercises both data refinement and partial operators (\texttt{min}, \
 \subsection{Abstract specification}
 \begin{figure}[t]
 	\centering
-	\captionsetup{type=lstlisting}
+	%	\captionsetup{type=lstlisting}
+	\captionof{lstlisting}{Specrfication \texttt{MinSearch.mch}.}
+	\label{lst:minsearch-mch}
+	\vskip-3ex%
 	\begin{minipage}[b]{0.48\linewidth}
-		\begin{lstlisting}[language=b, caption={Specification \texttt{MinSearch.mch}.}, label={lst:minsearch-mch}]
+		\begin{lstlisting}[language=b]
 MACHINE MinSearch
 CONSTANTS
   S
@@ -64,18 +67,18 @@ It maintains a non-empty set \inlineb{done} of explored elements of \inlineb{S} 
 The operation \inlineb{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \inlineb{search_min} returns the candidate once all elements have been processed.
 
 Operations may carry a precondition (\inlineb{PRE}): the construct \mbox{\inlineb{ANY x WHERE P THEN S END}} non-deterministically chooses an arbitrary value satisfying \inlineb{P}.
-The notation \mbox{\inlineb{mi $\,\longleftarrow$ search_min}} indicates that \inlineb{mi} is an output parameter, and \inlineb{||} denotes parallel assignment.
+The notation \mbox{\inlineb{mi $\,\longleftarrow$ search_min}} indicates that \inlineb{mi} is an output parameter, and \lstinline{||} denotes parallel assignment.
 
 \begin{lstlisting}[language=lean, float=t, caption={Lean goal corresponding to the first conjunct of the preservation of the invariant preservation for operation \inlineb{step} in \texttt{MinSearch.mch}.}, label={lst:minsearch-step-goal}]
 S done add : Set ℤ
 m x : ℤ
-S_fin 		: S ∈ FIN₁ INTEGER
-done_fin  : done ∈ FIN₁ S
-m_mem_S 	: m ∈ S
+S_fin 		: S ∈$$ FIN₁ INTEGER
+done_fin  : done ∈$$ FIN₁ S
+m_mem_S 	: m ∈$$ S
 m_is_min 	: m = B.Builtins.min done ⋯
-done_ne_S : done ≠ S
-add_fin 	: add ∈ FIN₁ (S \ done)
-⊢ done ∪ add ∈ FIN₁ S
+done_ne_S : done ≠$$ S
+add_fin 	: add ∈$$ FIN₁ (S \ done)
+⊢$$ done ∪$$ add ∈$$ FIN₁ S
 \end{lstlisting}
 
 This level already illustrates \barrel's treatment of partial operators: since \inlineb{min(done)} and \inlineb{min(done ∪ add)} are only defined when the corresponding sets have a least element, \barrel generates 4 associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual 4 proof obligations, and discharges them automatically using its built-in automation.
@@ -105,11 +108,13 @@ A gluing invariant links the abstract set $\texttt{done}$ with $\texttt{tab[1..i
 
 \begin{figure}[t]
 	\centering
-	\captionsetup{type=lstlisting}
+	\captionof{lstlisting}{Refinement \texttt{MinSearch\_r2.ref}.}
+	\label{lst:minsearch-r2}
+	\vskip-3ex%
 	\begin{minipage}[b]{0.48\linewidth}%
 		% \caption{Refinement \texttt{MinSearch\_r2.ref}.}
 		% \label{lst:minsearch-r2}
-		\begin{lstlisting}[language=b, caption={Refinement \texttt{MinSearch\_r2.ref}.}, label={lst:minsearch-r2}]
+		\begin{lstlisting}[language=b]
 REFINEMENT MinSearch_r2
 REFINES MinSearch_r1
 CONSTANTS n, tab
@@ -124,7 +129,7 @@ INVARIANT
   m = mc            ∧
   done = tab[1..i]  ∧
   mc ∈ tab[1..i]    ∧
-  ∀jj.(jj ∈ 1..i ⇒ mc ≤ tab(jj))
+  ∀j.(j ∈ 1..i ⇒ mc ≤ tab(j))
 \end{lstlisting}
 	\end{minipage}\hfill
 	\begin{minipage}[b]{0.48\linewidth}
@@ -157,17 +162,22 @@ Correctly discharging the resulting POs requires \barrel to generate and instant
 	\centering
 	\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
 import machine    MinSearch    from "specs/case_study"
+-- 4 remaining goals
+next obligation by
+  ...
+qed
+
 import refinement MinSearch_r1 from "specs/case_study"
+-- 9 remaining goals
+next obligation by
+  ...
+qed
+
 import refinement MinSearch_r2 from "specs/case_study"
-
-prove_obligations_of MinSearch
-next ...  -- 4 remaining goals
-
-prove_obligations_of MinSearch_r1
-next ...  -- 9 remaining goals
-
-prove_obligations_of MinSearch_r2
-next ...  -- 21 remaining goals
+-- 21 remaining goals
+next obligation by
+  ...
+qed
 \end{lstlisting}
 \end{figure}
 
