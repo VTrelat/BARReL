@@ -1,5 +1,6 @@
 import Extra.Prettifier
 import Std.Data.HashSet
+import Init.Data.Rat.Basic
 
 namespace B.Syntax
   inductive Typ : Type _
@@ -22,6 +23,7 @@ namespace B.Syntax
     -- basic terms
     | var (v : String)
     | int (n : Int)
+    | real (value : Rat)
     | bool (b : Bool)
     -- pairs
     | maplet (x y : Term)
@@ -93,6 +95,9 @@ namespace B.Syntax
   partial def Term.pretty : Term -> Nat -> Std.Format
     | .var v => λ _ => v
     | .int n => λ _ => toString n
+    | .real q =>
+      if q.den == 1 then fun _ ↦ s!"{q.num}.0"
+      else «infixl» Term.pretty 190 "/" (.real q.num) (.real q.den)
     | .bool x => λ _ => toString x
     | .𝔹 => λ _ => "𝔹"
     | .ℤ => λ _ => "ℤ"

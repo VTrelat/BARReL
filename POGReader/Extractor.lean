@@ -38,6 +38,7 @@ namespace B.POG
     -- basic terms
     | .var v => .var v
     | .int n => .int n
+    | .real q => .real q
     | .bool b => .bool b
     -- pairs
     | .maplet t₁ t₂ => .maplet t₁.normalize t₂.normalize

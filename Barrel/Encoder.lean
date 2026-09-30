@@ -162,6 +162,34 @@ namespace B
       | throwError "No variable {x} found in context"
     return e.toExpr
 
+  -- Integer literals remain Int; only cast them when a real operand or context requires it.
+  private def coerceNumeric (e target : Expr) : MetaM Expr := do
+    let source ← whnf (← inferType e)
+    let target ← whnf target
+    if source.isConstOf ``Int && target.isConstOf ``Real then
+      return ← mkAppOptM ``Int.cast #[target, none, e]
+    return e
+
+  private def promoteNumeric (left right : Expr) : MetaM (Expr × Expr) := do
+    let leftType ← whnf (← inferType left)
+    let rightType ← whnf (← inferType right)
+    if leftType.isConstOf ``Real && rightType.isConstOf ``Int then
+      return (left, ← coerceNumeric right leftType)
+    if leftType.isConstOf ``Int && rightType.isConstOf ``Real then
+      return (← coerceNumeric left rightType, right)
+    return (left, right)
+
+  private def setElementType (S : Expr) : MetaM Expr := do
+    let .forallE _ α _ _ ← whnf (← inferType S)
+      | throwError "Expected a B set, got {S}"
+    return α
+
+  private def realLiteral (value : Rat) : MetaM Expr := do
+    let numerator ← mkNumeral (mkConst ``Real) value.num.natAbs
+    let numerator ← if value.num < 0 then mkAppM ``Neg.neg #[numerator] else pure numerator
+    if value.den == 1 then return numerator
+    mkAppM ``HDiv.hDiv #[numerator, ← mkNumeral (mkConst ``Real) value.den]
+
   mutual
     partial def makeBinary (f : Name) (t₁ t₂ : Syntax.Term) : Encoder.M Expr := do
       mkAppM f #[← t₁.toExpr, ← t₂.toExpr]
@@ -169,18 +197,23 @@ namespace B
     partial def makeUnary (f : Name) (t : Syntax.Term) : Encoder.M Expr := do
       mkAppM f #[← t.toExpr]
 
+    partial def makeNumericBinary (f : Name) (t₁ t₂ : Syntax.Term) : Encoder.M Expr := do
+      let (x, y) ← promoteNumeric (← t₁.toExpr) (← t₂.toExpr)
+      mkAppM f #[x, y]
+
     partial def Syntax.Term.toExpr : Syntax.Term → Encoder.M Expr
       | .var v => if v ∈ B.Syntax.reservedIdentifiers then reservedVarToExpr v else lookupVar v
       | .int n => return mkIntLit n
+      | .real value => realLiteral value
       | .uminus x => makeUnary ``Neg.neg x
-      | .le x y => do mkLE (← x.toExpr) (← y.toExpr)
-      | .lt x y => do mkLT (← x.toExpr) (← y.toExpr)
+      | .le x y => makeNumericBinary ``LE.le x y
+      | .lt x y => makeNumericBinary ``LT.lt x y
       | .bool b => return mkConst (if b then ``True else ``False)
       | .maplet x y => makeBinary ``Prod.mk x y
-      | .add x y => do mkAdd (←x.toExpr) (←y.toExpr)
-      | .sub x y => do mkSub (←x.toExpr) (←y.toExpr)
-      | .mul x y => do mkMul (←x.toExpr) (←y.toExpr)
-      | .div x y => makeBinary ``HDiv.hDiv x y -- mkIntDiv <$> x.toExpr <*> y.toExpr
+      | .add x y => makeNumericBinary ``HAdd.hAdd x y
+      | .sub x y => makeNumericBinary ``HSub.hSub x y
+      | .mul x y => makeNumericBinary ``HMul.hMul x y
+      | .div x y => makeNumericBinary ``HDiv.hDiv x y
       | .mod x y => makeBinary ``HMod.hMod x y -- mkIntMod <$> x.toExpr <*> y.toExpr
       | .exp x y => makeBinary ``HPow.hPow x y -- do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
       | .and x y => do
@@ -193,8 +226,13 @@ namespace B
           liftMetaM ∘ mkForallFVars #[z] =<< y.toExpr
       | .iff x y => mkIff <$> x.toExpr <*> y.toExpr
       | .not x => mkNot <$> x.toExpr
-      | .eq x y => do mkEq (← x.toExpr) (← y.toExpr)
-      | .mem x S => makeBinary ``Membership.mem S x
+      | .eq x y => do
+        let (x, y) ← promoteNumeric (← x.toExpr) (← y.toExpr)
+        mkEq x y
+      | .mem x S => do
+        let S ← S.toExpr
+        let x ← coerceNumeric (← x.toExpr) (← setElementType S)
+        mkAppM ``Membership.mem #[S, x]
       | .𝔹 => mkAppOptM ``Set.univ #[mkSort 0]
       | .ℤ => mkAppOptM ``Set.univ #[Int.mkType]
       | .ℝ => mkAppOptM ``Set.univ #[mkConst ``Real]
@@ -326,8 +364,12 @@ namespace B
         if es.isEmpty then
           mkAppOptM ``EmptyCollection.emptyCollection #[ty.toExpr, .none]
         else
-          let emp ← mkAppOptM ``Singleton.singleton #[.none, ty.toExpr, .none, ← es.back!.toExpr]
-          es.pop.foldrM (init := emp) fun e acc ↦ do mkAppM ``Insert.insert #[←e.toExpr, acc]
+          let .pow elemTy := ty | throwError "Expected a set type, got {ty}"
+          let elemTy := elemTy.toExpr
+          let last ← coerceNumeric (← es.back!.toExpr) elemTy
+          let emp ← mkAppOptM ``Singleton.singleton #[elemTy, ty.toExpr, .none, last]
+          es.pop.foldrM (init := emp) fun e acc ↦ do
+            mkAppM ``Insert.insert #[← coerceNumeric (← e.toExpr) elemTy, acc]
       | .setminus S T => makeBinary ``SDiff.sdiff S T
       | .pow S => makeUnary ``Set.powerset S
       | .pow₁ S => makeUnary ``Builtins.POW₁ S
@@ -364,7 +406,9 @@ namespace B
         mkAppM ``B.Builtins.max #[S, wdMVar]
       | .app f x => do
         let f ← f.toExpr
-        let x ← x.toExpr
+        let pairType ← whnf (← setElementType f)
+        unless pairType.isAppOfArity ``Prod 2 do throwError "Expected a B relation, got {f}"
+        let x ← coerceNumeric (← x.toExpr) pairType.getAppArgs[0]!
         let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.app.WD #[f, x])
         mkAppM ``B.Builtins.app #[f, x, wdMVar]
       | .size E => do

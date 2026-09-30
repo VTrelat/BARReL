@@ -214,6 +214,23 @@ namespace B.POG
     | .pow t => .pow (toTerm t)
     | .prod α β => .cprod (toTerm α) (toTerm β)
 
+  -- POG declares real literals as xs:decimal. Parse their digits exactly, without Float.
+  private def parseRealLiteral (value : String) : IO Rat := do
+    let chars := value.trimAscii.toString.toList
+    let (negative, digits) := match chars with
+      | '-' :: rest => (true, rest)
+      | '+' :: rest => (false, rest)
+      | rest => (false, rest)
+    let parts := (String.ofList digits).splitOn "."
+    let (whole, fractional) ← match parts with
+      | [whole] => pure (whole, "")
+      | [whole, fractional] => pure (whole, fractional)
+      | _ => throwError s!"Invalid real literal '{value}': expected a decimal"
+    let some numerator := (whole ++ fractional).toNat?
+      | throwError s!"Invalid real literal '{value}': expected decimal digits"
+    let numerator : Int := if negative then -(Int.ofNat numerator) else Int.ofNat numerator
+    return mkRat numerator (10 ^ fractional.length)
+
   private partial def parseTerm (types : Std.HashMap Nat Syntax.Typ) : B.Xml.Element → IO Syntax.Term
     | node@⟨"Id", attrs, _⟩ => (.var ∘ Prod.fst) <$> parseAndRegisterId vars types node
     | ⟨"Integer_Literal", attrs, _⟩ => do
@@ -226,7 +243,10 @@ namespace B.POG
       | "FALSE" => return .bool false
       | v => throwError s!"Unknown boolean literal value {v}"
     | ⟨"STRING_Literal", attrs, nodes⟩ => panic! "TODO"
-    | ⟨"Real_Literal", attrs, nodes⟩ => panic! "TODO"
+    | ⟨"Real_Literal", attrs, _⟩ => do
+      let some value := attrs.get? "value"
+        | throwError "<Real_Literal> must contain an attribute `value`"
+      return .real (← parseRealLiteral value)
     | ⟨tag@"Unary_Pred", attrs, nodes⟩
     | ⟨tag@"Unary_Exp", attrs, nodes⟩ => do
       unless nodes.size = 1 do throwError s!"<{tag}> expects a single child, got {nodes.size}"
