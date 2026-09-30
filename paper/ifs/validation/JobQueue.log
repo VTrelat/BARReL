@@ -1,0 +1,28 @@
+🎉 Automatically solved 3 out of 15 subgoals!
+JobQueue.Operation_enqueue_2.wd_1: Assertion is well-defined
+JobQueue.Operation_enqueue_2.wd_2: Assertion is well-defined
+JobQueue.Operation_enqueue_2.wd_3: Assertion is well-defined
+examples/JobQueue.lean:19:106: warning: Variable name `h_14` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+examples/JobQueue.lean:19:111: warning: Variable name `h_15` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+examples/JobQueue.lean:19:116: warning: Variable name `h_16` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+JobQueue.Operation_enqueue_2.wd_4: Assertion is well-defined
+JobQueue.Operation_enqueue_3.wd_5: Assertion is well-defined
+JobQueue.Operation_enqueue_4.wd_5: Assertion is well-defined
+JobQueue.Operation_enqueue_5.wd_5: Assertion is well-defined
+JobQueue.Initialisation_1: Invariant is preserved
+JobQueue.Operation_enqueue_2: Invariant is preserved
+JobQueue.Operation_enqueue_3: Invariant is preserved
+JobQueue.Operation_enqueue_4: Invariant is preserved
+JobQueue.Operation_enqueue_5: Invariant is preserved

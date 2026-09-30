@@ -1,0 +1,30 @@
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{stmaryrd}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{listings}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\urlstyle{same}
+\newcommand{\barrel}{\textsc{BARReL}\xspace}
+\newcommand{\WD}{\mathsf{WD}}
+\newcommand{\enc}[1]{\llbracket #1\rrbracket}
+% B's partial-function-space arrow, as in the original manuscript.
+\newcommand\pfun{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\to$\cr}}}
+\lstdefinelanguage{LeanSnippet}{
+  morekeywords={import,machine,refinement,implementation,pog,from,obligation,next,of,by,qed,theorem,def,exact,open},
+  sensitive=true,
+  morecomment=[l]{--},
+  morestring=[b]"
+}
+\lstset{language=LeanSnippet,basicstyle=\small\ttfamily,
+  literate={⟨}{{$\langle$}}1 {⟩}{{$\rangle$}}1,
+  keywordstyle=\bfseries,commentstyle=\itshape,
+  columns=fullflexible,keepspaces=true,showstringspaces=false,
+  breaklines=true,frame=single,framerule=0.3pt,
+  aboveskip=0.8em,belowskip=0.8em}

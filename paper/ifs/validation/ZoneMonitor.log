@@ -1,0 +1,83 @@
+Import summary — `ZoneMonitor`
+┌─────────────┬─────────────────────────┐
+│ auto-solved │ 71 / 146 (48.6%)        │
+│ WD goals    │ 66 unique (+688 reused) │
+│ remaining   │ 75                      │
+│ import time │ 3890.8 s                │
+└─────────────┴─────────────────────────┘
+ZoneMonitor.Operation_Record_9.wd_12: Assertion is well-defined
+ZoneMonitor.Operation_Record_10.wd_11: Assertion is well-defined
+ZoneMonitor.Operation_RecordBatch_15.wd_11: Assertion is well-defined
+ZoneMonitor.Operation_RecordBatch_16.wd_10: Assertion is well-defined
+ZoneMonitor.Operation_Withdraw_21.wd_12: Assertion is well-defined
+ZoneMonitor.Operation_Withdraw_22.wd_11: Assertion is well-defined
+ZoneMonitor.Operation_Configure_29.wd_11: Assertion is well-defined
+ZoneMonitor.Operation_Configure_30.wd_10: Assertion is well-defined
+ZoneMonitor.Operation_Authorize_34.wd_17: Assertion is well-defined
+ZoneMonitor.Operation_Authorize_35.wd_16: Assertion is well-defined
+ZoneMonitor.Operation_Revoke_39.wd_11: Assertion is well-defined
+ZoneMonitor.Operation_Revoke_40.wd_10: Assertion is well-defined
+ZoneMonitor.Operation_Authorize_33.wd_16: Assertion is well-defined
+ZoneMonitor.Operation_Authorize_34.wd_16: Assertion is well-defined
+ZoneMonitor.Operation_Authorize_35.wd_17: Assertion is well-defined
+ZoneMonitor.Initialisation_0: Invariant is preserved
+ZoneMonitor.Operation_RecordBatch_13: Invariant is preserved
+ZoneMonitor.Operation_RecordBatch_14: Invariant is preserved
+ZoneMonitor.Operation_RecordBatch_15: Invariant is preserved
+ZoneMonitor.Operation_RecordBatch_16: Invariant is preserved
+ZoneMonitor.Operation_Record_7: Invariant is preserved
+ZoneMonitor.Operation_Record_8: Invariant is preserved
+ZoneMonitor.Operation_Record_9: Invariant is preserved
+ZoneMonitor.Operation_Record_10: Invariant is preserved
+ZoneMonitor.Operation_Withdraw_19: Invariant is preserved
+ZoneMonitor.Operation_Withdraw_20: Invariant is preserved
+ZoneMonitor.Operation_Withdraw_21: Invariant is preserved
+ZoneMonitor.Operation_Withdraw_22: Invariant is preserved
+ZoneMonitor.Operation_Configure_23: Invariant is preserved
+ZoneMonitor.Operation_Configure_24: Invariant is preserved
+ZoneMonitor.Operation_Configure_26: Invariant is preserved
+ZoneMonitor.Operation_Configure_27: Invariant is preserved
+ZoneMonitor.Operation_Configure_28: Invariant is preserved
+ZoneMonitor.Operation_Configure_29: Invariant is preserved
+ZoneMonitor.Operation_Configure_30: Invariant is preserved
+ZoneMonitor.Operation_Authorize_32: Invariant is preserved
+ZoneMonitor.Operation_Authorize_33: Invariant is preserved
+ZoneMonitor.Operation_Authorize_34: Invariant is preserved
+ZoneMonitor.Operation_Authorize_35: Invariant is preserved
+ZoneMonitor.Operation_Revoke_37: Invariant is preserved
+ZoneMonitor.Operation_Revoke_38: Invariant is preserved
+ZoneMonitor.Operation_Revoke_39: Invariant is preserved
+ZoneMonitor.Operation_Revoke_40: Invariant is preserved
+ZoneMonitor.Operation_Record_5: Invariant is preserved
+ZoneMonitor.Operation_RecordBatch_11: Invariant is preserved
+ZoneMonitor.Operation_Withdraw_17: Invariant is preserved
+ZoneMonitor.WellDefinednessInvariant_45: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_46: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_47: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_48: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_49: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_50: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_51: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_53: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_54: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_55: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_57: Invariant is well defined
+ZoneMonitor.WellDefinednessInvariant_59: Invariant is well defined
+ZoneMonitor.WellDefinedness_Record_60: Operation is well defined
+ZoneMonitor.WellDefinedness_Record_61: Operation is well defined
+ZoneMonitor.WellDefinedness_Withdraw_62: Operation is well defined
+ZoneMonitor.WellDefinedness_Withdraw_63: Operation is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_64: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_65: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_66: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_68: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_69: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_70: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_72: Operation precondition is well defined
+ZoneMonitor.WellDefinednessPrecondition_Authorize_74: Operation precondition is well defined
+ZoneMonitor.WellDefinedness_ReadSensor_75: Operation is well defined
+ZoneMonitor.WellDefinedness_ZoneSummary_76: Operation is well defined
+ZoneMonitor.WellDefinedness_ZoneSummary_77: Operation is well defined
+ZoneMonitor.WellDefinedness_ZoneSummary_78: Operation is well defined
+ZoneMonitor.WellDefinedness_ZoneSummary_79: Operation is well defined
+ZoneMonitor: 146 published obligations; all transitive axioms audited

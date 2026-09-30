@@ -1,0 +1,33 @@
+% Compile from paper/ifs:
+% latexmk -outdir=build/template template/template.tex
+\documentclass[runningheads,orivec]{llncs}
+\input{preamble}
+\title{Title of the iFS Submission}
+\titlerunning{Short Paper Title}
+\author{Anonymous authors}
+\authorrunning{Anonymous authors}
+\institute{Anonymous institution}
+\hypersetup{pdfauthor={}}
+\begin{document}
+\maketitle
+\begin{abstract}
+State the concrete problem, the contribution, the evidence, and the
+boundary of the claims.
+\keywords{Formal methods \and Verification}
+\end{abstract}
+\section{Introduction}
+Motivate the problem with an example and state the contributions.
+\section{Approach}
+Explain the assumptions and method, for example in the setting of the
+B method~\cite{AbrialBBook}.
+\section{Evaluation}
+Present reproducible evidence and limitations.
+\section{Related Work}
+Compare the contribution with the closest approaches.
+\section{Conclusion}
+State what was established and what remains open.
+\subsubsection*{Data Availability Statement}
+Provide the appropriate artifact and data availability information.
+\bibliographystyle{splncs04}
+\bibliography{references}
+\end{document}

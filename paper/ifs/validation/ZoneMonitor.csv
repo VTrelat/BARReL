@@ -1,0 +1,13 @@
+operation,principal,principal_auto,source_wd,source_wd_auto,raw_wd,generated_wd,generated_wd_auto
+Properties WD,0,0,4,4,0,0,0
+Initialisation,5,4,0,0,16,8,8
+Invariant WD,0,0,15,3,76,4,4
+Record,6,1,2,0,91,15,13
+RecordBatch,6,1,0,0,66,6,4
+Withdraw,6,1,2,0,91,7,5
+Configure,8,1,0,0,88,8,6
+Authorize,5,1,11,3,220,12,7
+Revoke,5,1,0,0,56,6,4
+ReadSensor,0,0,1,0,10,0,0
+ZoneSummary,0,0,4,0,40,0,0
+Total,41,10,39,10,754,66,51

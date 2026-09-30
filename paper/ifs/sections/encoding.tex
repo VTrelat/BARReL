@@ -1,0 +1,226 @@
+\section{Representing B Obligations in Lean}
+\label{sec:encoding}
+
+\subsection{B developments and the translation pipeline}
+
+A B machine declares sets and constants, state variables, an invariant,
+an initialization, and operations. Its proof obligations establish, among
+other properties, that initialization satisfies the invariant and that
+each operation preserves it under its precondition. Refinement introduces
+more concrete state together with a gluing invariant and corresponding
+proof obligations. \barrel accepts machines, refinements, implementations,
+or an already generated POG file. It invokes Atelier~B's BXML and
+proof-obligation generators when generation is needed.
+
+The POG XML format~\cite{POGXML} records mathematical obligations, their
+hypotheses, definitions, and typing information. \barrel parses this
+format, extracts the context of each goal, and constructs a Lean
+expression. For variables $x_1,\ldots,x_n$, hypotheses
+$H_1,\ldots,H_m$, and conclusion $G$, the target has the schematic form
+\[
+  \forall x_1\cdots x_n,\quad
+  \enc{H_1}\to\cdots\to\enc{H_m}\to\enc{G}.
+\]
+The translation also constructs the proof arguments required by partial
+operators, described below. Unsupported expressions are reported as
+encoding failures and prevent completion of the import.
+
+\subsection{Sets, relations, and functions}
+
+B's mathematical language uses sets, maplets, relational operators, and
+quantified predicates. A relation $R$ from $A$ to $B$ is a subset of
+$A\times B$. A partial function is a functional relation: whenever
+$(x,y)\in R$ and $(x,z)\in R$, we have $y=z$. B writes
+$R\in A\pfun B$ for membership in this partial-function space. Totality additionally
+requires its domain to equal $A$. Thus a B function can also occur as a
+relation in domain restriction, image, override, and other set operations.
+
+\barrel uses Mathlib's \texttt{Set} and \texttt{SetRel} representations:
+\[
+  \mathsf{Set}\ \alpha=\alpha\to\mathsf{Prop},\qquad
+  \mathsf{SetRel}\ \alpha\ \beta=\mathsf{Set}(\alpha\times\beta).
+\]
+B typing information determines the corresponding element types;
+integers use Lean's \texttt{Int}, products use product types, and
+powersets use \texttt{Set} over the element type. Function properties
+are predicates on relations. This lets the same translated object be
+used for both function application and relational reasoning.
+
+In the current reader, unknown carrier-type identifiers are mapped to
+integers, and deferred carrier sets receive hypotheses stating that
+they are finite nonempty integer sets. The case study's sensor and zone
+carriers are consequently represented by constrained integer sets,
+rather than arbitrary Lean type parameters. The operator library also
+provides finite sets, intervals, relational images, extrema, cardinality,
+and application, with B-style notation and lemmas for interactive proof.
+Operator coverage is an implementation property; acceptance of some
+set-based constructs does not imply support for the entire B language.
+
+\subsection{Partial operators with explicit evidence}
+
+A B expression such as $\min(S)$ requires $S$ to have a least element.
+Translating it into a total function on all Lean sets would leave a value
+available even outside this intended domain. For extrema, application,
+sequence size, and cardinality, \barrel instead includes a proof of the
+precondition in the operator's type. For minimum on a partially ordered
+carrier, the predicate and operator type are
+\begin{align*}
+  \WD_{\min}(S)&\;\equiv\;
+    \exists x\in S,\ \forall y\in S,\ x\leq y,\\
+  \mathsf{bmin}&:(S:\mathsf{Set}\ \alpha)\to
+    \WD_{\min}(S)\to\alpha.
+\end{align*}
+The implementation uses the witnessed least element and proves membership
+and minimality lemmas. On finite nonempty integer sets, the condition
+follows from standard order properties. On an arbitrary ordered carrier,
+nonemptiness alone is insufficient. Cardinality requires finiteness;
+function application requires the evidence expressed by the library's
+application predicate.
+
+An operator occurrence therefore has an explicit proof dependency. During
+translation, the encoder creates a fresh metavariable for a missing
+proof argument and inserts it into the expression. It then collects the
+remaining proof metavariables as WD obligations. Each condition is closed
+over the variables and hypotheses available at that occurrence. Once the
+condition is proved, the corresponding theorem supplies the expression's
+proof argument. Users invoking the same library operator in subsequent
+interactive proofs must also supply its evidence.
+
+This discipline is not yet uniform across arithmetic operators. Division,
+modulo, and exponentiation currently use direct Lean operators without
+the same generated proof arguments. The paper's WD account concerns the
+listed proof-carrying operators; the case study uses those
+operators and ordinary integer comparisons. The trust boundary of the
+translation is discussed in Section~\ref{sec:workflow}.
+
+\subsection{Logical scope of WD evidence}
+
+The position of a partial expression determines which assumptions may
+justify it. For example, a reading $r(s)$ can occur after a guard
+$s\in\operatorname{dom}(r)$, inside a quantifier whose bound variable is
+$s$. Neither the guard nor the variable is a global assumption. The
+encoder uses Lean's local context to retain precisely this scope while
+constructing the expression and its missing proof arguments.
+
+Write $\Gamma$ for the current context and $\enc{P}_\Gamma$ for a
+predicate translated in that context. Implication and conjunction are
+constructed as follows:
+\begin{align*}
+  \enc{P\Rightarrow Q}_\Gamma
+    &=\forall h:\enc{P}_\Gamma,\ \enc{Q}_{\Gamma,h},\\
+  \enc{P\land Q}_\Gamma
+    &=\mathsf{DepAnd}\bigl(\lambda h:\enc{P}_\Gamma.\,
+      \enc{Q}_{\Gamma,h}\bigr).
+\end{align*}
+Here $\mathsf{DepAnd}(Q)$ is defined as $\exists h:P,\ Q(h)$, for
+$Q:P\to\mathsf{Prop}$. If $Q$ does not depend on $h$, this is equivalent
+to ordinary conjunction. The dependent form allows the right conjunct
+to contain operators whose evidence uses the left conjunct. The encoder
+first translates $P$, then introduces $h$, and only then translates $Q$.
+Consequently, a WD condition created within $P$ cannot use $P$ itself;
+one created within $Q$ can. This order matters to the generated
+conditions, even when reordering the predicates would preserve their
+truth whenever all expressions are defined.
+Before encoding, normalization splits conjunctive antecedents into
+successive implications, preserving their order and exposing their
+components as individual assumptions.
+
+For both universal and existential quantification, the encoder introduces
+the bound variable with its translated element type before visiting the
+body. B set-membership restrictions remain predicates: introducing an
+integer variable alone does not establish membership in a sensor set.
+A condition created in the body is closed universally over its local
+variables and proof assumptions, regardless of whether the source
+quantifier is universal or existential. Thus an existential expression
+does not by itself supply a particular witness for proving definedness.
+For example, under the outer assumption $r\in S\pfun D$, the application in
+\[
+  \exists s,\quad s\in\operatorname{dom}(r)\land r(s)\le c
+\]
+requires a condition of the form
+\[
+  \forall s,\quad s\in\operatorname{dom}(r)
+  \to\WD_{\mathrm{app}}(r,s),
+\]
+with the outer variables and assumptions also quantified. It does not
+require that a suitable reading below $c$ exists: that remains the
+principal existential goal. Disjunction and biconditional are encoded
+with ordinary Lean connectives and introduce no corresponding local
+hypothesis for either operand.
+
+\subsection{A contextual WD obligation}
+
+Consider a partial reading map $r$ and a set $A$ of available sensors
+belonging to one zone. A lower-bound check uses $\min(r[A])$, where
+$r[A]$ is the relational image of $A$. Its WD obligation must establish
+that this image has a least element. If the surrounding context contains
+\[
+  r\in\mathit{SENSOR}\pfun\mathbb Z,
+  \qquad A\in\operatorname{FIN}_1(\operatorname{dom}(r)),
+\]
+then the image is finite and nonempty. Here $\operatorname{FIN}_1(X)$ is
+the collection of finite nonempty subsets of $X$. A library lemma proves
+\[
+  \bigl(r\in\mathit{SENSOR}\pfun\mathbb Z\bigr)
+  \to\bigl(A\in\operatorname{FIN}_1(\operatorname{dom}(r))\bigr)
+  \to\WD_{\min}(r[A]).
+\]
+The encoder's actual closed goal additionally quantifies the variables
+and retains the hypotheses of the source occurrence. The proof may
+establish the finite-nonempty premise from these hypotheses before
+applying the lemma.
+
+The context is essential. A summary operation guarded by $A\ne\varnothing$
+can justify the minimum; an unguarded summary on empty readings cannot.
+The encoding of implication and dependent conjunction allows subsequent
+expressions to use proofs of preceding assumptions. The generated WD
+statement records those dependencies, rather than merely asking whether
+the syntactic expression $\min(r[A])$ is meaningful in isolation.
+
+The resulting WD theorem also does not prove the principal property.
+For example, proving that $\min(r[A])$ exists does not show that it exceeds
+a configured threshold. The former belongs to definedness reasoning;
+the latter is part of the authorization condition and its preservation
+proof. This distinction structures both the automation and the case study.
+
+\paragraph{From local evidence to named obligations.}
+Let a missing argument have type $W$ in a local context
+$x_1:T_1,\ldots,x_n:T_n$, where some $T_i$ are propositions. Its named
+obligation has the closed type
+\[
+  d_W:\forall x_1:T_1,\ldots,\forall x_n:T_n,\ W.
+\]
+The generated expression retains a reference to this declaration as its
+evidence, instantiated in the context of the occurrence. Nested partial
+operators may also make one WD declaration depend on another. The importer
+therefore instantiates all remaining proof metavariables before retaining
+the generated statements. A principal goal mentioning an unproved WD
+declaration remains pending: the individual proof command reports that
+dependency and requires its proof first. The principal statement and the
+WD statements thus form one proof development, rather than unrelated
+lists of assertions.
+
+This describes the implementation's evidence discipline for the supported
+operators. Once every referenced declaration has a proof, Lean checks the
+resulting terms against their types. It does not follow from that check
+alone that the translation preserves B semantics; no mechanically verified
+correctness theorem for the reader and encoder is claimed here.
+
+\subsection{Sharing repeated conditions}
+
+Different obligations can contain the same closed WD proposition.
+\barrel maintains a table of conditions already encountered in the
+current import, including both proved and pending ones. Canonicalization
+removes binder names and expression metadata; a hash selects a bucket,
+and comparison uses the canonical form with a bucket-local definitional
+equality fallback. A match reuses the first condition's declaration
+instead of creating another proof task.
+
+The context remains part of the key. Conditions justified by different
+hypotheses need not be shared even if they mention the same expression.
+The procedure recognizes repeated representations, rather than proving
+logical equivalence or subsumption. It does not share across imports,
+and its hash-bucket restriction is not a complete test of definitional
+equivalence. When a shared condition is still pending, its dependent
+obligations continue to require its proof. Sharing removes duplicated
+work without removing the common precondition.

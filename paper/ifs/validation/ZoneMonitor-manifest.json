@@ -1,0 +1,28 @@
+{
+  "revision": "7c3facb31bb69e077834206c6cb090d71e6c2fe2",
+  "scope": "Revision identifies the backend; hashes also cover the uncommitted case-study sources.",
+  "lean": "leanprover/lean4:v4.31.0",
+  "import_maxHeartbeats": 20000,
+  "interactive_maxHeartbeats": 200000,
+  "hashes": {
+    "specs/ZoneMonitor.mch": "609cc39f67b788615f753ca42451e7a01cb2de4667feb1e6ce5e9abf2c627124",
+    "specs/zonemonitor/ZoneMonitor.pog": "c4723cb4721311f4936a47897e3fbc0b1f153c56b4c7806fbc10c1a7cdb2b64a",
+    "examples/ZoneMonitor.lean": "df6cba3aba2ffee865c373ebfcd0f03e38928e968466a9d619001acdde5b741d",
+    "examples/ZoneMonitorAutomation.lean": "af48217a78c23c288504fb2b80c9ddc307da7328d86a273118347b3c245a88a1",
+    "examples/ZoneMonitorEvidence.lean": "f292ed2a60c1b51d0b0b9c2082cafe354ea6856fc28ac41a8ebb5e880ef840e1",
+    "examples/ZoneMonitorProofs.lean": "82a88f79e58c2baf559a8e0544451156fddb3f18671f1e4b4914ef8eef3e1a37",
+    "examples/ZoneMonitorSourceWD.lean": "ac2146f6686a5f9f7e97a36989a3cfcf41ff775138757e857211aa9eb6a37d72",
+    "examples/ZoneMonitorSupport.lean": "318439b14ed985375f5870531a6a68081b7c4b13eef5e891d95ad93f9e040988"
+  },
+  "totals": {
+    "principal": 41,
+    "principal_auto": 10,
+    "source_wd": 39,
+    "source_wd_auto": 10,
+    "raw_wd": 754,
+    "generated_wd": 66,
+    "generated_wd_auto": 51
+  },
+  "reused_wd": 688,
+  "generated_wd_auto_percent": 77.3
+}
