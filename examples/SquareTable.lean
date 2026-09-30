@@ -14,25 +14,27 @@ import pog SquareTable from "specs/"
 obligation AssertionLemmas_0 of SquareTable by
   intro sq nn kk hsq hzero hstep hn
   have squares (n : ℕ) :
-      app sq (n : ℤ) (app.WD_of_mem_tfun hsq (Int.natCast_nonneg n)) = (n : ℤ) * n := by
-    induction n with
-    | zero => exact hzero
-    | succ n ih =>
-      simp only [Nat.cast_succ]
-      rw [hstep n (Int.natCast_nonneg n), ih]
-      ring
+    app sq (n : ℤ) (app.WD_of_mem_tfun hsq (Int.natCast_nonneg n)) = (n : ℤ) * n := by
+      induction n with
+      | zero => exact hzero
+      | succ n ih =>
+        simp only [Nat.cast_succ]
+        rw [hstep n (Int.natCast_nonneg n), ih]
+        ring
   simpa only [Int.toNat_of_nonneg hn] using squares nn.toNat
 
 obligation WellDefinednessProperties_1 of SquareTable by
   intro sq hsq
   rw [tfun_dom_eq hsq]
-  exact show (0 : ℤ) ≤ 0 by omega
+  change (0 : ℤ) ≤ 0
+  rfl
 
 obligation WellDefinednessProperties_3 of SquareTable by
   intro sq nn kk hsq _ hk
   rw [tfun_dom_eq hsq]
   change 0 ≤ kk + 1
-  have : 0 ≤ kk := hk
-  omega
+  trans kk
+  · exact hk
+  · omega
 
 qed SquareTable
