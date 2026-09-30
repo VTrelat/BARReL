@@ -78,16 +78,18 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 Finally, the artifacts also contain all examples from the paper and more that exercise \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
 
-\subsection{Reducing the number of WD side goals via subsumption}\label{subsec:future-wd-subsumption}
-One challenge with \barrel is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
-This stems from a combination of multiple factors: \begin{itemize}
-	\item Atelier B is able to reason directly on the machine itself, while \barrel only knows about the obligations generated.
-	      Thus, Atelier B can insert WD conditions only where needed (at the call sites of partial operators, before generating the goals), once and for all, and share them between sub-goals (or rather not duplicate them).
-	\item When invariants are $n$-ary conjunctions, Atelier B's PO generator outputs multiple separate obligations (one per conjunct) while duplicating the hypotheses.
-	      Since \barrel encodes each obligation individually and separately, WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation goals) are needlessly duplicated.
-\end{itemize}
-Although most of these WD side goals are automatically discharged by an internal tactic (see \cref{par:automation}), the remaining ones may still require proving the same WD condition in multiple different---but subsumable---contexts.
-We leave as future work implementing subsumption of WD conditions to reduce the number of side goals generated, thus improving overall performance of \barrel when importing a B machine.
+% \subsection{Reducing the number of WD side goals via subsumption}\label{subsec:future-wd-subsumption}
+% One challenge with \barrel is that it generates a lot of WD side goals compared to Atelier B, as evidenced by \cref{tab:case-study-stats}.
+% This stems from a combination of multiple factors: \begin{itemize}
+% 	\item Atelier B is able to reason directly on the machine itself, while \barrel only knows about the obligations generated.
+% 	      Thus, Atelier B can insert WD conditions only where needed (at the call sites of partial operators, before generating the goals), once and for all, and share them between sub-goals (or rather not duplicate them).
+% 	\item When invariants are $n$-ary conjunctions, Atelier B's PO generator outputs multiple separate obligations (one per conjunct) while duplicating the hypotheses.
+% 	      Since \barrel encodes each obligation individually and separately, WD conditions that come from hypotheses of the obligation (e.g.\@ in invariant preservation goals) are needlessly duplicated.
+% \end{itemize}
+% Although most of these WD side goals are automatically discharged by an internal tactic (see \cref{par:automation}), the remaining ones may still require proving the same WD condition in multiple different---but subsumable---contexts.
+% We leave as future work implementing subsumption of WD conditions to reduce the number of side goals generated, thus improving overall performance of \barrel when importing a B machine.
+
+
 
 
 % In practice, although \barrel generates a lot more WD side goals, most are automatically solved by an internal tactic\todo[Just mention again what's been decribed in \cref{par:automation}] made specifically for discharging WD conditions.
