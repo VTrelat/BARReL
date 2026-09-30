@@ -4,6 +4,7 @@ import Lean.DocString
 import Lean.Compiler.InlineAttrs
 import Barrel.Meta
 import Barrel.EnvironmentIdentity
+import Barrel.Subsume
 
 open Lean
 
@@ -25,6 +26,7 @@ Copy metadata that ordinary declaration replay does not expose on the destinatio
 In particular, matchers need their `MatcherInfo` to remain usable by `split` and simplification.
 -/
 private def copyDeclarationMetadata (source : Environment) (names : Array Name) : CoreM Unit := do
+  let subsumeLemmas := Subsume.lemmas.getState source
   for name in names do
     modifyEnv fun env => registerPrefixes env name
     if let some info := Meta.Match.Extension.getMatcherInfo? source name then
@@ -33,6 +35,8 @@ private def copyDeclarationMetadata (source : Environment) (names : Array Name) 
       modifyEnv fun env => docStringExt.insert env name doc
     if let some ranges := declRangeExt.find? source name then
       addDeclarationRanges name ranges
+    if subsumeLemmas.contains name then
+      Subsume.lemmas.add name
     setReducibilityStatus name (getReducibilityStatusCore source name)
     if let some attr := Compiler.getInlineAttribute? source name then
       setEnv (← ofExcept <| Compiler.setInlineAttribute (← getEnv) name attr)

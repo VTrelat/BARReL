@@ -1,6 +1,7 @@
 import POGReader.Basic
 import Barrel.Meta
 import Barrel.Builtins
+import Barrel.Subsume
 
 open Std Lean Meta Elab Term
 
@@ -27,11 +28,14 @@ namespace B
 
   /-- Import-local encoder state; its metavariables belong to the enclosing `TermElabM`. -/
   structure State where
+    config : Barrel.ImportConfig := {}
     wds : Array WD := #[]
     seen : Std.HashMap Expr Expr := {}
     names : Std.HashMap MVarId Name := {}
     allocations : Nat := 0
     hits : Nat := 0
+    defEqHits : Nat := 0
+    subsumptionHits : Nat := 0
     nextWD : Nat := 0
 
   abbrev M := StateT State TermElabM
@@ -42,23 +46,47 @@ namespace B
       guard e.isMVar
       return mkConst (← s.names[e.mvarId!]?)
 
-  /-- Resolve provisional types and merge WDs whose equality depended on later type inference. -/
+  /-- Prefer an earlier definitionally equal WD, then try subsumption under the same budget.
+  The target and candidates are closed; source locals must not escape into cached adapters. -/
+  def State.findProof? (s : State) (type : Expr) : TermElabM (Option Barrel.Subsume.Match) := do
+    let limit := s.config.subsumeMaxHeartbeats
+    if limit == 0 then return none
+    withOptions (barrel.subsume.maxHeartbeats.set · limit) <|
+      withLCtx {} #[] <| Barrel.Subsume.match? type (s.wds.map (·.proof))
+
+  /-- Resolve provisional types and merge WDs whose reuse depended on later type inference. -/
   def State.refresh (s : State) (firstWD : Nat) : TermElabM State := do
     let fresh := s.wds[firstWD:].toArray
-    let mut s := { s with wds := s.wds.extract 0 firstWD }
-    -- Rebuild in dependency order, without matching an entry against itself or a later WD.
-    for wd in fresh do
-      s := { s with seen := s.seen.erase (canonWD wd.type) }
+    let aliases := s.seen
+    let mut s := { s with wds := s.wds.extract 0 firstWD, seen := {} }
+    -- Discard provisional aliases as well as original keys. Rebuild in dependency order
+    -- so no proof can be matched against itself.
+    for wd in s.wds do
+      s := { s with seen := s.seen.insert (canonWD wd.type) wd.proof }
     for wd in fresh do
       let type ← instantiateMVars wd.type
       let key := canonWD type
-      if let some proof := s.seen[key]? then
+      let proof? ← match s.seen[key]? with
+        | some proof => pure (some proof)
+        | none => do
+          if type == wd.type then pure none
+          else pure ((← s.findProof? type).map (·.proof))
+      if let some proof := proof? then
         wd.proof.mvarId!.assign proof
-        s := { s with names := s.names.insert wd.proof.mvarId! s.names[proof.mvarId!]! }
+        s := { s with
+          seen := s.seen.insert key proof
+          names := s.names.erase wd.proof.mvarId! }
       else
         s := { s with
           wds := s.wds.push { wd with type }
           seen := s.seen.insert key wd.proof }
+    -- Restore aliases only after merging, when they cannot make a fresh WD match itself.
+    -- Instantiate both sides so references to a merged WD follow its earlier proof.
+    for (type, proof) in aliases do
+      let resolved ← instantiateMVars type
+      let key := if resolved == type then type else canonWD resolved
+      let proof ← instantiateMVars proof
+      s := { s with seen := s.seen.insert key proof }
     return s
 
   /-- Close over the proof context before lookup, and apply the shared proof to that context. -/
@@ -71,7 +99,14 @@ namespace B
     modify fun s => { s with nextWD := s.nextWD + 1 }
     if let some proof := s.seen[key]? then
       modify fun s => { s with hits := s.hits + 1 }
-      return mkAppN proof args
+      return (mkAppN proof args).headBeta
+    if let some found ← s.findProof? type then
+      modify fun s => { s with
+        seen := s.seen.insert key found.proof
+        hits := s.hits + 1
+        defEqHits := s.defEqHits + if found.kind == .defEq then 1 else 0
+        subsumptionHits := s.subsumptionHits + if found.kind == .subsumption then 1 else 0 }
+      return (mkAppN found.proof args).headBeta
     let name := (← getDeclName?).get!.str s!"wd_{s.nextWD}"
     let proof ← mkFreshExprMVarAt {} #[] type .syntheticOpaque
     trace[barrel.wd] "New WD metavariable {name}: {indentExpr type}"

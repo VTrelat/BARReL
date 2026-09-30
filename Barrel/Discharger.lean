@@ -1,5 +1,6 @@
 import Lean.Elab.Command
 import Lean.Elab.BuiltinTerm
+import Lean.Elab.ConfigEval
 import Mathlib.Util.WhatsNew
 import Barrel.Encoder
 import POGReader.Basic
@@ -77,7 +78,7 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
   -- Then parse the POG and generate the goals
   pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
-private def pog2obligations (res : ParserResult) (contextName : Name) :
+private def pog2obligations (res : ParserResult) (contextName : Name) (config : Barrel.ImportConfig) :
     CommandElabM (Array Barrel.Obligation × Array Name) := liftTermElabM do
   let ⟨_, name, goals⟩ := res
 
@@ -89,7 +90,7 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
   let mut wds : Array Barrel.Obligation := #[]
   -- The whole import shares one metavariable context. Encoder cache hits reuse the
   -- original closed proof metavariable, including when its obligation is still pending.
-  let mut encoder : B.Encoder.State := {}
+  let mut encoder : B.Encoder.State := { config }
   -- Auto-discharge splits its successes into really-proven (green) and sorried (yellow, a
   -- `barrel_solve` alternative can close a genuinely-`sorry` goal with `sorry`); their sum is
   -- the "auto-solved" count.
@@ -172,6 +173,8 @@ private def pog2obligations (res : ParserResult) (contextName : Name) :
             if (← getThe Core.State).messages.hasErrors then
               throwError "Automatic proof reported errors"
             addDecl decl false
+            if isWd && !e.hasSorry then
+              Barrel.Subsume.lemmas.add declName
 
             Lean.addDocStringOf false declName .missing
               (mkNode ``Parser.Command.docComment #[
@@ -342,6 +345,8 @@ private def proveObligation (ctx : Barrel.ImportContext) (id? : Option (TSyntax 
         type := obligation.type, value }
       ensureNoUnassignedMVars decl
       addDecl decl
+      if obligation.isWd && !value.hasSorry then
+        Barrel.Subsume.lemmas.add obligation.name
       Lean.addDocStringOf false obligation.name .missing
         (mkNode ``Parser.Command.docComment #[mkAtom "/--",
           mkAtom s!"Machine `{ctx.name}`, proof obligation `{obligation.name}`: {obligation.reason} -/"])
@@ -389,11 +394,16 @@ private def extFromKind : TSyntax `import_kind → MacroM String
   | `(import_kind| pog) => pure "pog"
   | _ => Macro.throwUnsupported
 
+-- Derive field names, value types and defaults from ImportConfig, without parser-specific options.
+private declare_command_config_elab elabImportConfig Barrel.ImportConfig
+
 /-- Import a B component into its own context; `qed` publishes its declarations. -/
-syntax "import " import_kind ppSpace ident (" from " str)? : command
+syntax "import" Parser.Term.optConfig ppSpace import_kind ppSpace ident (" from " str)? : command
 
 elab_rules : command
-| `(command| import $kind:import_kind $name:ident $[from $path:str]?) => do
+| `(command| import $options $kind:import_kind $name:ident $[from $path:str]?) => do
+  -- Invalid configuration must abort before reading files or invoking Atelier B.
+  let config ← elabImportConfig options (logExceptions := false)
   let localName := name.getId.eraseMacroScopes
   let contextName := (← getCurrNamespace) ++ localName
   if (Barrel.obligationContexts.getState (← getEnv)).contexts.contains contextName then
@@ -407,9 +417,9 @@ elab_rules : command
     let parsed ← match ext with
       | "pog" => pog2goals contextName.toString filePath
       | _ => mch2goals contextName.toString path filePath
-    pog2obligations parsed contextName
+    pog2obligations parsed contextName config
   saveContext {
-    name := contextName, path := ← IO.FS.realPath filePath, baseEnv, localEnv,
+    name := contextName, path := ← IO.FS.realPath filePath, config, baseEnv, localEnv,
     obligations, skipped } (latest := true)
 
 declare_syntax_cat obligation_proof

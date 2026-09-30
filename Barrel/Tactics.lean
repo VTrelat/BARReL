@@ -1,5 +1,6 @@
 import Mathlib.Tactic.Core
 import Mathlib.CategoryTheory.Category.Basic
+import Barrel.Subsume
 
 namespace Barrel.Tactics
   register_label_attr wd_min
@@ -99,6 +100,7 @@ namespace Barrel.Tactics
   macro_rules | `(tactic| barrel_solve) => `(tactic| grind)
   macro_rules | `(tactic| barrel_solve) => `(tactic| b_wd)
   macro_rules | `(tactic| barrel_solve) => `(tactic| b_typing)
+  macro_rules | `(tactic| barrel_solve) => `(tactic| subsume)
   macro_rules | `(tactic| barrel_solve) => `(tactic| trivial)
   macro_rules | `(tactic| barrel_solve) => `(tactic| (repeat1 intro); barrel_solve)
 end Barrel.Tactics

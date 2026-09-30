@@ -145,6 +145,16 @@ The example illustrates command selection; goal names and proofs depend on the i
 
 As in ordinary Lean declarations, an explicit `sorry` is accepted with a warning and shown in yellow. `qed` checks that every obligation has an elaborated proof; it does not certify the absence of `sorry`. Use `assert_no_sorry Counter.Initialisation_1` (with the relevant declaration name) to check published declarations for sorry dependencies. A failed tactic is an error and leaves its obligation pending.
 
+The `subsume` tactic tries to close a goal by specializing an available proof and supplying its premises from the current hypotheses. It searches local hypotheses and lemmas tagged `@[subsume]`; successfully proved WD obligations are registered automatically. Use `subsume [lemma₁, lemma₂]` to supply additional candidates:
+
+```lean
+example (P Q : Nat → Prop) (earlier : ∀ n, P n → Q n) :
+    ∀ n, P n → True → Q n := by
+  subsume [earlier]
+```
+
+`barrel_solve` tries `subsume` before its more expensive automation. The entire search has a cumulative budget of `barrel.subsume.maxHeartbeats` (default `2000`, in Lean's usual heartbeat units), also limited by the enclosing command's remaining budget. Set it to `0` to disable the search. A failed or timed-out search restores the proof state and lets the remaining automation run. Matching is greedy; it does not attempt general logical entailment.
+
 ## How it works (high level)
 1. **Parse PO XML**: read types, definitions, and proof obligations from Atelier B’s PO XML schema.
 2. **Extract logical goals**: turn the schema into `Goal` records containing variables, hypotheses, and the goal term.
@@ -154,7 +164,19 @@ As in ordinary Lean declarations, an explicit `sorry` is accepted with a warning
 
 Each import stores a base and a working `Lean.Environment` in an environment extension restored with Lean's command snapshots. An obligation command reuses the checked working environment when only BARReL bookkeeping has changed. A conservative identity check compares every other environment field and extension state, so intervening declarations or attribute changes trigger the existing full rebase. `qed` always performs the full merge onto the current global environment. The merge rejects name collisions, checks replayed declarations against the kernel environment, and copies helper metadata such as matcher information needed by `split` and simplification. Tactic elaboration remains synchronous. Lean already reuses whole unchanged commands in an unchanged prefix, including their resulting environment; after an earlier command changes, subsequent commands are elaborated again. Goal selection and dependency membership use cached name indices; a pending cursor and maintained proof counters avoid rescanning the full obligation list for each command. These caches live in the same command snapshots as the proofs, so edits and failed commands restore them together.
 
-The encoder shares WD proof metavariables throughout an import. At each partial operator, it closes the WD condition over the current variables and hypotheses and looks it up before allocating a metavariable. Matching conditions reuse the same proof metavariable even while it remains unproved. Conditions that become equal only after type inference finishes are merged inside the encoder. Failed encodings restore both the Lean state and the WD cache; successful encodings export named obligations for the discharger.
+The encoder shares WD proof metavariables throughout an import. At each partial operator, it closes the WD condition over the current variables and hypotheses and looks it up before allocating a metavariable. A structural lookup handles exact repeats. On a miss, one bounded search first tries `Meta.isDefEq` across all candidates. Only if none matches does it open the target binders and try specialization and hypothesis weakening, without repeating whole-type equality checks. Matching preserves unfinished source type inference. Successful matching caches a proof using earlier WD metavariables, avoiding a new WD allocation.
+
+Encoder matching has an import-specific per-search budget of `400` heartbeats by default. Override it on the import itself:
+
+```lean
+import (subsumeMaxHeartbeats := 400) pog ZoneMonitor from "specs/zonemonitor"
+```
+
+The same setting is available for machine, refinement, implementation, and system imports. It belongs only to that import and is also limited by the enclosing command's remaining heartbeat budget. One budget covers both matching phases; finding a definitionally equal proof avoids subsumption entirely. A value of `0` retains only structural cache lookup. The separate `barrel.subsume.maxHeartbeats` option controls the proof-search tactic. Failed or timed-out encoder searches fall back to allocating a WD normally.
+
+The prefix uses Lean's standard configuration syntax: values can be expressions, and multiple `(option := value)` items are applied left to right. Unknown fields and invalid values are rejected before importing. Parsing and value evaluation are derived from `Barrel.ImportConfig`, so adding a configuration field and its default does not require changing the import parser.
+
+Earlier WD proofs can be reused while they remain unproved. Conditions that become reusable only after type inference finishes are merged inside the encoder. Failed encodings restore both the Lean state and the WD cache; successful encodings export named obligations for the discharger.
 
 ## Sample models
 The `specs/` folder contains small machines used during development:

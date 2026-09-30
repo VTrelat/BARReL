@@ -45,6 +45,12 @@ register_option barrel.summary : Bool := {
 
 namespace Barrel
 
+/-- Settings owned by one B import; the import syntax derives its options from these fields. -/
+structure ImportConfig where
+  /-- Shared heartbeat budget for each WD equality/subsumption search; zero keeps exact hits. -/
+  subsumeMaxHeartbeats : Nat := 400
+  deriving Inhabited
+
 /-- A translated obligation and its proof, retained in its import until `qed`. -/
 structure Obligation where
   name : Name
@@ -94,6 +100,7 @@ def ObligationBookkeeping.ofObligations (obligations : Array Obligation) :
 structure ImportContext where
   name : Name
   path : System.FilePath
+  config : ImportConfig := {}
   baseEnv : Environment
   localEnv : Environment
   obligations : Array Obligation
