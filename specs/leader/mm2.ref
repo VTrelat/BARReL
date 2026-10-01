@@ -1,0 +1,132 @@
+REFINEMENT
+
+  mm2
+
+REFINES
+
+  mm1
+
+VARIABLES
+
+  ld,tr,
+  msg,ack,cnt
+
+INVARIANT
+  msg : ND +-> ND
+& ack : ND +-> ND
+& tr <: ack
+& ack <: msg
+& msg <: gg
+
+& !(xx,yy).( xx,yy : msg-ack
+            =>
+            (xx,yy) : gg  &
+             xx/: dom(tr) & yy/: dom(tr) &
+             gg[{xx}] = tr~[{xx}]\/{yy}
+           )
+
+& !(xx,yy).( xx,yy : ack &
+             xx /: dom(tr)
+            =>
+            (xx,yy) : gg &
+             xx/: dom(tr) & yy/: dom(tr) &
+             gg[{xx}] = tr~[{xx}]\/{yy}
+           )
+
+& ack /\ ack~ = {} 
+
+
+& !(xx,yy).( xx,yy: msg
+            =>
+            !zz.(zz:gg[{xx}] & zz/=yy => zz,xx: tr)
+           ) 
+
+& cnt <: msg 
+
+& !(xx,yy).(xx,yy : msg-ack & yy /: dom(msg)
+            =>
+              (xx,yy) /: cnt
+           )
+
+& ack /\cnt = {}
+& !(xx,yy).( xx,yy : msg-ack & 
+             yy : dom(msg) 
+            => 
+            (yy,xx) : msg - ack
+           )
+
+ASSERTIONS 
+
+   ack /\ id(ND)={}
+
+&  msg /\ id(ND)={}
+  
+&   tr /\ id(ND)={}
+
+
+
+INITIALISATION
+
+  ld :: ND  ||
+  tr := {} ||
+  msg  := {} ||
+  ack := {} ||
+  cnt := {}
+  
+OPERATIONS
+
+  elect =
+   ANY xx WHERE
+     xx : ND  &
+     gg[{xx}] = tr~[{xx}]
+   THEN
+     ld := xx
+   END;
+   
+
+  send_msg = 
+   ANY xx,yy WHERE
+     xx,yy : gg  &
+    (yy,xx)/:ack & 
+     gg[{xx}] = tr~[{xx}]\/{yy} &
+     xx/:dom(msg)
+   THEN
+     msg := msg \/ {xx|->yy}
+   END ;
+
+
+  send_ack =
+   ANY xx,yy WHERE
+     xx,yy : msg-ack &
+     yy /: dom(msg)
+   THEN
+     ack := ack \/ {xx|->yy}
+   END;
+
+  contention =
+   ANY xx,yy WHERE
+     xx,yy : msg-ack &
+     yy : dom(msg)
+   THEN
+     cnt:=cnt\/{xx|->yy}
+   END; 
+   
+  progr =
+   ANY xx,yy WHERE
+     xx,yy : ack &
+     xx/:dom(tr)
+   THEN
+     tr := tr \/ {xx|->yy}
+   END;
+
+  solve_contention =
+   ANY xx,yy WHERE
+     xx,yy : cnt &
+     yy,xx : cnt 
+   THEN
+     msg := msg - cnt ||
+     cnt := {}
+   END
+
+END
+

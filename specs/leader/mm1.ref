@@ -1,0 +1,63 @@
+REFINEMENT
+
+  mm1
+
+REFINES
+
+  mm0
+
+VARIABLES
+
+  ld,ts,tr
+
+INVARIANT
+
+  tr : ND +-> ND &
+
+  dom(tr)<|(tr\/tr~) = dom(tr)<|gg & 
+ 
+  tr/\tr~={}
+
+ASSERTIONS
+
+
+  !xx.( xx : ND  &
+        gg[{xx}] = tr~[{xx}]
+       =>
+        ff(xx)=tr
+       );
+
+
+  !xx.( xx : ND  &
+        gg[{xx}] = tr~[{xx}]
+       =>
+        (xx,tr) : ff
+      )
+
+INITIALISATION
+
+  ld :: ND  ||
+  ts :: ND +-> ND ||
+  tr := {}
+
+OPERATIONS
+
+  elect =
+    ANY xx WHERE
+      xx : ND &
+      gg[{xx}] = tr~[{xx}]
+    THEN
+      ld,ts := xx,tr
+    END ;
+
+
+  progr = 
+    ANY xx,yy WHERE
+      xx,yy : gg  &
+      xx/: dom(tr) & yy/: dom(tr) &
+      gg[{xx}] = tr~[{xx}]\/{yy}
+    THEN
+      tr := tr \/ {xx|->yy}
+    END
+
+END

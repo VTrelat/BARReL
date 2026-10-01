@@ -1,0 +1,60 @@
+MACHINE
+   proofs
+SETS
+
+  ND
+
+CONSTANTS
+
+  gg,ff
+
+PROPERTIES
+
+  gg : ND <-> ND  &
+
+
+  gg = gg~  &
+
+
+  id(ND) /\ gg = {}  &
+
+
+  dom(gg) = ND &
+
+
+  ff : ND <-> (ND +-> ND) &
+
+  !(nn,fi).( nn : ND &
+             fi : ND +-> ND
+            =>
+             (
+               ((nn,fi) : ff)
+              <=>
+               ( fi : ND-{nn} --> ND  &
+                 fi <: gg  &
+                !SS.( SS : POW(ND)  &
+                      nn : SS  &
+                      fi~[SS]<: SS
+                     =>
+                      ND <: SS
+                     )
+               )
+              )
+            ) &
+
+
+  ff : ND --> (ND +-> ND) 
+
+ASSERTIONS
+
+
+  !(nn,fi).( nn : ND &
+             fi : ND +-> ND &
+             (nn,fi) : ff 
+            =>
+             fi/\fi~={}
+           )
+
+
+END
+                    
