@@ -1,0 +1,77 @@
+REFINEMENT
+
+  mm3
+
+
+REFINES 
+
+  mm2
+
+CONSTANTS
+
+  nb 
+
+PROPERTIES
+
+  nb : ND --> POW(ND) &
+
+  !xx.(xx:ND => nb(xx) =  gg[{xx}])
+
+VARIABLES
+
+  ld,
+  sn,
+  tr,
+  msg,
+  ack,
+  cnt
+
+INVARIANT
+
+  sn : ND --> POW(ND) &
+
+  !xx.(xx:ND => sn(xx)<:tr~[{xx}])
+
+INITIALISATION
+
+  ld :: ND  ||
+  sn := ND*{{}} ||
+  msg := {} ||
+  ack := {} ||
+  tr  := {} ||
+  cnt := {}
+
+OPERATIONS
+
+
+  elect =
+    ANY xx WHERE
+      xx : ND  &
+      nb(xx) = sn(xx)
+    THEN
+      ld := xx
+    END;
+
+   
+
+  send_msg = 
+    ANY xx,yy WHERE
+      xx : ND &
+      yy : ND &
+      xx/: dom(msg)&
+     (yy,xx)/:ack &
+      nb(xx) = sn(xx) \/ {yy}
+    THEN
+      msg := msg \/ {xx|->yy} 
+    END ;
+
+
+  receive_cnf = 
+    ANY xx,yy WHERE
+      xx,yy:tr &
+      xx/:sn(yy)
+    THEN
+      sn(yy) := sn(yy) \/ {xx}
+    END
+
+END

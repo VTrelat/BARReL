@@ -1,5 +1,7 @@
-MACHINE
-   proofs
+SYSTEM
+
+  mm0
+
 SETS
 
   ND
@@ -9,6 +11,8 @@ CONSTANTS
   gg,ff
 
 PROPERTIES
+
+
 
   gg : ND <-> ND  &
 
@@ -45,6 +49,15 @@ PROPERTIES
 
   ff : ND --> (ND +-> ND) 
 
+VARIABLES
+
+  ld,ts
+
+INVARIANT
+
+  ld : ND &
+  ts : ND +-> ND
+
 ASSERTIONS
 
 
@@ -55,6 +68,44 @@ ASSERTIONS
              fi/\fi~={}
            )
 
+INITIALISATION
+
+  ld :: ND ||
+  ts :: ND +-> ND
+
+OPERATIONS
+
+
+  elect =
+    BEGIN
+      ld,ts:( ld : ND &
+              ts : ND-{ld}-->ND &
+              ts<: gg &
+              !SS.( SS : POW(ND)  &
+                    ld : SS  &
+                    ts~[SS]<: SS
+                   =>
+                    ND <: SS
+                   )
+             )
+    END ;
+
+
+  progr = skip;
+
+  send_ack = skip;
+
+
+  contention = skip;
+   
+
+  send_msg = skip ;
+
+
+  receive_cnf = skip ;
+
+
+  solve_contention = skip
 
 END
                     

@@ -1,0 +1,118 @@
+REFINEMENT
+
+  mm5
+
+REFINES 
+
+  mm4
+
+VARIABLES
+
+  ld,
+  sn,
+  cnt,
+
+  bm,
+  ba,
+  bt,
+
+  MSG,
+  ACK,
+  TR
+
+INVARIANT
+
+  MSG : ND +-> ND &
+  
+  msg = MSG \/ ack \/ cnt &
+
+  MSG /\ ack = {} &
+
+  MSG /\ cnt = {} &
+
+  ACK : ND <-> ND &
+
+  TR  : ND <-> ND &
+
+  TR <: tr &
+  
+  ack = ACK \/ tr &
+
+  ACK /\ tr = {} &
+
+ !(xx,yy).(xx,yy:TR =>     xx/:sn(yy)) 
+
+INITIALISATION
+
+  ld :: ND  ||
+  sn := ND*{{}} ||
+  MSG := {} ||
+  ACK := {} ||
+  TR  := {} ||
+  cnt := {} ||
+  bm,bt := {},{} ||
+  ba := ND*{{}}
+
+OPERATIONS
+
+  send_msg = 
+   ANY xx,yy WHERE
+     xx : ND &
+     yy : ND &
+     xx/: bm &
+     yy/: ba(xx) &
+/*     yy/: sn(xx) & */
+     nb(xx) = sn(xx) \/ {yy}
+   THEN
+     MSG := MSG \/ {xx|->yy} ||
+     bm  := bm  \/ {xx}
+   END ;
+
+  send_ack =
+   ANY xx,yy WHERE
+     xx,yy : MSG &
+     xx/: ba(yy) &
+     yy/: bm
+   THEN
+     MSG    := MSG -  {xx|->yy} ||
+     ACK    := ACK \/ {xx|->yy} ||
+     ba(yy) := ba(yy) \/ {xx}
+   END;
+  contention =
+   ANY xx,yy WHERE
+     xx,yy : MSG &
+     xx/: ba(yy) &
+     yy : bm
+   THEN
+     MSG := MSG - {xx|->yy} ||
+     cnt := cnt \/{xx|->yy}
+   END; 
+
+  progr =
+   ANY xx,yy WHERE
+     xx,yy : ACK &
+     xx/: bt
+   THEN
+     ACK := ACK - {xx|->yy} ||
+     TR  := TR \/ {xx|->yy} ||
+     bt  := bt \/ {xx}
+   END;  
+
+  receive_cnf =  
+   ANY xx,yy WHERE
+     xx,yy:TR /* &
+     xx/:sn(yy) */
+   THEN
+     TR := TR - {xx|->yy} ||
+     sn(yy) := sn(yy) \/ {xx} 
+   END;
+  solve_contention =
+   ANY xx,yy WHERE
+     xx,yy : cnt &
+     yy,xx : cnt 
+   THEN
+     bm := bm - dom(cnt) ||
+     cnt := {}
+   END
+
+END
