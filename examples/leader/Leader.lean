@@ -4,5 +4,3 @@ import examples.leader.MM2
 import examples.leader.MM3
 import examples.leader.MM4
 import examples.leader.MM5
-
-/-! Leader election case study: one module per refinement step `mm0` … `mm5`. -/
