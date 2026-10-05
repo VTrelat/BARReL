@@ -142,7 +142,7 @@ Although it is unnecessary, we perform normalization of B terms solely for the p
 The normalized B formulas are then transcribed into Lean terms using Lean's facilities for meta-programming and elaboration.
 However, a lot of bookkeeping has to happen in order to encode partial B operators, since they rely on WD conditions that must be inserted on the fly.
 Instead of handling the bookkeeping ourselves, we let Lean handle it internally by generating meta-variables (containing their local contexts) in place of the WD conditions.
-We later assign the generated meta-variables with fresh theorem names whose propositions are extracted from the context of the meta-variable.
+We later assign the generated meta-variables with fresh theorem names whose propositions are extracted from the context of the meta-variable; these fresh theorem names are reused may the WD conditions be encountered multiple times (up to subsumption) throughout the POG file.
 %
 \begin{example}
 	%
