@@ -35,6 +35,25 @@ namespace B.Builtins
     have : Fintype S := @Fintype.ofFinite _ wd.isFinite
     S.toFinset.card
 
+  /-- `a mod b` is defined in B only when `a ∈ NATURAL` and `b ∈ NATURAL1`. -/
+  structure mod.WD (a b : ℤ) : Prop where
+    nonneg : 0 ≤ a
+    pos : 0 < b
+
+  /-- B's `mod`. On its domain, Lean's `%` and the truncated remainder `Int.tmod` agree
+  (`mod.eq_tmod`). -/
+  def mod (a b : ℤ) (_wd : mod.WD a b) : ℤ := a % b
+
+  /-- `a / b` is defined in B only when `b ≠ 0`, on integers and reals alike. -/
+  structure div.WD {α : Type _} [Zero α] (b : α) : Prop where
+    ne_zero : b ≠ 0
+
+  /-- B's integer division, which truncates towards zero (`-7 / 2 = -3`). -/
+  def div (a b : ℤ) (_wd : div.WD b) : ℤ := a.tdiv b
+
+  /-- B's real division. -/
+  noncomputable def rdiv (a b : ℝ) (_wd : div.WD b) : ℝ := a / b
+
   section Lemmas
 
     theorem min.def {α : Type _} [PartialOrder α] {S : Set α} (wd : min.WD S) :
@@ -701,6 +720,39 @@ namespace B.Builtins
           rintro _ rfl
           contradiction
         simp only [this, of_empty, sub_zero]
+
+    @[simp, grind =]
+    theorem mod.eq_emod {a b : ℤ} (wd : mod.WD a b) : mod a b wd = a % b := rfl
+
+    theorem mod.eq_tmod {a b : ℤ} (wd : mod.WD a b) : mod a b wd = a.tmod b :=
+      (Int.tmod_eq_emod_of_nonneg wd.nonneg).symm
+
+    theorem mod.nonneg {a b : ℤ} (wd : mod.WD a b) : 0 ≤ mod a b wd :=
+      Int.emod_nonneg a wd.pos.ne'
+
+    theorem mod.lt {a b : ℤ} (wd : mod.WD a b) : mod a b wd < b :=
+      Int.emod_lt_of_pos a wd.pos
+
+    grind_pattern mod.nonneg => mod a b wd
+    grind_pattern mod.lt => mod a b wd
+
+    @[simp, grind =]
+    theorem div.eq_tdiv {a b : ℤ} (wd : div.WD b) : div a b wd = a.tdiv b := rfl
+
+    theorem div.eq_ediv_of_nonneg {a b : ℤ} (wd : div.WD b) (ha : 0 ≤ a) :
+        div a b wd = a / b :=
+      Int.tdiv_eq_ediv_of_nonneg ha
+
+    @[simp, grind =]
+    theorem rdiv.eq_div {a b : ℝ} (wd : div.WD b) : rdiv a b wd = a / b := rfl
+
+    @[wd_div]
+    theorem div.WD_of_mem_NATURAL₁ {b : ℤ} (hb : b ∈ NATURAL₁) : div.WD b :=
+      ⟨by have := (NATURAL₁.mem_iff b).mp hb; omega⟩
+
+    @[wd_mod]
+    theorem mod.WD_of_mem {a b : ℤ} (ha : a ∈ NATURAL) (hb : b ∈ NATURAL₁) : mod.WD a b :=
+      ⟨(NATURAL.mem_iff a).mp ha, by have := (NATURAL₁.mem_iff b).mp hb; omega⟩
 
   end Lemmas
 

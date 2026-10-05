@@ -213,8 +213,21 @@ namespace B
       | .add x y => makeNumericBinary ``HAdd.hAdd x y
       | .sub x y => makeNumericBinary ``HSub.hSub x y
       | .mul x y => makeNumericBinary ``HMul.hMul x y
-      | .div x y => makeNumericBinary ``HDiv.hDiv x y
-      | .mod x y => makeBinary ``HMod.hMod x y -- mkIntMod <$> x.toExpr <*> y.toExpr
+      | .div x y => do
+        let (x, y) ← promoteNumeric (← x.toExpr) (← y.toExpr)
+        -- B's division is partial (`y ≠ 0`). On integers it truncates towards zero
+        -- (`-7 / 2 = -3`), whereas `/` on `Int` is Euclidean in Lean (`-7 / 2 = -4`).
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.div.WD #[y])
+        if (← whnf (← inferType x)).isConstOf ``Int then
+          mkAppM ``B.Builtins.div #[x, y, wdMVar]
+        else
+          mkAppM ``B.Builtins.rdiv #[x, y, wdMVar]
+      | .mod x y => do
+        -- B's `mod` is partial: it is defined for `x ∈ NATURAL` and `y ∈ NATURAL1` only.
+        let x ← x.toExpr
+        let y ← y.toExpr
+        let wdMVar ← Encoder.wellDefined (← mkAppM ``B.Builtins.mod.WD #[x, y])
+        mkAppM ``B.Builtins.mod #[x, y, wdMVar]
       | .exp x y => makeBinary ``HPow.hPow x y -- do mkIntPowNat <$> x.toExpr <*> mkAppM ``Int.toNat #[← y.toExpr]
       | .and x y => do
         let lam ← withLocalDeclD (← mkFreshUserName `h) (← x.toExpr) λ x ↦

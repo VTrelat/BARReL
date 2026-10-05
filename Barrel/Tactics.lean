@@ -7,6 +7,8 @@ namespace Barrel.Tactics
   register_label_attr wd_max
   register_label_attr wd_app
   register_label_attr wd_card
+  register_label_attr wd_mod
+  register_label_attr wd_div
 
   register_label_attr pfun
   register_label_attr tfun
@@ -38,6 +40,8 @@ namespace Barrel.Tactics
   syntax (name := wd_max) "wd_max" : tactic
   syntax (name := wd_app) "wd_app" : tactic
   syntax (name := wd_card) "wd_card" : tactic
+  syntax (name := wd_mod) "wd_mod" : tactic
+  syntax (name := wd_div) "wd_div" : tactic
 
   set_option hygiene false in
   macro "wd_min" : tactic => `(tactic| (
@@ -85,11 +89,31 @@ namespace Barrel.Tactics
     | sorry_if_sorry
     | solve_by_elim using wd_card))
 
+  set_option hygiene false in
+  macro "wd_mod" : tactic => `(tactic| (
+    intros
+    subst_eqs
+    generalize_proofs at *
+    first
+    | sorry_if_sorry
+    | solve_by_elim using wd_mod
+    | (apply B.Builtins.mod.WD.mk <;> first | assumption | omega | grind)))
+
+  set_option hygiene false in
+  macro "wd_div" : tactic => `(tactic| (
+    intros
+    subst_eqs
+    generalize_proofs at *
+    first
+    | sorry_if_sorry
+    | solve_by_elim using wd_div
+    | (apply B.Builtins.div.WD.mk; first | assumption | omega | grind)))
+
   syntax (name := b_wd) "b_wd" : tactic
   macro "b_wd" : tactic => `(tactic| (
     subst_eqs
     generalize_proofs at *
-    first | wd_min | wd_max | wd_app | wd_card
+    first | wd_min | wd_max | wd_app | wd_card | wd_mod | wd_div
   ))
 
   syntax (name := b_typing) "b_typing" : tactic
