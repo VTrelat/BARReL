@@ -46,7 +46,7 @@ next obligation by
   simp only [← app.of_pair_iff]
   introv _
   intro _ hgraph _ hirreflexive _ _ _ _ _ _ _ _ _ _ _ hasymmetric _ _ hedge _ htarget_fresh
-    hneighbors
+    _
   have hne : xx ≠ yy := by
     rintro rfl
     have hloop : (xx, xx) ∈ B.Builtins.id ND ∩ gg :=

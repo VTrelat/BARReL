@@ -304,7 +304,7 @@ next obligation by
 next obligation by
   simp only [← app.of_pair_iff]
   introv _ _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_glue _ _ _ _ _ _ hack_ready _ _ _ _ _ _ _ _ _ hack
+  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hack_ready _ _ _ _ _ _ _ _ _ hack
     hsource_fresh
   subst tr
   obtain ⟨hedge, hx, hy, hneighbors⟩ := hack_ready xx yy hack hsource_fresh

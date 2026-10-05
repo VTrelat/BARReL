@@ -153,7 +153,7 @@ next obligation by
 next obligation by
   intro ND nb gg ff bm1 msg ba1 bt1 tr sn1 ack cnt1 ld1 ts ld sn cnt bm ba bt MSG1 ACK1 TR1 xx
     yy xx1 yy1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_glue _ hsent_glue hacks_glue _ _ hmsg_partition _ _ _ _ _ _ _ _ hsource htarget hfresh
+    _ _ _ _ _ _ hmsg_partition _ _ _ _ _ _ _ _ hsource htarget hfresh
     hno_ack hready
   subst sn bm ba
   refine ⟨xx, yy, hsource, htarget, hfresh, hno_ack, hready, rfl, ?_⟩
@@ -198,7 +198,7 @@ next obligation by
 next obligation by
   intro ND nb gg ff bm1 msg ba1 bt1 tr sn1 ack cnt1 ld1 ts ld sn cnt bm ba bt MSG1 ACK1 TR1 xx
     yy xx1 yy1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ hsent_glue hacks_glue _ _ hmsg_partition hMSG_ack_disjoint _ _ _ _ hack_partition _ _
+    _ _ _ _ _ _ hmsg_partition hMSG_ack_disjoint _ _ _ _ hack_partition _ _
     hmessage hno_ack hreceiver_fresh
   subst bm ba
   have hmessage_abstract : (xx, yy) ∈ msg := by
@@ -255,7 +255,7 @@ next obligation by
 next obligation by
   intro ND nb gg ff bm1 msg ba1 bt1 tr sn1 ack cnt1 ld1 ts ld sn cnt bm ba bt MSG1 ACK1 TR1 xx
     yy xx1 yy1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ hcontention_glue hsent_glue hacks_glue _ _ hmsg_partition _ _ _ _ _ _ _ _ hmessage hno_ack
+    _ _ _ _ _ _ hmsg_partition _ _ _ _ _ _ _ _ hmessage hno_ack
     hreceiver_active
   subst cnt bm ba
   refine ⟨xx, yy, ?_, hno_ack, hreceiver_active, rfl⟩
@@ -295,7 +295,7 @@ next obligation by
 next obligation by
   intro ND nb gg ff bm1 msg ba1 bt1 tr sn1 ack cnt1 ld1 ts ld sn cnt bm ba bt MSG1 ACK1 TR1 xx
     yy xx1 yy1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ htree_domain_glue _ _ _ _ _ _ hTR_tree hack_partition hACK_tree_disjoint _ hack
+    _ _ _ _ _ _ _ _ _ _ _ hTR_tree hack_partition hACK_tree_disjoint _ hack
     hsource_fresh
   subst bt
   have hack_abstract : (xx, yy) ∈ ack := by

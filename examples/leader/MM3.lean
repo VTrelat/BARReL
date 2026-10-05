@@ -22,9 +22,9 @@ next obligation by
   exact app.WD_of_mem_tfun hseen_total (htree_partial.1 hedge).2
 
 next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1 _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_total _ hedge
-    _ hnode
+  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    hseen_total _ hedge _ hnode
   refine app.WD_of_mem_tfun (B := 𝒫 ND) ?_ hnode
   apply Leader.tfun_override_singleton hseen_total (htree_partial.1 hedge).2
   apply Set.union_subset
@@ -46,9 +46,9 @@ next obligation by
   exact Set.empty_subset _
 
 next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1 _ _ hsymm _ _ _ _
-    _ _ hneighbors _ _ htree_ack hack_msg hmsg_graph _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    htree_glue _ _ _ _ hseen_subset hnode hready
+  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
+    _ _ hsymm _ _ _ _ _ _ hneighbors _ _ htree_ack hack_msg hmsg_graph _ _ _ _ _ _ _ _ _ _ _ _ _
+    _ _ _ _ _ _ _ _ _ _ _ _ hseen_subset hnode hready
   subst tr
   apply Set.Subset.antisymm
   · rw [← hneighbors xx hnode, hready]
@@ -58,9 +58,9 @@ next obligation by
       (SetRel.inv_mono (htree_ack.trans (hack_msg.trans hmsg_graph)))
 
 next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1 _ _ hsymm _ _ _ _
-    _ _ hneighbors _ _ htree_ack hack_msg hmsg_graph _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    htree_glue hmsg_glue hack_glue _ _ hseen_subset hsource _ hfresh hno_reverse_ack hready
+  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
+    _ _ hsymm _ _ _ _ _ _ hneighbors _ _ htree_ack hack_msg hmsg_graph _ _ _ _ _ _ _ _ _ _ _ _ _
+    _ _ _ _ _ _ _ _ _ _ _ _ hseen_subset hsource _ hfresh hno_reverse_ack hready
   subst tr msg ack
   have hneighborhood := (hneighbors xx hsource).symm.trans hready
   have hedge : (xx, yy) ∈ gg := by
@@ -80,9 +80,9 @@ next obligation by
   exact ⟨xx, yy, hedge, hno_reverse_ack, hfull, hfresh, rfl⟩
 
 next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1 _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_total _ hedge
-    _
+  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    hseen_total _ hedge _
   apply Leader.tfun_override_singleton hseen_total (htree_partial.1 hedge).2
   apply Set.union_subset
   · exact (hseen_total.1.1 (app.pair_app_mem (wd :=
@@ -90,9 +90,9 @@ next obligation by
   · exact Set.singleton_subset_iff.mpr (htree_partial.1 hedge).1
 
 next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1 _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_total
-    hseen_subset hedge _ hnode
+  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    hseen_total hseen_subset hedge _ hnode
   by_cases heq : xx1 = yy
   · subst xx1
     rw [Leader.app_override_singleton_self]
