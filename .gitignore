@@ -2,9 +2,6 @@
 .lake/
 .DS_Store
 .vscode/
-*.pog
-!/specs/SquareTable.pog
-tests/
 
 # LaTeX
 
