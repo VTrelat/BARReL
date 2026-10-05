@@ -105,7 +105,7 @@ In practice, our tool generates WD side goals that are equivalent to the WD side
 The only difference is that Atelier~B may remove unnecessary hypotheses and perform basic simplification on the WD goals at generation time, which may alter the PO, whereas our WD conditions are generated from the exact Lean context.
 % \footnote{\todo[Should this footnote be kept?] To be accurate, our WD conditions are generated from the exact Lean context whereas Atelier~B already performs simplification steps at this point, which may alter the PO.}
 %
-Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose} (Hilbert's $\epsilon$ operator, whose type is \mbox{$\{\alpha : \mathtt{Sort}\ u\} \to \{p : \alpha \to \mathtt{Prop}\} \to (\exists\, x,\, p\ x) \to \alpha$}) which explicitly depends on a proof that the predicate is satisfied by at least one element.\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}
+Then, we take advantage of the dependent types of Lean to encode partial operators using \texttt{Classical.choose}\footnote{Hilbert's $\epsilon$ operator, whose type is \mbox{$\{\alpha : \mathtt{Sort}\ u\} \to \{p : \alpha \to \mathtt{Prop}\} \to (\exists\, x,\, p\ x) \to \alpha$}}, which explicitly depends on a proof that the predicate is satisfied by at least one element.\footnote{Lean has no built-in notion of partiality and must therefore exhibit WD conditions as explicit proof parameters of the relevant total functions.}
 This means that one cannot construct a term depending on a partial operator without providing a proof that it is well-defined.
 The statement of this proof, which is the WD condition of the operator, is then generated as a side theorem (or a subgoal) which must be discharged for the main theorem to be fully proven, i.e.\@ not depend on the \texttt{sorryAx} axiom---the axiom that is introduced by admitted theorems.
 To illustrate this use of \texttt{Classical.choose}, the encoding (and WD conditions) of $\bmin{S}$ and function application $\bapp{F}{x}$ are given in \cref{lst:min-fn-app}.
@@ -126,6 +126,7 @@ noncomputable
 abbrev app {α β} (f : SetRel α$$ β) (x : α) (wd : app.WD f x) : β$$ :=
   Classical.choose wd.isInDomain
 \end{lstlisting}
+%$$
 
 \subsection{Inner Workings of \barrel and Automation}
 \label{sec:innner-workings}
@@ -176,12 +177,12 @@ We later assign the generated meta-variables with fresh theorem names whose prop
 	\]
 \end{example}
 
-All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of our tool.
+All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of \barrel.
 \texttt{<type>} may be one of \texttt{machine}, \texttt{system}, \texttt{refinement}, \texttt{implementation} or \texttt{pog} depending on whether the file to be imported is a machine, system, refinement, implementation or straight up a POG file, and \texttt{<name>} is the file name without the extension.
 In the case of POG files, the first step converting into the BXML format is skipped.
-Finally, the command \texttt{prove\_obligations\_of <name>} gives back all the generated WD conditions and propositions to the user for them to prove.
-Each WD condition and proposition is then inserted into the global context as a theorem, which the user can re-use instead of duplicating proofs or check for no use of the \texttt{sorryAx} axiom---so that every obligation is fully proven.
-
+Then, each remaining proof obligation must be proven using the \texttt{next obligation (from <term> | by <proof>)} command, which handles proving both WD conditions and reconstructed proof obligations.
+Finally, the import must be closed with \texttt{qed <name>}, which checks that all obligations have been discharged, and only then adds them to the global context as theorems.
+\texttt{qed} does not, however, check that the proofs of all obligations do not rely on the \texttt{sorryAx} axiom: this remains the job of the user to check, as is typical in any Lean development.
 
 % : \begin{itemize}
 % 	\item 
@@ -196,8 +197,8 @@ Each WD condition and proposition is then inserted into the global context as a 
 
 \paragraph*{Proof automation.}
 \label{par:automation}
-Before presenting goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
-Concretely, the tactic layer repeatedly applies potentially relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
+Before presenting any goals to the user, \barrel runs a lightweight, predictable automation pass whose primary purpose is to discharge routine side conditions induced by our encoding of B partial operators.
+Concretely, the tactic layer repeatedly applies relevant lemmas---backtracking as needed---that relate WD subgoals and available hypotheses.
 These helper lemmas provide definitional equations and rewriting/simplification facts for the B constructs supported by \barrel about sets, relations, functions, arithmetic and finiteness idioms, so that many generated WD goals reduce to elementary facts about membership, domain/range inclusion, finiteness, and order bounds and can be closed automatically.
 We leverage Mathlib's features to tag helper lemmas with relevant categories---\texttt{wd\_min}, \texttt{wd\_max}, \texttt{wd\_app}, \texttt{wd\_card}---and tap into its rich library of set-theoretic results to keep the tactic small and focused.
 To those tags also correspond the names of the tactics that are run automatically by \barrel's automation layer, so that users may also invoke them manually when needed or extend them with their own lemmas.
