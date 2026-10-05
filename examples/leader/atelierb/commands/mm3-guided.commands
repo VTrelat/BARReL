@@ -1,0 +1,39 @@
+op BARReLLeader
+b mm3
+go(receive_cnf.2)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ph(xx$1,!xx.(xx : ND => sn$1(xx) <: (tr$1)~[{xx}]))
+mp
+dd
+ah(sn$1 : ND --> POW(ND) & yy : ND & xx$1 : ND & xx|->yy : tr$1 & sn$1(xx$1) <: (tr$1)~[{xx$1}] => (sn$1<+{yy|->(sn$1(yy)\/{xx})})(xx$1) <: (tr$1)~[{xx$1}])
+pp(rp.0 | 10)
+dd
+mh(sn$1 : ND --> POW(ND) & yy : ND & xx$1 : ND & xx|->yy : tr$1 & sn$1(xx$1) <: (tr$1)~[{xx$1}] => (sn$1<+{yy|->(sn$1(yy)\/{xx})})(xx$1) <: (tr$1)~[{xx$1}])
+sw
+go(receive_cnf.1)
+re
+dd
+ah(xx : ND)
+pp(rp.1 | 5)
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ah(sn$1 : ND --> POW(ND) & yy : ND & xx : ND => sn$1<+{yy|->(sn$1(yy)\/{xx})} : ND --> POW(ND))
+pp(rp.0 | 10)
+dd
+mh(sn$1 : ND --> POW(ND) & yy : ND & xx : ND => sn$1<+{yy|->(sn$1(yy)\/{xx})} : ND --> POW(ND))
+sw
+go(send_msg.1)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+qu
+s mm3
+q

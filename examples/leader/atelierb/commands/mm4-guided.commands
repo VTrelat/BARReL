@@ -1,0 +1,83 @@
+op BARReLLeader
+b mm4
+go(receive_cnf.1)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+se(xx,yy)
+ah(sn = sn$1 & tr = tr$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr$1 & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+pp(rp.0 | 10)
+dd
+mh(sn = sn$1 & tr = tr$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr$1 & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+mh(sn = sn$1 & tr = tr$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr$1 & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+mh(sn = sn$1 & tr = tr$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr$1 & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+sw
+go(progr.2)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+go(contention.1)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+go(send_ack.2)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ph(xx$1,!xx.(xx : ND => ba$1(xx) = (ack$1)~[{xx}]))
+mp
+dd
+ph(yy,!xx.(xx : ND => ba$1(xx) = (ack$1)~[{xx}]))
+mp
+dd
+ah(xx$1 : dom(ba$1))
+pp(rp.1 | 5)
+dd
+dc(xx$1 = yy)
+ar(SimplifyRelFonXY.10,Goal)
+ar(SimplifyRelInvXY.13,Goal)
+ar(SimplifyRelInvXY.2,Goal)
+ar(SimplifyRelImaLongXY.5,Goal)
+ar(SimplifyRelImaXY.42,Goal)
+eh((ack$1)~[{yy}],ba$1(yy),Goal)
+pp(rp.0 | 1)
+dd
+ar(SimplifyRelFonXY.9,Goal)
+ar(SimplifyRelInvXY.13,Goal)
+ar(SimplifyRelInvXY.2,Goal)
+ar(SimplifyRelImaLongXY.5,Goal)
+ar(SimplifyRelImaXY.19,Goal)
+eh((ack$1)~[{xx$1}],ba$1(xx$1),Goal)
+pp(rp.0 | 1)
+sw
+go(send_ack.1)
+re
+dd
+ah(xx : ND)
+pp(rp.1 | 5)
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ah(ba$1 : ND --> POW(ND) & yy : ND & xx : ND => ba$1<+{yy|->(ba$1(yy)\/{xx})} : ND --> POW(ND))
+pp(rp.0 | 10)
+dd
+mh(ba$1 : ND --> POW(ND) & yy : ND & xx : ND => ba$1<+{yy|->(ba$1(yy)\/{xx})} : ND --> POW(ND))
+sw
+go(send_msg.2)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+qu
+s mm4
+q

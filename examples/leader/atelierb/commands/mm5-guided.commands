@@ -1,0 +1,81 @@
+op BARReLLeader
+b mm5
+go(receive_cnf.4)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ph(xx,yy,!(xx,yy).(xx|->yy : TR$1 => not(xx : sn$1(yy))))
+mp
+dd
+ah(xx|->yy : tr)
+pp(rp.1 | 5)
+dd
+se(xx,yy)
+ah(sn = sn$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+pp(rp.0 | 10)
+dd
+mh(sn = sn$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+mh(sn = sn$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+mh(sn = sn$1 & sn$1 : ND --> POW(ND) & yy : ND & xx|->yy : tr & not(xx : sn$1(yy)) => xx|->yy : tr & not(xx : sn(yy)) & sn<+{yy|->(sn(yy)\/{xx})} = sn$1<+{yy|->(sn$1(yy)\/{xx})})
+sw
+go(receive_cnf.3)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+ah(yy$1 : ND)
+pp(rp.1 | 5)
+dd
+ph(xx$1,yy$1,!(xx,yy).(xx|->yy : TR$1 => not(xx : sn$1(yy))))
+pp(rp.1 | 5)
+dd
+ah(not(xx$1|->yy$1 = xx|->yy))
+pp(rp.1 | 5)
+dd
+ah(sn$1 : ND --> POW(ND) & yy : ND & yy$1 : ND & not(xx$1 : sn$1(yy$1)) & not(xx$1|->yy$1 = xx|->yy) => not(xx$1 : (sn$1<+{yy|->(sn$1(yy)\/{xx})})(yy$1)))
+pp(rp.0 | 10)
+dd
+mh(sn$1 : ND --> POW(ND) & yy : ND & yy$1 : ND & not(xx$1 : sn$1(yy$1)) & not(xx$1|->yy$1 = xx|->yy) => not(xx$1 : (sn$1<+{yy|->(sn$1(yy)\/{xx})})(yy$1)))
+sw
+go(progr.4)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+go(contention.5)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+go(send_ack.5)
+re
+dd
+ah(yy : ND)
+pp(rp.1 | 5)
+dd
+se(xx,yy)
+ah(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+pp(rp.0 | 10)
+dd
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+mh(ba = ba$1 & bm = bm$1 & ba$1 : ND --> POW(ND) & yy : ND & msg = MSG$1\/ack\/cnt$1 & MSG$1/\ack = {} & ack = ACK$1\/tr & xx|->yy : MSG$1 & not(xx : ba$1(yy)) & not(yy : bm$1) => xx|->yy : msg & not(xx : ba(yy)) & not(yy : bm) & ba<+{yy|->(ba(yy)\/{xx})} = ba$1<+{yy|->(ba$1(yy)\/{xx})} & msg = MSG$1-{xx|->yy}\/(ack\/{xx|->yy})\/cnt$1 & MSG$1-{xx|->yy}/\(ack\/{xx|->yy}) = {} & ack\/{xx|->yy} = ACK$1\/{xx|->yy}\/tr)
+sw
+go(send_msg.4)
+re
+dd
+se(xx,yy)
+pp(10)
+sw
+qu
+s mm5
+q

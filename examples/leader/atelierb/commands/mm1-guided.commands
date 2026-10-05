@@ -1,0 +1,38 @@
+op BARReLLeader
+b mm1
+go(AssertionLemmas.1)
+re
+dd
+ph(xx,ff(xx),!(nn,fi).(nn: ND & fi: ND +-> ND => (nn|->fi: ff => fi: ND-{nn} +-> ND & dom(fi) = ND-{nn} & fi: ND-{nn} --> ND & fi <: gg & !SS.(SS <: ND & nn: SS & fi~[SS] <: SS => ND <: SS)) & (fi: ND-{nn} +-> ND & dom(fi) = ND-{nn} & fi: ND-{nn} --> ND & fi <: gg & !SS.(SS <: ND & nn: SS & fi~[SS] <: SS => ND <: SS) => nn|->fi: ff)))
+pr
+pr
+dd
+ah(xx|->ff(xx):ff)
+pr
+dd
+ah(ff(xx)/\ff(xx)~={})
+pr
+dd
+ah(ff(xx):ND-{xx}+->ND & ff(xx)<:gg & ff(xx)/\ff(xx)~={} & tr$1:ND+->ND & dom(tr$1)<|(tr$1\/tr$1~)=dom(tr$1)<|gg & gg=gg~ & gg[{xx}]=tr$1~[{xx}] => ff(xx)~[{xx}\/dom(ff(xx)/\tr$1)] <: {xx}\/dom(ff(xx)/\tr$1))
+pp(rp.0 | 15)
+dd
+mh(ff(xx):ND-{xx}+->ND & ff(xx)<:gg & ff(xx)/\ff(xx)~={} & tr$1:ND+->ND & dom(tr$1)<|(tr$1\/tr$1~)=dom(tr$1)<|gg & gg=gg~ & gg[{xx}]=tr$1~[{xx}] => ff(xx)~[{xx}\/dom(ff(xx)/\tr$1)] <: {xx}\/dom(ff(xx)/\tr$1))
+dd
+ah(xx:ND & tr$1:ND+->ND => {xx}\/dom(ff(xx)/\tr$1)<:ND)
+pp(rp.0 | 10)
+dd
+mh(xx:ND & tr$1:ND+->ND => {xx}\/dom(ff(xx)/\tr$1)<:ND)
+dd
+ph(({xx}\/dom(ff(xx)/\tr$1)),!SS.(SS <: ND & xx: SS & ff(xx)~[SS] <: SS => ND <: SS))
+pr
+pp(rp.0 | 5)
+pr
+dd
+ah(ff(xx):ND-{xx}+->ND & dom(ff(xx))=ND-{xx} & tr$1:ND+->ND & ND<:{xx}\/dom(ff(xx)/\tr$1) & dom(tr$1)<|(tr$1\/tr$1~)=dom(tr$1)<|gg & tr$1/\tr$1~={} & gg[{xx}]=tr$1~[{xx}] => ff(xx)=tr$1)
+pp(rp.0 | 15)
+dd
+mh(ff(xx):ND-{xx}+->ND & dom(ff(xx))=ND-{xx} & tr$1:ND+->ND & ND<:{xx}\/dom(ff(xx)/\tr$1) & dom(tr$1)<|(tr$1\/tr$1~)=dom(tr$1)<|gg & tr$1/\tr$1~={} & gg[{xx}]=tr$1~[{xx}] => ff(xx)=tr$1)
+sw
+qu
+s mm1
+q

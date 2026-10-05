@@ -1,0 +1,72 @@
+op BARReLLeader
+b mm2
+go(progr.10)
+re
+dd
+se(xx,yy)
+pp(10)
+gs
+sw
+go(progr.4)
+re
+dd
+ah(not(yy$1=xx))
+ct
+ah(xx|->xx$1:msg$1-ack$1)
+pp(rp.1|5)
+dd
+ah(xx$1=yy)
+pp(5)
+dd
+pp(5)
+dd
+pp(5)
+sw
+go(progr.7)
+re
+dd
+ah(not(yy$1=xx))
+ct
+ah(not(xx$1=yy))
+pp(5)
+dd
+ah(xx$1:gg[{xx}])
+pp(5)
+dd
+ah(xx|->yy:msg$1)
+pp(rp.1|5)
+dd
+ah(xx$1|->xx:tr$1)
+pp(rp.1|5)
+dd
+pp(5)
+dd
+pp(5)
+sw
+go(send_msg.11)
+re
+dd
+ah((gg=gg~ & tr$1<:msg$1 & !(xx,yy).(xx|->yy:msg$1=>!zz.(zz:gg[{xx}] & not(zz=yy)=>zz|->xx:tr$1)) & xx|->yy:gg & not(xx:dom(msg$1)) & yy:dom(msg$1))=>yy|->xx:msg$1)
+pp(rp.0|10)
+dd
+ah((gg=gg~ & msg$1<:gg & tr$1<:ack$1 & gg[{xx}]=tr$1~[{xx}]\/{yy} & xx$1|->xx:msg$1-ack$1)=>xx$1=yy)
+pp(rp.0|10)
+dd
+ah(tr$1<:msg$1)
+pp(rp.1|5)
+dd
+ah(yy:dom(msg$1)=>yy|->xx:msg$1-ack$1)
+dd
+mh((gg=gg~ & tr$1<:msg$1 & !(xx,yy).(xx|->yy:msg$1=>!zz.(zz:gg[{xx}] & not(zz=yy)=>zz|->xx:tr$1)) & xx|->yy:gg & not(xx:dom(msg$1)) & yy:dom(msg$1))=>yy|->xx:msg$1)
+dd
+pp(rp.1|5)
+dd
+ah(xx$1|->xx:msg$1-ack$1=>xx$1=yy)
+dd
+mh((gg=gg~ & msg$1<:gg & tr$1<:ack$1 & gg[{xx}]=tr$1~[{xx}]\/{yy} & xx$1|->xx:msg$1-ack$1)=>xx$1=yy)
+dd
+pp(rp.1|5)
+sw
+qu
+s mm2
+q

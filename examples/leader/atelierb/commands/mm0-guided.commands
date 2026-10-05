@@ -1,0 +1,20 @@
+op BARReLLeader
+b mm0
+go(AssertionLemmas.1)
+dd
+mp
+ah(fi:ND+->ND & dom(fi)=ND-{nn} & nn:ND => nn:ND-dom(fi/\fi~) & fi~[ND-dom(fi/\fi~)] <: ND-dom(fi/\fi~))
+pp(rp.0 | 10)
+mp
+ph(ND-dom(fi/\fi~),!SS.(SS <: ND & nn:SS & fi~[SS] <: SS => ND <: SS))
+mp
+mp
+mp
+mp
+ah(dom(fi) <: ND & ND <: ND-dom(fi/\fi~) => fi/\fi~ = {})
+pp(rp.0 | 5)
+mp
+sw
+qu
+s mm0
+q
