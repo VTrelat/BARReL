@@ -1,13 +1,5 @@
 \section{Discussion and Future Work}
 
-We identify two main directions for future work:
-\begin{itemize}
-	\item Enriching automation beyond WD goals for recurring proof-obligation patterns.
-	\item Developing a fully verified proof obligation generator on top of \barrel.
-\end{itemize}
-
-\paragraph*{Implementation metrics.}
-
 Considering core tooling only, \barrel consists of about 2{,}500 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
 
 The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for about 1{,}700 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
@@ -29,6 +21,16 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 
 Finally, the artifacts also contain all examples from the paper and more that exercise \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
+
+\paragraph*{Future work}
+
+We identify two main directions for future work:
+\begin{itemize}
+	\item Enriching automation beyond WD goals for recurring proof-obligation patterns.
+	\item Developing a fully verified proof obligation generator on top of \barrel.
+\end{itemize}
+
+
 
 % \subsection{Increasing coverage of B}
 
