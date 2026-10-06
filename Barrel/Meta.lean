@@ -73,6 +73,18 @@ structure ObligationBookkeeping where
   sorried : Nat := 0
   pending : Nat := 0
 
+/-- A WD request handled by an earlier published theorem, without a new obligation. -/
+structure WDReuseInfo where
+  condition : Name
+  theoremName : Name
+  deriving Inhabited
+
+/-- A proved adapter keeps the original WD statement without creating a proof obligation. -/
+structure WDAdapter where
+  name : Name
+  type : Expr
+  value : Expr
+
 /-- Build the lookup and counts once, preserving the first occurrence of each name. -/
 def ObligationBookkeeping.ofObligations (obligations : Array Obligation) :
     ObligationBookkeeping := Id.run do
@@ -106,6 +118,10 @@ structure ImportContext where
   obligations : Array Obligation
   skipped : Array Name := #[]
   finalized : Bool := false
+  wdUnique : Nat := 0
+  wdAvoided : Nat := 0
+  wdReuses : Array WDReuseInfo := #[]
+  wdAdapters : Array WDAdapter := #[]
   bookkeeping : ObligationBookkeeping := .ofObligations obligations
 
 /-- Rebuild the caches after replacing the whole obligation array. -/

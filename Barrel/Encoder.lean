@@ -2,6 +2,7 @@ import POGReader.Basic
 import Barrel.Meta
 import Barrel.Builtins
 import Barrel.Subsume
+import Barrel.WDReuse
 
 open Std Lean Meta Elab Term
 
@@ -24,12 +25,20 @@ namespace B
     name : Name
     type : Expr
     proof : Expr
+    order : Nat := 0
     deriving Inhabited
+
+  /-- A condition discharged by a published fact, before allocating a local WD goal. -/
+  structure Reuse extends WD where
+    theoremName : Name
+    value : Expr
 
   /-- Import-local encoder state; its metavariables belong to the enclosing `TermElabM`. -/
   structure State where
     config : Barrel.ImportConfig := {}
+    earlier : Barrel.WDReuse.Index := {}
     wds : Array WD := #[]
+    reused : Array Reuse := #[]
     seen : Std.HashMap Expr Expr := {}
     names : Std.HashMap MVarId Name := {}
     allocations : Nat := 0
@@ -37,6 +46,7 @@ namespace B
     defEqHits : Nat := 0
     subsumptionHits : Nat := 0
     nextWD : Nat := 0
+    nextProof : Nat := 0
 
   abbrev M := StateT State TermElabM
 
@@ -48,11 +58,31 @@ namespace B
 
   /-- Prefer an earlier definitionally equal WD, then try subsumption under the same budget.
   The target and candidates are closed; source locals must not escape into cached adapters. -/
-  def State.findProof? (s : State) (type : Expr) : TermElabM (Option Barrel.Subsume.Match) := do
+  def State.findProof? (s : State) (type : Expr) : MetaM (Option Barrel.Subsume.Match) := do
     let limit := s.config.subsumeMaxHeartbeats
     if limit == 0 then return none
+    -- Keep encounter order across allocated and reused facts. Searching all local
+    -- goals first can exhaust the cap before an earlier, smaller adapter is tried.
+    let candidates := if s.reused.isEmpty then s.wds
+      else (s.wds ++ s.reused.map (·.toWD)).qsort (·.order < ·.order)
     withOptions (barrel.subsume.maxHeartbeats.set · limit) <|
-      withLCtx {} #[] <| Barrel.Subsume.match? type (s.wds.map (·.proof))
+      withLCtx {} #[] <| Barrel.Subsume.match? type (candidates.map (·.proof))
+
+  private def State.findEarlier? (s : State) (type : Expr) : MetaM (Option (Expr × Name)) :=
+    withLCtx {} #[] <| Barrel.WDReuse.findProof? s.earlier type s.config.subsumeMaxHeartbeats
+
+  /-- Local sharing and cross-import lookup spend one cumulative encoder search budget. -/
+  private def State.search? (s : State) (type : Expr) : MetaM
+      (Option (Barrel.Subsume.Match × Option Name)) := do
+    let hasEarlier := barrel.reuse_wd.get (← getOptions) &&
+      ((Barrel.WDReuse.head? type).bind s.earlier.find?).any (!·.isEmpty)
+    -- Preserve the existing local-search budget exactly when there is no external bucket.
+    if !hasEarlier then return (← s.findProof? type).map (·, none)
+    Barrel.WDReuse.withBudget? s.config.subsumeMaxHeartbeats do
+      if let some found ← s.findProof? type then return some (found, none)
+      if let some (proof, name) ← s.findEarlier? type then
+        return some ({ proof, kind := .subsumption }, some name)
+      return none
 
   /-- Resolve provisional types and merge WDs whose reuse depended on later type inference. -/
   def State.refresh (s : State) (firstWD : Nat) : TermElabM State := do
@@ -63,19 +93,30 @@ namespace B
     -- so no proof can be matched against itself.
     for wd in s.wds do
       s := { s with seen := s.seen.insert (canonWD wd.type) wd.proof }
+    let firstOrder := (fresh[0]?.map (·.order)).getD s.nextProof
+    for wd in s.reused.filter (·.order < firstOrder) do
+      s := { s with seen := s.seen.insert (canonWD wd.type) wd.proof }
     for wd in fresh do
+      for earlier in s.reused.filter (·.order < wd.order) do
+        s := { s with seen := s.seen.insert (canonWD earlier.type) earlier.proof }
       let type ← instantiateMVars wd.type
       let key := canonWD type
-      let proof? ← match s.seen[key]? with
-        | some proof => pure (some proof)
+      let found? ← match s.seen[key]? with
+        | some proof => pure (some ({ proof, kind := .defEq }, none))
         | none => do
           if type == wd.type then pure none
-          else pure ((← s.findProof? type).map (·.proof))
-      if let some proof := proof? then
-        wd.proof.mvarId!.assign proof
-        s := { s with
-          seen := s.seen.insert key proof
-          names := s.names.erase wd.proof.mvarId! }
+          else ({ s with reused := s.reused.filter (·.order < wd.order) }).search? type
+      if let some (found, earlier?) := found? then
+        let proof := found.proof
+        if let some theoremName := earlier? then
+          s := { s with
+            reused := s.reused.push { wd with type, theoremName, value := proof }
+            seen := s.seen.insert key wd.proof }
+        else
+          wd.proof.mvarId!.assign proof
+          s := { s with
+            seen := s.seen.insert key proof
+            names := s.names.erase wd.proof.mvarId! }
       else
         s := { s with
           wds := s.wds.push { wd with type }
@@ -100,21 +141,35 @@ namespace B
     if let some proof := s.seen[key]? then
       modify fun s => { s with hits := s.hits + 1 }
       return (mkAppN proof args).headBeta
-    if let some found ← s.findProof? type then
-      modify fun s => { s with
-        seen := s.seen.insert key found.proof
-        hits := s.hits + 1
-        defEqHits := s.defEqHits + if found.kind == .defEq then 1 else 0
-        subsumptionHits := s.subsumptionHits + if found.kind == .subsumption then 1 else 0 }
-      return (mkAppN found.proof args).headBeta
     let name := (← getDeclName?).get!.str s!"wd_{s.nextWD}"
+    if let some (found, earlier?) ← s.search? type then
+      if let some theoremName := earlier? then
+        trace[barrel.wd] "Reused WD {name} from earlier theorem {theoremName}"
+        -- A checked theorem wrapper retains the original context and dependent
+        -- introductions. It is already proved and never enters the obligation queue.
+        let proof ← mkFreshExprMVarAt {} #[] type .syntheticOpaque
+        modify fun s => { s with
+          reused := s.reused.push {
+            name, type, proof, order := s.nextProof, theoremName, value := found.proof }
+          seen := s.seen.insert key proof
+          names := s.names.insert proof.mvarId! name
+          nextProof := s.nextProof + 1 }
+        return mkAppN proof args
+      else
+        modify fun s => { s with
+          seen := s.seen.insert key found.proof
+          hits := s.hits + 1
+          defEqHits := s.defEqHits + if found.kind == .defEq then 1 else 0
+          subsumptionHits := s.subsumptionHits + if found.kind == .subsumption then 1 else 0 }
+        return (mkAppN found.proof args).headBeta
     let proof ← mkFreshExprMVarAt {} #[] type .syntheticOpaque
     trace[barrel.wd] "New WD metavariable {name}: {indentExpr type}"
     modify fun s => { s with
-      wds := s.wds.push { name, type, proof }
+      wds := s.wds.push { name, type, proof, order := s.nextProof }
       seen := s.seen.insert key proof
       names := s.names.insert proof.mvarId! name
-      allocations := s.allocations + 1 }
+      allocations := s.allocations + 1
+      nextProof := s.nextProof + 1 }
     return mkAppN proof args
 
   end Encoder

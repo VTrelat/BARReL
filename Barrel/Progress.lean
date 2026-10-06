@@ -48,10 +48,13 @@ private def findMachine? (arr : Array Json) (machine : String) : Option Nat :=
   parts of the proof bar (auto-discharge results during the import phase). While `importing`
   the card shows a blue bar filling by `po`/`nbPOs`; once `importing = false` the bar switches
   to the `proven` / `sorried` / missing breakdown, which `reportProof` keeps updating.
+  WD counters distinguish allocated goals, conditions proved by earlier imports, and local
+  cache hits. Reused conditions are not added to the obligation map or its proof counts.
 -/
 def report (machine : String) (total po nbPOs proven sorried : Nat)
     (importing : Bool) (elapsedMs : Nat) (summary : Json := .null)
-    (obligations : Array Json := #[]) : BaseIO Unit := do
+    (obligations : Array Json := #[]) (wdUnique wdReused wdAvoided : Nat := 0)
+    (wdReuses : Array Json := #[]) : BaseIO Unit := do
   let entry := Json.mkObj [
     ("machine", .str machine),
     ("total", toJson total),
@@ -70,6 +73,12 @@ def report (machine : String) (total po nbPOs proven sorried : Nat)
     ("active", toJson false),
     ("elapsedMs", toJson elapsedMs),
     ("summary", summary),
+    ("wdUnique", toJson wdUnique),
+    ("wdReused", toJson wdReused),
+    ("wdAvoided", toJson wdAvoided),
+    -- One entry per reused condition: `{condition, theorem}`. The condition names
+    -- its local adapter theorem; theorem is the earlier published fact it applies.
+    ("wdReuses", Json.arr wdReuses),
     -- One entry per subgoal `{d, n, op, st, line, char}`: declName, short label, operation
     -- group, status (auto|sorry|hand|pending), and the source position of its proof command (once
     -- known) for click-to-jump. Populated in the final import report.
@@ -255,7 +264,7 @@ def skeleton (params : Json) : RequestM (RequestTask Json) := do
 -- enough to force a rebuild after editing the JS — the hash of this file's own text is
 -- unchanged, so Lake (correctly, by its own accounting) skips recompilation. Make a real
 -- edit here (e.g. bump the version note below) after touching the JS, or `lake clean`.
--- widget version: 32
+-- widget version: 33
 @[widget_module]
 def monitorWidget : Widget.Module where
   javascript := include_str ".." / "widget" / "barrelMonitor.js"

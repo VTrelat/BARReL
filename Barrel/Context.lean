@@ -5,6 +5,7 @@ import Lean.Compiler.InlineAttrs
 import Barrel.Meta
 import Barrel.EnvironmentIdentity
 import Barrel.Subsume
+import Barrel.WDReuse
 
 open Lean
 
@@ -37,6 +38,8 @@ private def copyDeclarationMetadata (source : Environment) (names : Array Name) 
       addDeclarationRanges name ranges
     if subsumeLemmas.contains name then
       Subsume.lemmas.add name
+    if WDReuse.contains source name then
+      WDReuse.add name
     setReducibilityStatus name (getReducibilityStatusCore source name)
     if let some attr := Compiler.getInlineAttribute? source name then
       setEnv (← ofExcept <| Compiler.setInlineAttribute (← getEnv) name attr)

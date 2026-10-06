@@ -22,6 +22,8 @@ inductive MatchKind where
 structure Match where
   proof : Expr
   kind : MatchKind
+  /-- The selected candidate, distinct from constants mentioned in adapter binder types. -/
+  candidate? : Option Expr := none
 
 /-- Previously proved facts available to the bounded `subsume` tactic. -/
 initialize lemmas : LabelExtension ←
@@ -92,7 +94,7 @@ private def matchDefEq? (target candidate : Expr) : MetaM (Option Match) := with
   unless ← tryDefEq type target do return none
   let proof ← instantiateMVars candidate
   unless ← noScratchVariables proof do return none
-  return some { proof, kind := .defEq }
+  return some { proof, kind := .defEq, candidate? := some candidate }
 
 -- Whole-type equality has already been tried for every supplied candidate.
 private def subsumeCandidate? (target : Expr) (binders witnesses : Array Expr)
@@ -133,7 +135,7 @@ private def subsumeCandidate? (target : Expr) (binders witnesses : Array Expr)
   unless ← noScratchVariables proof do return none
   Meta.check proof
   unless ← tryDefEq (← inferType proof) target do return none
-  return some { proof, kind := .subsumption }
+  return some { proof, kind := .subsumption, candidate? := some candidate }
 
 private def search? (target : Expr) (candidates : Array Expr) : MetaM (Option Match) := do
   -- Prefer an existing proof directly, before opening binders or trying specialization.

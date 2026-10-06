@@ -68,6 +68,19 @@ namespace B.Builtins
       · rintro _ rfl
         exists b
 
+    /-- A constant relation is a total function on its first factor. -/
+    @[tfun]
+    theorem tfun_const_product {α β : Type*} {A : Set α} {B : Set β} {y : β}
+        (hy : y ∈ B) : A ×ˢ {y} ∈ A ⟶ B := by
+      constructor
+      · constructor
+        · rintro ⟨x, z⟩ ⟨hx, rfl⟩
+          exact ⟨hx, hy⟩
+        · rintro x a b ⟨_, rfl⟩ ⟨_, rfl⟩
+          rfl
+      · intro x hx
+        exact ⟨y, hy, hx, rfl⟩
+
     @[grind <=, pfun]
     theorem pfun_singleton {α β : Type _} {a : α} {b : β} {A : Set α} {B : Set β}
       (ha : a ∈ A) (hb : b ∈ B) :
@@ -149,6 +162,12 @@ namespace B.Builtins
       apply app.WD_of_mem_pfun hf.1 (fun y hy ↦ ?_) hx
       · obtain ⟨z, -, hfxy⟩ := hf.2 y hy
         exact ⟨z, hfxy⟩
+
+    /-- A constant relation can be applied at every point of its first factor. -/
+    @[wd_app]
+    theorem app.WD_of_const_product {α β : Type*} {A : Set α} {x : α} {y : β}
+        (hx : x ∈ A) : app.WD (A ×ˢ {y}) x :=
+      app.WD_of_mem_tfun (tfun_const_product (Set.mem_singleton y)) hx
 
     @[grind →, simp]
     theorem app.of_pair_eq {α β : Type _} {f : SetRel α β} {x : α} {y : β}
@@ -355,6 +374,16 @@ namespace B.Builtins
         · exact mem_of_pair_mem_rel hf.1.1 hy |>.2
         · rw [tfun_dom_eq hg]
           exact ⟨hy, x_dom⟩
+
+    /-- Updating one value within the domain and codomain preserves a total function. -/
+    @[tfun]
+    theorem tfun_override_singleton {α β : Type*} {A : Set α} {B : Set β}
+        {f : SetRel α β} {x : α} {y : β}
+        (hf : f ∈ A ⟶ B) (hx : x ∈ A) (hy : y ∈ B) :
+        f <+ {(x, y)} ∈ A ⟶ B := by
+      simpa [Set.union_eq_self_of_subset_right (Set.singleton_subset_iff.mpr hx),
+        Set.union_eq_self_of_subset_right (Set.singleton_subset_iff.mpr hy)] using
+        tfun_of_overload hf (tfun_of_singleton (a := x) (b := y))
 
   @[grind =, simp]
   theorem app.image_singleton_eq_of_wd {α β : Type _} {f : SetRel α β} {a : α} (wd : WD f a) :

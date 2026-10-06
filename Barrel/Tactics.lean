@@ -62,21 +62,44 @@ namespace Barrel.Tactics
     | solve_by_elim using wd_max))
 
   set_option hygiene false in
+  -- Keep set membership search independent of the global `grind` database: function
+  -- typing already supplies the relation bounds, even in large generated contexts.
+  macro "wd_mem" : tactic => `(tactic| (
+    first
+    | assumption
+    -- Unfold set-builder membership only as a fallback: doing it eagerly can
+    -- expand unrelated quantified invariants in a generated context.
+    | grind only [Set.mem_powerset_iff, Set.mem_prod, Set.subset_def,
+        Set.mem_sdiff, Set.mem_union, Set.mem_singleton_iff]
+    | grind only [Set.mem_setOf_eq, Set.mem_powerset_iff, Set.mem_prod, Set.subset_def,
+        Set.mem_sdiff, Set.mem_union, Set.mem_singleton_iff]))
+
+  set_option hygiene false in
   macro "wd_app" : tactic => `(tactic| (
     intros
+    guard_target = app.WD _ _
     subst_eqs
     generalize_proofs at *
     first
     | sorry_if_sorry
+    | (apply app.WD_of_const_product; wd_mem)
     | (
         apply app.WD_of_mem_tfun
-        · tfun
-        · and_intros <;> grind
+        -- Prepare the context before applying the WD rule. Calling `tfun` here
+        -- would generalize proofs while its domain/codomain metavariables are open.
+        · solve_by_elim using tfun
+        · wd_mem
+      )
+    | (
+        apply app.WD_of_overload
+        · solve_by_elim using pfun, tfun
+        · solve_by_elim using pfun, tfun
+        · wd_mem
       )
     | (
         apply app.WD_of_mem_pfun
-        · pfun
-        · and_intros <;> grind
+        · solve_by_elim using pfun, tfun
+        all_goals wd_mem
       )
     | solve_by_elim using wd_app))
 

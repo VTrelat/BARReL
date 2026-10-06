@@ -7,6 +7,7 @@ import POGReader.Basic
 import Barrel.Context
 import Barrel.Tactics
 import Barrel.Progress
+import Barrel.WDMinimal
 
 open Lean Elab Term Command
 
@@ -14,6 +15,83 @@ private structure ParserResult where
   path : System.FilePath
   name : String
   goals : Array B.POG.Goal
+
+private structure DischargeResult where
+  obligations : Array Barrel.Obligation
+  skipped : Array Name
+  wdUnique : Nat
+  wdAvoided : Nat
+  wdReuses : Array Barrel.WDReuseInfo
+  wdAdapters : Array Barrel.WDAdapter
+
+/-- Publish already-proved wrappers only when their type and value dependencies exist.
+These ordinary kernel theorems preserve the generated context; they are not new goals. -/
+private def publishWDAdapters (adapters : Array Barrel.WDAdapter) : TermElabM Unit :=
+    withCurrHeartbeats do
+  let mut changed := true
+  while changed do
+    changed := false
+    for adapter in adapters do
+      let env ← getEnv
+      if let some info := env.find? adapter.name then
+        unless info.isTheorem && info.type == adapter.type &&
+            info.value? (allowOpaque := true) == some adapter.value do
+          throwError "Declaration collision for reused WD adapter `{adapter.name}`"
+        continue
+      let dependencies := adapter.type.getUsedConstants ++ adapter.value.getUsedConstants
+      unless dependencies.all env.contains do continue
+      let params := collectLevelParams (collectLevelParams {} adapter.type) adapter.value
+      let decl := Declaration.thmDecl {
+        name := adapter.name, levelParams := params.params.toList,
+        type := adapter.type, value := adapter.value }
+      ensureNoUnassignedMVars decl
+      addDecl decl false
+      if !adapter.value.hasSorry then Barrel.Subsume.lemmas.add adapter.name
+      changed := true
+
+/-- Include pending goals hidden behind a deferred adapter in dependency diagnostics. -/
+private def pendingDependencies (ctx : Barrel.ImportContext) (type : Expr) : Array Name := Id.run do
+  let mut queue := type.getUsedConstants
+  let mut seen : NameSet := {}
+  let mut pending := #[]
+  while let some name := queue.back? do
+    queue := queue.pop
+    if seen.contains name then continue
+    seen := seen.insert name
+    if ctx.isPendingName name then pending := pending.push name
+    if let some adapter := ctx.wdAdapters.find? (·.name == name) then
+      queue := queue ++ adapter.type.getUsedConstants ++ adapter.value.getUsedConstants
+  return pending
+
+/-- Keep the public WD statement, but make its proof explicitly apply the smaller theorem.
+Both declarations are kernel checked; the reuse tag stays private until `qed`. -/
+private def prepareWDProof (name : Name) (type value : Expr) (isWd : Bool) : TermElabM Expr := withCurrHeartbeats do
+  if !isWd || !barrel.reuse_wd.get (← getOptions) || value.hasSorry then return value
+  let saved ← saveState
+  let result ← tryCatchRuntimeEx (do
+    let minimal? ← Barrel.WDMinimal.minimize? type value
+    let minimalType := minimal?.map (·.type) |>.getD type
+    let minimalValue := minimal?.map (·.proof) |>.getD value
+    let minimalName := name.str "minimal"
+    let params := collectLevelParams (collectLevelParams {} minimalType) minimalValue
+    let decl := Declaration.thmDecl {
+      name := minimalName, levelParams := params.params.toList,
+      type := minimalType, value := minimalValue }
+    ensureNoUnassignedMVars decl
+    addDecl decl false
+    Barrel.WDReuse.add minimalName
+    let constant := Lean.mkConst minimalName (params.params.toList.map Level.param)
+    let value ← match minimal? with
+      | some minimal => minimal.apply type constant
+      | none => pure constant
+    Meta.check value
+    return some value)
+    (fun ex => do
+      trace[barrel.wd] "Could not publish minimal WD theorem {name}: {ex.toMessageData}"
+      return none)
+  if let some value := result then return value
+  saved.restore
+  return value
 
 private def nameOf (mchPath : System.FilePath) : String :=
   mchPath.fileStem.get!
@@ -79,7 +157,7 @@ private def mch2goals (name : String) (dir mchPath : System.FilePath) : CommandE
   pog2goals name (mchPath := mchPath) <| bxml.withExtension "pog"
 
 private def pog2obligations (res : ParserResult) (contextName : Name) (config : Barrel.ImportConfig) :
-    CommandElabM (Array Barrel.Obligation × Array Name) := liftTermElabM do
+    CommandElabM DischargeResult := liftTermElabM do
   let ⟨_, name, goals⟩ := res
 
   let t0 ← IO.monoMsNow
@@ -88,9 +166,11 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
 
   let mut res : Array Barrel.Obligation := #[]
   let mut wds : Array Barrel.Obligation := #[]
+  let mut adapters : Array Barrel.WDAdapter := #[]
   -- The whole import shares one metavariable context. Encoder cache hits reuse the
   -- original closed proof metavariable, including when its obligation is still pending.
-  let mut encoder : B.Encoder.State := { config }
+  let mut encoder : B.Encoder.State := {
+    config, earlier := Barrel.WDReuse.facts.getState (← getEnv) }
   -- Auto-discharge splits its successes into really-proven (green) and sorried (yellow, a
   -- `barrel_solve` alternative can close a genuinely-`sorry` goal with `sorry`); their sum is
   -- the "auto-solved" count.
@@ -122,18 +202,26 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
     let enc? ← withCurrHeartbeats <| withOptions (Elab.async.set · false) do
       let saved ← saveState
       tryCatchRuntimeEx (do
-        pure <| some (← g.toExpr declName encoder))
+        let (goal, wds, next) ← g.toExpr declName encoder
+        let adapters ← next.reused[encoder.reused.size:].toArray.mapM fun wd => do
+          let type := next.export (← instantiateMVars wd.type)
+          let value := next.export (← instantiateMVars wd.value)
+          if type.hasMVar || type.hasFVar || value.hasMVar || value.hasFVar then
+            throwError "Unresolved variables in reused WD adapter `{wd.name}`"
+          return ({ name := wd.name, type, value } : Barrel.WDAdapter)
+        pure <| some (goal, wds, next, adapters))
         fun ex => do
           saved.restore
           logWarning m!"Failed to encode proof obligation `{declName}` ({g.reason}), skipping it:{indentD ex.toMessageData}"
           pure none
 
-    let some (g', newWDs, encoder') := enc?
+    let some (g', newWDs, encoder', newAdapters) := enc?
       | skipped := skipped.push declName
         nbGoals := nbGoals - 1
         i := i + 1
         continue
     encoder := encoder'
+    adapters := adapters ++ newAdapters
     let wds' := newWDs.map fun (n, e) => (n, "Assertion is well-defined", e, true)
     let opName := deriveOp g.name
 
@@ -152,37 +240,40 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
         let saved ← saveState
         let r : _ ⊕ _ ← tryCatchRuntimeEx
           (do
+            publishWDAdapters adapters
             -- TODO: we should split on `isWd` to apply relevant tactics
             trace[barrel.solve] m!"Trying to solve theorem {declName} (isWd: {isWd}):{indentExpr g}"
-            let e ← withDeclName declName <| withoutErrToSorry do
+            let e ← withCurrHeartbeats <| withDeclName declName <| withoutErrToSorry do
               Meta.check g
               instantiateMVars =<< elabTermAndSynthesize (← `(term| by barrel_solve)) (.some g)
-
             trace[barrel.solve] m!"{Lean.checkEmoji} Success! (spent {((← IO.getNumHeartbeats) - hb₀) / 1000} heartbeats)"
 
-            let levelParams := (collectLevelParams (collectLevelParams {} g) e).params
+            let e ← prepareWDProof declName g e isWd
+            -- Optional minimization cannot consume the budget for kernel registration.
+            withCurrHeartbeats do
+              let levelParams := (collectLevelParams (collectLevelParams {} g) e).params
 
-            let decl : Declaration := .thmDecl {
-              name := declName
-              levelParams := levelParams.toList
-              type := g
-              value := e
-            }
+              let decl : Declaration := .thmDecl {
+                name := declName
+                levelParams := levelParams.toList
+                type := g
+                value := e
+              }
 
-            ensureNoUnassignedMVars decl
-            if (← getThe Core.State).messages.hasErrors then
-              throwError "Automatic proof reported errors"
-            addDecl decl false
-            if isWd && !e.hasSorry then
-              Barrel.Subsume.lemmas.add declName
+              ensureNoUnassignedMVars decl
+              if (← getThe Core.State).messages.hasErrors then
+                throwError "Automatic proof reported errors"
+              addDecl decl false
+              if isWd && !e.hasSorry then
+                Barrel.Subsume.lemmas.add declName
 
-            Lean.addDocStringOf false declName .missing
-              (mkNode ``Parser.Command.docComment #[
-                mkAtom "/--",
-                mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {reason} -/"
-              ])
+              Lean.addDocStringOf false declName .missing
+                (mkNode ``Parser.Command.docComment #[
+                  mkAtom "/--",
+                  mkAtom s!"Machine `{name}`, proof obligation `{declName}`: {reason} -/"
+                ])
 
-            pure <| .inl e)
+              pure <| .inl e)
           fun ex => do
             saved.restore
             trace[barrel.solve] m!"{Lean.crossEmoji} Failed! (spent {((← IO.getNumHeartbeats) - hb₀) / 1000} heartbeats)\n{ex.toMessageData}"
@@ -214,18 +305,25 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
       if progress then
         let elapsed := (← IO.monoMsNow) - t0
         Barrel.Progress.report name nbGoals (i + 1) nbPOs autoProven autoSorried true elapsed
+          (wdUnique := encoder.wds.size) (wdReused := encoder.reused.size)
+          (wdAvoided := encoder.hits)
 
     i := i + 1
 
   let goals := wds ++ res
+  publishWDAdapters adapters
   let dt := (← IO.monoMsNow) - t0
   let autoDischarged := autoProven + autoSorried
 
   let wdDistinct := nbGoals - (nbPOs - skipped.size)
+  let wdReuses := encoder.reused.map fun wd =>
+    ({ condition := wd.name, theoremName := wd.theoremName } : Barrel.WDReuseInfo)
+  let reuseJson := wdReuses.map fun wd => Json.mkObj [
+    ("condition", .str wd.condition.toString), ("theorem", .str wd.theoremName.toString)]
   let pct := if nbGoals == 0 then 0 else autoDischarged * 1000 / nbGoals
   let rows : Array (String × String) := #[
     ("auto-solved", s!"{autoDischarged} / {nbGoals} ({pct / 10}.{pct % 10}%)"),
-    ("WD goals", s!"{wdDistinct} unique ({encoder.hits} allocations avoided)"),
+    ("WD goals", s!"{wdDistinct} unique, {wdReuses.size} reused from earlier imports ({encoder.hits} allocations avoided)"),
     ("remaining", s!"{goals.filter (·.proof?.isNone) |>.size}"),
     ("import time", s!"{dt / 1000}.{dt % 1000 / 100} s")
   ]
@@ -233,6 +331,8 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
     Barrel.Progress.report name nbGoals nbPOs nbPOs autoProven autoSorried false dt
       (summary := Json.arr <| rows.map λ (l, v) ↦ Json.arr #[.str l, .str v])
       (obligations := obligations)
+      (wdUnique := wdDistinct) (wdReused := wdReuses.size) (wdAvoided := encoder.hits)
+      (wdReuses := reuseJson)
 
   if !skipped.isEmpty then
     logWarning s!"Skipped {skipped.size} proof obligations that could not be encoded; `qed` will refuse this import."
@@ -251,8 +351,12 @@ private def pog2obligations (res : ParserResult) (contextName : Name) (config : 
       lines := lines.push s!"│ {pad l w₁} │ {pad r w₂} │"
     lines := lines.push (hbar "└" "┴" "┘")
     logInfo <| "\n".intercalate lines.toList
+    for wd in wdReuses do
+      logInfo s!"WD reuse: {wd.condition} ← {wd.theoremName}"
 
-  return (goals, skipped)
+  return {
+    obligations := goals, skipped, wdUnique := wdDistinct
+    wdAvoided := encoder.hits, wdReuses, wdAdapters := adapters }
 
 /-- Resolve an explicit import in the current namespace, or the latest imported context. -/
 private def resolveContext (id? : Option (TSyntax `ident)) : CommandElabM Barrel.ImportContext := do
@@ -324,8 +428,9 @@ private def proveObligation (ctx : Barrel.ImportContext) (id? : Option (TSyntax 
   let global ← getEnv
   let ((value, position), localEnv) ← withoutModifyingEnv' do
     setEnv (← liftCoreM <| Barrel.workingEnvironment ctx global)
+    liftTermElabM <| publishWDAdapters ctx.wdAdapters
     -- A WD theorem must exist before Lean can check a type referring to its constant.
-    let missing := obligation.type.getUsedConstants.filter ctx.isPendingName
+    let missing := pendingDependencies ctx obligation.type
     unless missing.isEmpty do
       throwErrorAt ref "Obligation `{obligation.name}` depends on unproved obligations: {missing.toList}. Prove them first."
     if barrel.show_goal_names.get (← getOptions) then
@@ -339,18 +444,21 @@ private def proveObligation (ctx : Barrel.ImportContext) (id? : Option (TSyntax 
       -- Explicit `sorry` remains a Lean admission; tactic errors must never advance the queue.
       if (← getThe Core.State).messages.hasErrors then
         throwError "Proof of `{obligation.name}` reported errors; obligation remains unproved."
-      let params := collectLevelParams (collectLevelParams {} obligation.type) value
-      let decl := Declaration.thmDecl {
-        name := obligation.name, levelParams := params.params.toList,
-        type := obligation.type, value }
-      ensureNoUnassignedMVars decl
-      addDecl decl
-      if obligation.isWd && !value.hasSorry then
-        Barrel.Subsume.lemmas.add obligation.name
-      Lean.addDocStringOf false obligation.name .missing
-        (mkNode ``Parser.Command.docComment #[mkAtom "/--",
-          mkAtom s!"Machine `{ctx.name}`, proof obligation `{obligation.name}`: {obligation.reason} -/"])
-      return value
+      let value ← prepareWDProof obligation.name obligation.type value obligation.isWd
+      withCurrHeartbeats do
+        let params := collectLevelParams (collectLevelParams {} obligation.type) value
+        let decl := Declaration.thmDecl {
+          name := obligation.name, levelParams := params.params.toList,
+          type := obligation.type, value }
+        ensureNoUnassignedMVars decl
+        addDecl decl
+        if obligation.isWd && !value.hasSorry then
+          Barrel.Subsume.lemmas.add obligation.name
+        Lean.addDocStringOf false obligation.name .missing
+          (mkNode ``Parser.Command.docComment #[mkAtom "/--",
+            mkAtom s!"Machine `{ctx.name}`, proof obligation `{obligation.name}`: {obligation.reason} -/"])
+        publishWDAdapters ctx.wdAdapters
+        return value
     let fm ← getFileMap
     let position := ref.getPos?.map fun p =>
       let pos := fm.toPosition p
@@ -372,6 +480,12 @@ private def finalizeContext (ctx : Barrel.ImportContext) : CommandElabM Unit :=
   if ctx.bookkeeping.pending != 0 || !ctx.skipped.isEmpty then
     let names := ctx.obligations.filterMap fun ob => if ob.proof?.isNone then some ob.name else none
     throwError "Cannot finalize `{ctx.name}`: {ctx.bookkeeping.pending} unproved obligations {names.toList}; {ctx.skipped.size} unencoded obligations {ctx.skipped.toList}."
+  for adapter in ctx.wdAdapters do
+    let some info := ctx.localEnv.find? adapter.name
+      | throwError "Cannot finalize `{ctx.name}`: unpublished WD adapter `{adapter.name}`"
+    unless info.isTheorem && info.type == adapter.type &&
+        info.value? (allowOpaque := true) == some adapter.value do
+      throwError "Cannot finalize `{ctx.name}`: invalid WD adapter `{adapter.name}`"
   -- Merge onto the current environment, preserving declarations added since the import.
   -- Nothing is published until the entire merge has passed kernel verification.
   let env ← liftCoreM <| Barrel.mergeContext ctx.baseEnv ctx.localEnv (← getEnv)
@@ -413,14 +527,16 @@ elab_rules : command
   let fileName := localName.toString (escape := false)
   let filePath := path/System.FilePath.addExtension fileName ext
   let baseEnv ← getEnv
-  let ((obligations, skipped), localEnv) ← withoutModifyingEnv' do
+  let (result, localEnv) ← withoutModifyingEnv' do
     let parsed ← match ext with
       | "pog" => pog2goals contextName.toString filePath
       | _ => mch2goals contextName.toString path filePath
     pog2obligations parsed contextName config
   saveContext {
     name := contextName, path := ← IO.FS.realPath filePath, config, baseEnv, localEnv,
-    obligations, skipped } (latest := true)
+    obligations := result.obligations, skipped := result.skipped,
+    wdUnique := result.wdUnique, wdAvoided := result.wdAvoided,
+    wdReuses := result.wdReuses, wdAdapters := result.wdAdapters } (latest := true)
 
 declare_syntax_cat obligation_proof
 syntax "from " term : obligation_proof
