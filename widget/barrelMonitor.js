@@ -128,6 +128,20 @@ function StatRow({ label, value, divider = true }) {
     React.createElement('span', null, value));
 }
 
+// Reused conditions have no new obligation cell: their proof is an earlier theorem.
+// Keep the names available without expanding the summary for every ordinary import.
+function WDReuses({ reuses }) {
+  if (!Array.isArray(reuses) || reuses.length === 0) return null;
+  return React.createElement('details', { style: { marginTop: 10, fontSize: 11 } },
+    React.createElement('summary', { style: { cursor: 'pointer', opacity: 0.8 } }, 'WD theorems reused from earlier imports'),
+    reuses.map((r, i) => React.createElement('div', {
+      key: r.condition + ':' + i,
+      style: { marginTop: 7, fontFamily: 'var(--vscode-editor-font-family, monospace)', overflowWrap: 'anywhere' }
+    },
+      React.createElement('div', null, r.condition),
+      React.createElement('div', { style: { opacity: 0.7 } }, 'uses ' + r.theorem))));
+}
+
 const CELL_COLOR = { auto: GREEN, hand: TEAL, sorry: YELLOW, pending: PENDING };
 const CELL_LABEL = { auto: 'auto-solved', hand: 'proved by hand', sorry: 'sorried', pending: 'pending' };
 
@@ -202,9 +216,15 @@ function Row({ st, open, onToggle, pos, ec, rs }) {
     detail = [
       React.createElement(StatRow, { key: 't', label: 'subgoals', value: st.total, divider: false }),
       React.createElement(StatRow, { key: 'p', label: 'proven', value: st.proven }),
-      React.createElement(StatRow, { key: 'y', label: 'sorried', value: st.sorried })
+      React.createElement(StatRow, { key: 'y', label: 'sorried', value: st.sorried }),
+      React.createElement(StatRow, {
+        key: 'wd', label: 'WD goals',
+        value: (st.wdUnique || 0) + ' unique, ' + (st.wdReused || 0) + ' reused from earlier imports, '
+          + (st.wdAvoided || 0) + ' allocations avoided'
+      })
     ];
   }
+  detail = React.createElement(React.Fragment, null, detail, React.createElement(WDReuses, { reuses: st.wdReuses }));
 
   // Expanded content: sit the per-obligation map on the left (~60%) and the stat table on the
   // right (~33%) side by side, so the stats no longer stack under the map and the card is
