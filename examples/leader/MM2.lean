@@ -1,3 +1,4 @@
+import examples.leader.MM1
 import examples.leader.MM2Support
 import examples.leader.MM2TailSupport
 
@@ -119,19 +120,6 @@ next obligation by
     hpending _
   apply Leader.pfun_of_subset hmsg_partial
   exact Set.union_subset hack_msg (Set.singleton_subset_iff.mpr hpending.1)
-
-next obligation by
-  simp only [← app.of_pair_iff]
-  introv _ _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hack_msg _ _ _ _ _ _ _ _ _ _ _ _ hpending _
-  exact Set.union_subset hack_msg (Set.singleton_subset_iff.mpr hpending.1)
-
-next obligation by
-  simp only [← app.of_pair_iff]
-  introv _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hmsg_graph _ _ _ _ _ _ _ _ _ _ _ _ _
-    hpending_new
-  exact hmsg_graph hpending_new.1
 
 next obligation by
   simp only [← app.of_pair_iff]

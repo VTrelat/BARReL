@@ -1,3 +1,4 @@
+import examples.leader.MM2
 import examples.leader.MM3Support
 
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
@@ -9,41 +10,9 @@ import refinement mm3 from "specs/leader"
 
 next obligation by
   simp only [← app.of_pair_iff]
-  introv _ _ _ _ _ _ _ _ _ _ _ _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ hnode
-  exact app.WD_of_mem_tfun
-    (Leader.tfun_const_product (A := ND) (B := 𝒫 ND) (Set.empty_subset ND)) hnode
-
-next obligation by
-  simp only [Leader.app_subset_iff, ← app.of_pair_iff]
-  introv _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ hseen_total _ hedge
-  exact app.WD_of_mem_tfun hseen_total (htree_partial.1 hedge).2
-
-next obligation by
-  intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ htree_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ hedge _ hnode
-  refine app.WD_of_mem_tfun (B := 𝒫 ND) ?_ hnode
-  apply Leader.tfun_override_singleton hseen_total (htree_partial.1 hedge).2
-  apply Set.union_subset
-  · exact (hseen_total.1.1 (app.pair_app_mem (wd :=
-      app.WD_of_mem_tfun hseen_total (htree_partial.1 hedge).2))).2
-  · exact Set.singleton_subset_iff.mpr (htree_partial.1 hedge).1
-
-next obligation by
-  simp only [← app.of_pair_iff]
   introv _ _ _ _ _ _ _ _ _ _ _ _ _ _
   intro _ _ _ _ _ _ _ _ _ _ _
   exact Leader.tfun_const_product (Set.empty_subset ND)
-
-next obligation by
-  simp only [Leader.app_subset_iff, ← app.of_pair_iff]
-  introv _ _ _ _ _ _ _ _ _ _ _ _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _
-  rintro s ⟨_, rfl⟩
-  exact Set.empty_subset _
 
 next obligation by
   intro nb ND gg ff msg1 ack1 tr1 cnt1 ld1 ts ld tr msg ack cnt sn1 xx yy xx1

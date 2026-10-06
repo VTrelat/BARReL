@@ -1,3 +1,4 @@
+import examples.leader.MM4
 import examples.leader.MM3Support
 
 set_option barrel.atelierb "/Applications/atelierb-free-arm64-24.04.2.app/Contents/Resources"
@@ -6,114 +7,6 @@ open B.Builtins
 
 -- Separate messages awaiting acknowledgement, progress, and confirmation.
 import refinement mm5 from "specs/leader"
-
-next obligation by
-  simp only [← app.of_pair_iff, Leader.app_subset_iff]
-  introv _ _ _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ hTR_relation _ _ _
-  introv
-  intro hconfirmation
-  exact app.WD_of_mem_tfun hseen_total (hTR_relation hconfirmation).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_glue _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ hsource _ _
-  rw [hacks_glue]
-  exact app.WD_of_mem_tfun hacks_total hsource
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_glue _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ hsource _ _ _
-  rw [hseen_glue]
-  exact app.WD_of_mem_tfun hseen_total hsource
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hMSG_partial _ _ _ _ _ _ _ _ _
-    hmessage
-  exact app.WD_of_mem_tfun hacks_total (hMSG_partial.1 hmessage).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ hmsg_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_glue _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ hmessage
-  rw [hacks_glue]
-  exact app.WD_of_mem_tfun hacks_total (hmsg_partial.1 hmessage).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ hmsg_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_glue _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ hmessage _ _
-  rw [hacks_glue]
-  exact app.WD_of_mem_tfun hacks_total (hmsg_partial.1 hmessage).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hMSG_partial _ _ _ _ _ _ _ _ _
-    hmessage _ _ _ _ _ _ _
-  exact app.WD_of_mem_tfun hacks_total (hMSG_partial.1 hmessage).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_total _ _
-    _ _ hmsg_partial _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hacks_glue _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ hmessage
-  rw [hacks_glue]
-  exact app.WD_of_mem_tfun hacks_total (hmsg_partial.1 hmessage).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hACK_relation
-    hTR_relation _ _ _ _ hack _ hconfirmation
-  apply app.WD_of_mem_tfun hseen_total
-  rcases hconfirmation with hold | hnew
-  · exact (hTR_relation hold).2
-  · obtain ⟨rfl, rfl⟩ := Set.mem_singleton_iff.mp hnew
-    exact (hACK_relation hack).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hTR_relation
-    _ _ _ _ hconfirmation _
-  exact app.WD_of_mem_tfun hseen_total (hTR_relation hconfirmation).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hTR_relation
-    _ _ _ _ _ hremaining
-  apply app.WD_of_overload hseen_total.1 pfun_of_singleton
-  left
-  rw [tfun_dom_eq hseen_total]
-  exact (hTR_relation hremaining.1).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ htr_partial _ _ _ _ _ _ _ _ _ _ _ hseen_glue _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ hedge
-  rw [hseen_glue]
-  exact app.WD_of_mem_tfun hseen_total (htr_partial.1 hedge).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ htr_partial _ _ _ _ _ _ _ _ _ _ _ hseen_glue _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ hedge _
-  rw [hseen_glue]
-  exact app.WD_of_mem_tfun hseen_total (htr_partial.1 hedge).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hTR_relation
-    _ _ _ _ hconfirmation _ _ _ _
-  exact app.WD_of_mem_tfun hseen_total (hTR_relation hconfirmation).2
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hseen_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hseen_glue _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ hnode _
-  rw [hseen_glue]
-  exact app.WD_of_mem_tfun hseen_total hnode
 
 next obligation by
   simp [pfun]
@@ -319,13 +212,6 @@ next obligation by
   exact Set.Subset.trans Set.sdiff_subset hTR_relation
 
 next obligation by
-  simp only [← app.of_pair_iff, Leader.app_subset_iff, Leader.mem_app_iff]
-  introv _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ hTR_tr _ _ _ _
-  exact Set.Subset.trans Set.sdiff_subset hTR_tr
-
-next obligation by
   intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ yy xx1 yy1 _ _ _ _ _ _ _ _ _ _ _ _ _ _
     hsn_total _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     hTR_relation _ _ _ hTR_fresh _ hremaining
@@ -350,13 +236,6 @@ next obligation by
 next obligation by
   simp only [← app.of_pair_iff, Leader.app_subset_iff, Leader.mem_app_iff]
   introv _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    hcnt_glue hbm_glue _ _ _ _ _ _ _ _ _ _ _ _ _ _
-  simp only [hbm_glue, hcnt_glue]
-
-next obligation by
-  simp only [← app.of_pair_iff, Leader.app_subset_iff, Leader.mem_app_iff]
-  introv _ _
   intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hack_cnt_disjoint _ _ _ _ _ _ _ _
     _ _ _ _ _ _ _ _ _ _ _ hmsg_partition _ hMSG_cnt _ _ _ _ _ _ _ _
   subst cnt
@@ -370,19 +249,5 @@ next obligation by
   intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     _ _ _ _ _ _ _ _ _ _ _ _ _ _
   simp
-
-next obligation by
-  simp only [← app.of_pair_iff, Leader.app_subset_iff, Leader.mem_app_iff]
-  introv _ _
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ hforward hreverse
-  subst cnt
-  exact ⟨xx, yy, hforward, hreverse⟩
-
-next obligation by
-  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ sn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hready
-  subst sn
-  exact hready
 
 qed mm5
