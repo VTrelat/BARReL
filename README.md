@@ -1,188 +1,85 @@
-
 # BARReL: **B** **A**utomated t**R**anslation for **Re**asoning in **L**ean <img src=".assets/barrel.png" height="80px" style="vertical-align:middle;" align="right"/>
 
-BARReL bridges Atelier B proof obligations to Lean. It parses `.pog` files (the [PO XML format](https://www.atelierb.eu/wp-content/uploads/2023/10/pog-1.0.html) produced by Atelier B), converts the obligations into Lean terms, and lets you discharge them with Lean tactics.
+BARReL imports Atelier B proof obligations into Lean, where you can prove them with Lean tactics and Mathlib. Partial B operators carry explicit well-definedness (WD) proofs.
 
-## Prerequisites
-- Lean 4 (see [`lean-toolchain`](lean-toolchain) for version).
-- Mathlib (pulled automatically by Lake).
-- For `import machine`: an Atelier B installation with `bin/bxml` and `bin/pog` available. 
-  Point BARReL to it with `set_option barrel.atelierb "<path-to-atelierb-root>"` (the directory that contains `bin/` and `include/`).
+## Setup
+
+You need Lean 4 (the version in [`lean-toolchain`](lean-toolchain)) and an Atelier B installation to generate obligations from B sources. Lake fetches Mathlib and the other Lean dependencies:
+
+```bash
+lake update
+lake build
+```
+
+Set `barrel.atelierb` to the Atelier B directory containing `bin/` and `include/`. If you already have a `.pog` file, you can use `import pog` without Atelier B.
 
 ## Quick start
-### Setting up the environment
-```bash
-lake update     # fetch mathlib and dependencies
-lake build      # build all libraries
-```
 
-To experiment with the sample machines, open `Test.lean` in your editor or run:
-```bash
-lake lean Test.lean
-```
-Note that you may have to edit the path to the Atelier B distribution in `Test.lean` at the beginning of the file.
-
-### Quick example
-Consider the B machine [`CounterMin.mch`](specs/CounterMin.mch):
-```
-MACHINE CounterMin
-VARIABLES X
-INVARIANT
-  X ∈ FIN1(ℤ) ∧ max(X) = -min(X)
-INITIALISATION
-  X := {0}
-OPERATIONS
-  inc =
-  ANY z WHERE z ∈ ℕ THEN
-    X := (-z)..z
-  END
-END
-```
-The obligations for this machine include invariant initialisation and preservation for `inc`, together with well-formedness conditions:
-- _Initialisation_:
-  - `{0} ∈ FIN₁(INTEGER)`
-  - `max({0}) = -min({0})`
-- _Invariant preservation_ for `inc`:
-  - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → (-z)..z ∈ FIN₁(ℤ)`
-  - `∀ z ∈ ℤ, ∀ X ∈ FIN₁(ℤ), max(X) = -min(X) → z ∈ ℕ → max((-z)..z) = -min((-z)..z)`
-- _Well-formedness conditions_.
-
-In Lean, `import machine` runs the auto-discharger (`barrel_solve`) over the generated obligations. The exact number of subgoals and which ones remain depend on the POG and available automation. When the two equalities remain, they can be proved as follows:
+The obligations of [`CounterMin.mch`](specs/CounterMin.mch) are proved automatically:
 
 ```lean
 import Barrel
 
-set_option barrel.atelierb "/<path-to-atelierb-root>/atelierb-free-arm64-24.04.2.app/Contents/Resources"
-
-open B.Builtins
+set_option barrel.atelierb "<path-to-atelierb-root>"
 
 import machine CounterMin from "specs/"
-
-next obligation of CounterMin by
-  intros _ _
-  rw [max.of_singleton, min.of_singleton]
-  rfl
-
-next obligation of CounterMin by
-  rintro X z - - hz
-  rw [interval.min_eq (neg_le_self hz),
-      interval.max_eq (neg_le_self hz),
-      Int.neg_neg]
-
 qed CounterMin
 ```
 
-If auto-discharge solves every goal, the import needs only `qed CounterMin`; omit the two proof commands. Each remaining obligation has its own command. Lean can reuse completed command snapshots when a later proof is edited, rather than replaying a single block containing every proof. This gives command-level incremental processing; it does not promise that tactic scripts run in parallel. The live progress card in the infoview shows how many goals were solved automatically and how many are left.
+Open [`examples/CounterMin.lean`](examples/CounterMin.lean) in your Lean editor, or run `lake lean examples/CounterMin.lean` after adjusting its Atelier B path.
 
-> [!NOTE]
-> By default, option `barrel.show_goal_names` is set to `true`, which will display the name of each proof obligation at each obligation command, but it can be disabled with:
-> ```lean
-> set_option barrel.show_goal_names false
-> ```
+For other developments, prove the remaining obligations with separate commands:
 
-## Live progress in the editor
-Industrial POGs can take minutes to import, so each `import` reports into a self-updating **progress card** in the infoview, grouped under a foldable **BARReL state** pane (one card per machine)
+| Command | Purpose |
+| --- | --- |
+| `import machine M from "specs/"` | Generate, translate and try to prove the obligations. |
+| `next obligation of M by ...` | Prove the next pending obligation. |
+| `obligation Initialisation_1 of M by ...` | Select an obligation by its name within the component. |
+| `qed M` | Publish the theorems once all obligations have proofs. |
 
-<p align="center">
-  <img src=".assets/progress-importing.png" alt="BARReL progress card while importing" width="600"/>
-  <br/><em>While importing: a spinner and a blue bar that fills as Atelier B's obligations stream in; green bar indicates auto-solved goals.</em>
-</p>
+Imports also support `system`, `refinement`, `implementation` and `pog`. Omit `of M` to use the most recent import. Use `from proof` instead of `by ...` to supply a proof term.
 
-<p align="center">
-  <img src=".assets/progress.png" alt="BARReL progress while discharging" width="600"/>
-  <br/><em>While discharging: yellow (contains <code>sorry</code>), red badge (missing goals).</em>
-</p>
+After `qed`, theorems such as `M.Initialisation_1` are available to ordinary Lean proofs and later imports. As in Lean, an explicit `sorry` remains an admission; `qed` does not check for its absence.
 
-<p align="center">
-  <img src=".assets/progress-done.png" alt="BARReL progress card after discharging" width="600"/>
-  <br/><em>After discharging: green (all proved), with one card unfolded.</em>
-</p>
+## Proof reuse
 
-Click a card to expand its summary table: auto-solved count and percentage, unique well-definedness (WD) goals and avoided duplicate allocations, and how many obligations remain. Cells with a proof command jump to its source location when clicked. The **proof skeleton** button appends one named `obligation ... of ... by` command per pending goal and a final `qed`. Its `sorry` placeholders must be replaced to obtain complete proofs.
+BARReL shares repeated WD conditions within an import. After `qed`, later imports can also reuse its proved WD theorems, including across Lean modules.
 
-Progress follows each import's local context, including proofs not yet published by `qed`. Removing or changing a proof command restores the corresponding cell from the current command snapshot.
+For each WD proof without `sorry` dependencies, BARReL derives a theorem named `<WD theorem>.minimal` and tags it `[barrel_wd]` for reuse. It removes unnecessary premises where possible; the name does not promise a weakest statement. Reuse is an application of an ordinary, kernel-checked Lean theorem.
 
-The panel is on by default; three options control the reporting:
-
-- `barrel.progress` (default `true`) — the live card. Set to `false` to suppress the panel and its reporting entirely.
-- `barrel.summary` (default `false`) — also log the summary table as a text message after each import, for batch builds and CI logs.
-- `barrel.show_auto_solved` (default `false`) — print the `🎉 Automatically solved N out of M subgoals!` message.
-
-## Using the discharger
-
-The workflow has three steps: import obligations into a private context, prove them with separate commands, and publish their theorems with `qed`.
-
-- `import` calls Atelier B (`bxml` then `pog`) for a machine, refinement, implementation, or system. `import pog` reads an existing `.pog` directly. The directory defaults to `.`. Auto-discharge runs during import, but generated declarations stay in that import's private context.
-- `next obligation` selects the next unproved goal, with remaining well-definedness goals before main goals. `obligation <goal-name>` selects a particular goal by its generated name, so proofs can appear in a different order. Names are relative to the selected import: use `obligation Initialisation_1 of Counter`, without repeating `Counter` in the goal name. Nested names such as `Minimum_0.wd_0` select well-definedness obligations within that import. `next obligation <goal-name>` is an error: use either selection method.
-- `by` elaborates a tactic script. `from <term>` elaborates the term against the goal, equivalently to `by exact <term>`. A successful command stores its proof locally; later obligations for the same import can use it by name.
-- `of <name>` selects an import explicitly. When omitted, the command selects the most recently imported component. `qed` uses the same default; explicitly proving or finalizing another component does not change it.
-- `qed <name>` checks that no obligations remain pending, then publishes the local declarations to Lean's global environment. If goals remain, it reports their names and publishes nothing. Encoding failures also prevent finalization.
-
-For example, imports and their proof commands can be interleaved:
+You can tag or untag a WD theorem yourself, or disable automatic tagging and cross-import reuse:
 
 ```lean
-import pog Counter from "specs/"
-import pog Nat from "specs/"
-
-next obligation of Counter by
-  -- tactics for Counter's next pending goal
-  ...
-
-next obligation by
-  -- tactics for Nat, the latest import
-  ...
-
--- After every Counter obligation has a proof:
-qed Counter
-
--- Nat remains the default target.
-obligation Initialisation_1 from someProof
--- After every Nat obligation has a proof:
-qed
+attribute [barrel_wd] myLemma
+attribute [-barrel_wd] myLemma
+set_option barrel.reuse_wd false
 ```
 
-The example illustrates command selection; goal names and proofs depend on the imported POG. The progress card's skeleton supplies the actual names. BARReL names generated theorems using the current namespace, component name, POG tag, and index; for example, `Counter.Initialisation_1` (see [`Discharger.lean`](Barrel/Discharger.lean)). Before `qed`, these names are available only in obligation proofs for their own import. After `qed`, ordinary Lean commands and other imports' proof scripts can use them.
+For other goals, `subsume` tries to apply hypotheses and lemmas tagged `[subsume]`. Use `subsume [myLemma]` to supply a candidate explicitly.
 
-As in ordinary Lean declarations, an explicit `sorry` is accepted with a warning and shown in yellow. `qed` checks that every obligation has an elaborated proof; it does not certify the absence of `sorry`. Use `assert_no_sorry Counter.Initialisation_1` (with the relevant declaration name) to check published declarations for sorry dependencies. A failed tactic is an error and leaves its obligation pending.
-
-The `subsume` tactic tries to close a goal by specializing an available proof and supplying its premises from the current hypotheses. It searches local hypotheses and lemmas tagged `@[subsume]`; successfully proved WD obligations are registered automatically. Use `subsume [lemma₁, lemma₂]` to supply additional candidates:
+WD matching during import has a bounded search, configured per import:
 
 ```lean
-example (P Q : Nat → Prop) (earlier : ∀ n, P n → Q n) :
-    ∀ n, P n → True → Q n := by
-  subsume [earlier]
+import (subsumeMaxHeartbeats := 400) machine M from "specs/"
 ```
 
-`barrel_solve` tries `subsume` before its more expensive automation. The entire search has a cumulative budget of `barrel.subsume.maxHeartbeats` (default `2000`, in Lean's usual heartbeat units), also limited by the enclosing command's remaining budget. Set it to `0` to disable the search. A failed or timed-out search restores the proof state and lets the remaining automation run. Matching is greedy; it does not attempt general logical entailment.
+The default is `400`; `0` keeps only exact-repeat sharing. The separate option `barrel.subsume.maxHeartbeats` controls the `subsume` tactic (default `2000`).
 
-## How it works (high level)
-1. **Parse PO XML**: read types, definitions, and proof obligations from Atelier B’s PO XML schema.
-2. **Extract logical goals**: turn the schema into `Goal` records containing variables, hypotheses, and the goal term.
-3. **Encode to Lean**: map B terms and types to Lean expressions, using the set-theoretic primitives in `Barrel/Builtins.lean` and Lean's meta-programming features.
-4. **Discharge**: encode each import in its own environment and store proofs from auto-discharge or individual obligation commands there. Generated goals should closely resemble the original B proof obligations.
-5. **Publish**: `qed` checks completeness and adds the import's declarations to the current global environment, preserving declarations published by other interleaved imports.
+## Progress
 
-Each import stores a base and a working `Lean.Environment` in an environment extension restored with Lean's command snapshots. An obligation command reuses the checked working environment when only BARReL bookkeeping has changed. A conservative identity check compares every other environment field and extension state, so intervening declarations or attribute changes trigger the existing full rebase. `qed` always performs the full merge onto the current global environment. The merge rejects name collisions, checks replayed declarations against the kernel environment, and copies helper metadata such as matcher information needed by `split` and simplification. Tactic elaboration remains synchronous. Lean already reuses whole unchanged commands in an unchanged prefix, including their resulting environment; after an earlier command changes, subsequent commands are elaborated again. Goal selection and dependency membership use cached name indices; a pending cursor and maintained proof counters avoid rescanning the full obligation list for each command. These caches live in the same command snapshots as the proofs, so edits and failed commands restore them together.
+The Lean infoview shows automatically proved, pending and admitted obligations. Click an obligation to jump to its proof, or use **proof skeleton** to insert commands for the remaining goals.
 
-The encoder shares WD proof metavariables throughout an import. At each partial operator, it closes the WD condition over the current variables and hypotheses and looks it up before allocating a metavariable. A structural lookup handles exact repeats. On a miss, one bounded search first tries `Meta.isDefEq` across all candidates. Only if none matches does it open the target binders and try specialization and hypothesis weakening, without repeating whole-type equality checks. Matching preserves unfinished source type inference. Successful matching caches a proof using earlier WD metavariables, avoiding a new WD allocation.
+<p align="center">
+  <img src=".assets/progress.png" alt="BARReL progress while proving obligations" width="600"/>
+</p>
 
-Encoder matching has an import-specific per-search budget of `400` heartbeats by default. Override it on the import itself:
+Use `set_option barrel.progress false` to hide the panel, or `set_option barrel.summary true` to print import summaries. Use `set_option barrel.show_goal_names false` to hide the names printed at obligation commands.
 
-```lean
-import (subsumeMaxHeartbeats := 400) pog ZoneMonitor from "specs/zonemonitor"
-```
+## Examples
 
-The same setting is available for machine, refinement, implementation, and system imports. It belongs only to that import and is also limited by the enclosing command's remaining heartbeat budget. One budget covers both matching phases; finding a definitionally equal proof avoids subsumption entirely. A value of `0` retains only structural cache lookup. The separate `barrel.subsume.maxHeartbeats` option controls the proof-search tactic. Failed or timed-out encoder searches fall back to allocating a WD normally.
+- [`Test.lean`](Test.lean): small B machines and proof commands.
+- [`examples/LinkPool.lean`](examples/LinkPool.lean): a proof using induction and arithmetic tactics.
+- [`examples/leader/`](examples/leader/): leader election through five refinements.
+- [`examples/zonemonitor/`](examples/zonemonitor/): the ZoneMonitor development.
 
-The prefix uses Lean's standard configuration syntax: values can be expressions, and multiple `(option := value)` items are applied left to right. Unknown fields and invalid values are rejected before importing. Parsing and value evaluation are derived from `Barrel.ImportConfig`, so adding a configuration field and its default does not require changing the import parser.
-
-Earlier WD proofs can be reused while they remain unproved. Conditions that become reusable only after type inference finishes are merged inside the encoder. Failed encodings restore both the Lean state and the WD cache; successful encodings export named obligations for the discharger.
-
-## Sample models
-The `specs/` folder contains small machines used during development:
-- `Counter.mch`, `Nat.mch`, `Forall.mch`, `Exists.mch`, `Injective.mch`, `HO.mch`, `Enum.mch`, `Lambda.mch`, and their corresponding `.pog` files.
-You can copy these as templates when adding new B models.
-
-
-## Contributing
-Contributions and bug reports are very welcome!
+B sources are in [`specs/`](specs/). The implementation is in [`Barrel/`](Barrel/), with syntax in [`B/`](B/) and the POG reader in [`POGReader/`](POGReader/).
