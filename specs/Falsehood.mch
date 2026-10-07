@@ -1,0 +1,3 @@
+MACHINE Falsehood
+ASSERTIONS 0 = 1
+END
