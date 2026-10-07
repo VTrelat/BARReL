@@ -184,8 +184,12 @@ Once a component is completed, proved WD theorems can also be reused by subseque
 All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of \barrel.
 \texttt{<type>} may be one of \texttt{machine}, \texttt{system}, \texttt{refinement}, \texttt{implementation} or \texttt{pog} depending on whether the file to be imported is a machine, system, refinement, implementation or straight up a POG file, and \texttt{<name>} is the file name without the extension.
 In the case of POG files, the first step converting into the BXML format is skipped.
+<<<<<<< HEAD
 Each remaining goal can then be selected with \texttt{next obligation} or, by name, with \texttt{obligation <po>}.
 Both commands accept \texttt{from <term>} or \texttt{by <proof>} to prove WD conditions and reconstructed proof obligations.
+=======
+Then, each remaining proof obligation must be proven using the \texttt{next obligation (from <term> | by <proof>)} command (or the variant \texttt{obligation <name> (from <term> | by <proof>)}, which selects an obligation by name), which handles proving both WD conditions and reconstructed proof obligations.
+>>>>>>> 01f3ec0 (mention the obligation <name> command)
 Finally, the import must be closed with \texttt{qed <name>}, which checks that all obligations have been discharged, and only then adds them to the global context as theorems.
 \texttt{qed} does not, however, check that the proofs of all obligations do not rely on the \texttt{sorryAx} axiom: this remains the job of the user to check, as is typical in any Lean development.
 
