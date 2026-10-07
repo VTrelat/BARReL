@@ -1,255 +1,149 @@
-\section{Case study: a refinement chain for minimum search}
+\section{A Checked and Modular Proof Workflow}
+\label{sec:proof-workflow}
 \label{sec:case-study}
 
-This section evaluates \barrel on a small example with a specification and two levels of refinement, fully carried out with \barrel in Lean and compared to Atelier~B's own interactive prover.
-The development computes the minimum of a non-empty finite set of integers and is progressively refined into an index-based traversal of a table,
-therefore demonstrating \barrel's support for Atelier~B's refinement pipeline\footnote{Down to implementation, but this is not shown in this development.}
-while correctly generating and exposing WD conditions needed for partial B operators at each level.
-% Its role in this paper is \emph{not} to demonstrate Lean as a proof assistant: the proofs are largely routine and are not interesting in themselves.
+When automated reasoning leaves obligations open, completing the development requires manual interaction with the prover.
+The user may then introduce partial expressions absent from the specification, establish intermediate claims, or apply lemmas proved elsewhere.
+The proof environment must check the additional preconditions and preserve the assumptions on which reused facts depend.
+We compare how Atelier~B\footnote{Community Edition 24.04.2.} and \barrel support this work, focusing on well-definedness during interaction, correctness of inference rules, reusable mathematical lemmas and explicit proof dependencies.
 
-The development consists of:
-a specification \texttt{MinSearch.mch},
-a first refinement pass \texttt{MinSearch\_r1.ref}
-and a second refinement pass \texttt{MinSearch\_r2.ref},
-together with a Lean script \texttt{MinSearch.lean} containing the proofs of all generated POs.
-This chain exercises both data refinement and partial operators (\texttt{min}, \texttt{card}, and application), making it a compact stress-test for \barrel's WD generation and automation.
+The examples draw on the six-component B development of the IEEE~1394 tree identify protocol by Abrial, Cansell and M\'ery~\cite{AbrialCansellMery2003}, which refines a leader-election algorithm.\footnote{We thank Dominique M\'ery for giving us access to the B refinement chain and for the insightful discussions that helped us understand it.}
+We ran Atelier~B's Force~3 followed by its predicate prover (\texttt{pp}) on the generated obligations, then completed the remaining proofs interactively.
+The artifact contains both completed developments and the counterexamples and dependency checks below.
 
-\subsection{Abstract specification}
-\begin{figure}[t]
-	\centering
-	%	\captionsetup{type=lstlisting}
-	\captionof{lstlisting}{Specrfication \texttt{MinSearch.mch}.}
-	\label{lst:minsearch-mch}
-	\vskip-3ex%
-	\begin{minipage}[b]{0.48\linewidth}
-		\begin{lstlisting}[language=b]
-MACHINE MinSearch
-CONSTANTS
-  S
-PROPERTIES
-  S ∈ FIN1(INTEGER)
-VARIABLES done, m
-INVARIANT
-  done ∈ FIN1(S) ∧
-  m ∈ S          ∧
-  m = min(done)
-INITIALISATION
-  ANY x WHERE x ∈ S
-  THEN
-    done := {x} || m := x
-  END
-\end{lstlisting}
-	\end{minipage}\hfill
-	\begin{minipage}[b]{0.48\linewidth}
-		\begin{lstlisting}[language=b,firstnumber=last]
-OPERATIONS
-  mi $\longleftarrow$ search_min =
-    PRE done = S THEN
-      mi := m
-    END;
-  step =
-    IF done ≠ S THEN
-      ANY add WHERE
-        add ∈ FIN1(S - done)
-      THEN
-        done := done ∪ add ||
-        m := min(done ∪ add)
-      END
-    END
-END
-\end{lstlisting}
-	\end{minipage}
-\end{figure}
+\subsection{Well-definedness throughout interaction}
+\label{sec:lean-ip-comparison}
 
-A B \inlineb{MACHINE} declares \inlineb{CONSTANTS} (fixed parameters) constrained by a \inlineb{PROPERTIES} clause, state \inlineb{VARIABLES} constrained by an \inlineb{INVARIANT}, and an \inlineb{INITIALISATION} that must establish the invariant from an initial state.
-The initial machine \inlineb{MinSearch} shown in Listing~\ref{lst:minsearch-mch} fixes a non-empty constant subset \mbox{\inlineb{S ∈ FIN1(INTEGER)}}, where \inlineb{FIN1(INTEGER)} denotes the set of \emph{non-empty finite} subsets of integers.
-It maintains a non-empty set \inlineb{done} of explored elements of \inlineb{S} together with a candidate \inlineb{m} satisfying \inlineb{m = min(done)}.
-The operation \inlineb{step} non-deterministically adds a non-empty finite subset of unexplored elements and recomputes the minimum; \inlineb{search_min} returns the candidate once all elements have been processed.
+The WD obligations generated from a B specification concern the expressions occurring in that specification.
+Interactive proof can introduce further partial expressions, for instance when choosing an existential witness.
+Their definedness must be justified at that point.
 
-Operations may carry a precondition (\inlineb{PRE}): the construct \mbox{\inlineb{ANY x WHERE P THEN S END}} non-deterministically chooses an arbitrary value satisfying \inlineb{P}.
-The notation \mbox{\inlineb{mi $\,\longleftarrow$ search_min}} indicates that \inlineb{mi} is an output parameter, and \lstinline{||} denotes parallel assignment.
-
-\begin{lstlisting}[language=lean, float=t, caption={Lean goal corresponding to the first conjunct of the preservation of the invariant preservation for operation \inlineb{step} in \texttt{MinSearch.mch}.}, label={lst:minsearch-step-goal}]
-S done add : Set ℤ
-m x : ℤ
-S_fin 		: S ∈$$ FIN₁ INTEGER
-done_fin  : done ∈$$ FIN₁ S
-m_mem_S 	: m ∈$$ S
-m_is_min 	: m = B.Builtins.min done ⋯
-done_ne_S : done ≠$$ S
-add_fin 	: add ∈$$ FIN₁ (S \ done)
-⊢$$ done ∪$$ add ∈$$ FIN₁ S
-\end{lstlisting}
-
-This level already illustrates \barrel's treatment of partial operators: since \inlineb{min(done)} and \inlineb{min(done ∪ add)} are only defined when the corresponding sets have a least element, \barrel generates 4 associated WD side obligations---either as theorems or subgoals depending on the context---alongside the usual 4 proof obligations, and discharges them automatically using its built-in automation.
-The remaining 2 subgoals correspond to standard invariant preservation and operation correctness obligations.
-We illustrate this with \cref{lst:minsearch-step-goal} showing the Lean goal generated by \barrel for the first conjunct of the invariant preservation for operation \inlineb{step}.
-
-\subsection{First refinement: reducing non-determinism}
-The first refinement \texttt{MinSearch\_r1} tightens \texttt{step} to non-deterministically add a \emph{single} fresh element and update the minimum incrementally, as shown in Listing~\ref{lst:minsearch-r1-step}.
-%
-\begin{lstlisting}[language=b,caption={Refinement \texttt{MinSearch\_r1.ref} (excerpt): refined \texttt{step}.},label={lst:minsearch-r1-step}, float]
-step =
-  IF done ≠ S THEN
-    ANY x WHERE x ∈ S - done THEN
-      done := done ∪ {x} || IF x < m THEN m := x END
-    END
-  END
-\end{lstlisting}
-%
-Although the concrete update avoids recomputing \texttt{min}, refinement of the operation and invariant preservation still relate $\texttt{m}$ to $\bmin{\texttt{done}}$, so WD facts about \texttt{min} remain part of the proof landscape.
-52 WD conditions are generated at this level, which is significantly more than what Atelier~B produces.
-Although this is entirely expected by the current design of \barrel as exposed earlier in \cref{sec:innner-workings}, optimizations to lower this number---via subsumption or caching---are discussed in \cref{subsec:future-wd-subsumption}.
-All WD conditions are again automatically discharged by \barrel, while the remaining 9 POs correspond to standard refinement obligations.
-
-\subsection{Second refinement: scanning an explicit table}
-The second refinement \texttt{MinSearch\_r2} shown in Listing~\ref{lst:minsearch-r2} introduces an explicit enumeration and refines set exploration into a traversal using an index $\texttt{i}$ and a current minimum candidate $\texttt{mc}$.
-A gluing invariant links the abstract set $\texttt{done}$ with $\texttt{tab[1..i]}$ (denoting the image of the interval \texttt{1..i} under \texttt{tab}) and identifies $\texttt{m}$ with $\texttt{mc}$, and states that $\texttt{mc}$ is a lower bound for all scanned entries.
-
-\begin{figure}[t]
-	\centering
-	\captionof{lstlisting}{Refinement \texttt{MinSearch\_r2.ref}.}
-	\label{lst:minsearch-r2}
-	\vskip-3ex%
-	\begin{minipage}[b]{0.48\linewidth}%
-		% \caption{Refinement \texttt{MinSearch\_r2.ref}.}
-		% \label{lst:minsearch-r2}
-		\begin{lstlisting}[language=b]
-REFINEMENT MinSearch_r2
-REFINES MinSearch_r1
-CONSTANTS n, tab
-PROPERTIES
-  S ∈ FIN1(INTEGER) ∧
-  tab ∈ 1..n ↣ S   ∧
-  n = card(S)       ∧
-  ran(tab) = S
-VARIABLES i, mc
-INVARIANT
-  i ∈ 1..n          ∧
-  m = mc            ∧
-  done = tab[1..i]  ∧
-  mc ∈ tab[1..i]    ∧
-  ∀j.(j ∈ 1..i ⇒ mc ≤ tab(j))
-\end{lstlisting}
-	\end{minipage}\hfill
-	\begin{minipage}[b]{0.48\linewidth}
-		\begin{lstlisting}[language=b,firstnumber=last]
-INITIALISATION
-  i := 1 || mc := tab(1)
-OPERATIONS
-  mi <-- search_min =
-    PRE i = n THEN
-      mi := mc
-    END;
-  step =
-    IF i < n THEN
-      i := i + 1;
-      IF tab(i) < mc THEN
-        mc := tab(i)
-      END
-    END
-END
-\end{lstlisting}
-	\end{minipage}
-\end{figure}
-
-This level is particularly relevant for \barrel because it combines refinement obligations with multiple occurrences of different partial constructs like cardinality \texttt{card} and function application \texttt{tab(i)}.
-Correctly discharging the resulting POs requires \barrel to generate and instantiate the corresponding WD conditions for every occurrence of such operators, which makes the number of WD subgoals grow significantly: 100 WD conditions are generated---and are all automatically discharged---alongside the 21 POs corresponding to standard refinement obligations.
-
-\subsection{Discharging refinement POs inside Lean}
-
-\begin{figure}[htb]
-	\centering
-	\begin{lstlisting}[language=lean,caption={Driving the refinement chain with \barrel.},label={lst:minsearch-lean}]
-import machine    MinSearch    from "specs/case_study"
--- 4 remaining goals
-next obligation by
-  ...
-qed
-
-import refinement MinSearch_r1 from "specs/case_study"
--- 9 remaining goals
-next obligation by
-  ...
-qed
-
-import refinement MinSearch_r2 from "specs/case_study"
--- 21 remaining goals
-next obligation by
-  ...
-qed
-\end{lstlisting}
-\end{figure}
-
-Working with \barrel involves standard Lean workflow: B files are imported and POs are generated as Lean theorems to be proved, as shown in Listing~\ref{lst:minsearch-lean}.
-
-\begin{table}[htb]
-	\centering
-	% \small
-	% \setlength{\tabcolsep}{5pt}
-	% \renewcommand{\arraystretch}{1.05}
-	\caption{Proof-obligation statistics for the \texttt{MinSearch} refinement chain.
-		``\#PO'' excludes WD conditions, while ``\#WD'' counts them separately.
-		``Auto'' counts obligations discharged without user interaction (Atelier~B: Force~1; Lean: \barrel's default automation and \texttt{grind}).
-		Because Atelier~B and \barrel place WD obligations at different granularity (machine-level sharing vs.\ per-occurrence reification), ``\#WD'' counts are not expected to match one-to-one.}
-	\label{tab:case-study-stats}
-	\begin{tabular}{l|cc|cc|cc|cc}
-		                       & \multicolumn{2}{c|}{\#PO (Atelier~B)} & \multicolumn{2}{c|}{\#PO (\barrel)}
-		                       & \multicolumn{2}{c|}{\#WD (Atelier~B)} & \multicolumn{2}{c}{\#WD (\barrel)}                                               \\
-		\hline
-		File                   & Total                                 & Auto                                & Total & Auto & Total & Auto & Total & Auto \\
-		\hline
-		\texttt{MinSearch}     & 4                                     & 2
-		                       & 4                                     & 2
-		                       & 4                                     & 4
-		                       & 4                                     & 4                                                                                \\
-		\texttt{MinSearch\_r1} & 19                                    & 15
-		                       & 19                                    & 15
-		                       & 2                                     & 2
-		                       & 42                                    & 42                                                                               \\
-		\texttt{MinSearch\_r2} & 21                                    & 9
-		                       & 21                                    & 0
-		                       & 9                                     & 9
-		                       & 100                                   & 100                                                                              \\
-	\end{tabular}
-\end{table}
-
-In total for this case study, \barrel produces 190 goals across the three levels, 146 of which are WD conditions that are all automatically discharged using \barrel's underlying automation. The remaining 44 goals correspond to the expected proof obligations and are discharged with straightforward Lean proofs, except for 15 goals that are also discharged automatically using \barrel's automation.
-Table \ref{tab:case-study-stats} summarizes the size and proof obligation statistics of each artifact.
-As expected, the number increases significantly with refinement, especially when moving to an explicit representation (\texttt{tab}) that introduces many occurrences of partial operators (notably application).
-\barrel's automation should be able to discharge most of the resulting WD conditions automatically---in this specific case, all of them.
-
-\section{Comparison with Atelier~B's interactive prover}\label{sec:lean-ip-comparison}
-Atelier~B already provides effective automation and an interactive mode for discharging proof obligations.
-In particular, it is tightly integrated with the PO generator and can solve many goals using its built-in provers.
-In practice, however, interactive proofs in Atelier~B are primarily carried out through a dedicated, GUI-oriented workflow, where proof progress often depends on manual rule application and instantiation steps, especially for recurrent WD obligations.
-Moreover, the interactive prover documentation explicitly warns that some instantiation commands, e.g.\@ \texttt{se} (\emph{suggest for exist}) for existentially quantified variables, do not enforce typing and well-definedness of user-provided terms, potentially leading to inconsistent proofs, as illustrated by the following example.
-
-\begin{example}
-	Consider this very simple B machine\footnote{This example is available as ``\texttt{DerivFalse.lean}'' in the artifacts.}, containing only one, contradictory assertion:
-	\begin{lstlisting}[language=b]
+Atelier~B's reference manual warns that the tactic \texttt{se}, which supplies an existential witness, does not protect against ill-typing or ill-definedness~\cite[\S4.44]{AtelierBInteractiveProver}.
+Consider a machine containing a contradictory assertion:
+\begin{lstlisting}[language=b, basicstyle=\small\ttfamily, numbers=none]
 MACHINE DerivFalse
-ASSERTIONS
-  ∃ x. (x ∈ INTEGER ∧ x ∉ INTEGER)
+ASSERTIONS #xx.(xx : INTEGER & xx /: INTEGER)
 END
 \end{lstlisting}
-	Yet, Atelier~B's interactive prover allows discharging this assertion by executing the following commands in sequence in the interactive proof editor:
-	\begin{itemize}
-		\item \texttt{se(min($\varnothing$))}, instantiating the existential variable \texttt{x} with \texttt{min($\varnothing$)}, which is ill-defined since the empty set has no minimum: the prover does not check well-definedness here however;
-		\item \texttt{mp} (\emph{mini-prover}) invoking internal automatic provers to close the goal.
-	\end{itemize}
-	Once falsehood is derived, any proof obligation can be discharged trivially by invoking command \texttt{ah} (\emph{add hypothesis}) with this contradiction as a hypothesis.
-	This example is reproducible with all Community Edition releases of Atelier~B, up to the current latest 24.04.2.
+After an initial deduction step (\texttt{dd}), the command \inlineab!se(min({}))! selects the minimum of the empty set as witness.
+The displayed goal becomes
+\[
+  \bmin{\varnothing} \in \mathbb{Z}
+  \;\land\;
+  \bmin{\varnothing} \notin \mathbb{Z}.
+\]
+A call to \texttt{mp}, the mini-prover, closes it.
+The prover therefore accepts a contradictory assertion after an undefined witness has been supplied interactively.
 
+In \barrel, forming \(\min S\) requires evidence that $S$ has a least element (\cref{lst:min-fn-app}).
+The witness \(\min\varnothing\) thus requires a proof of \(\mathtt{min.WD}\ \varnothing\), that is,
+\[
+  \exists x \in \varnothing,\ \forall y \in \varnothing,\ x \le y,
+\]
+which is unprovable.
+Admitting this WD condition triggers a Lean warning, and the \texttt{assert\_no\_sorry} check in \texttt{examples/DerivFalse.lean} fails on the resulting theorem.
+For operators encoded with WD parameters, definedness is therefore checked throughout proof construction, including steps the source PO generator could not anticipate.
+
+\subsection{Trustworthy and modular library of lemmas}
+\label{sec:checked-rules}
+
+Definedness checks cannot compensate for an incorrect inference rule.
+Among Atelier~B's thousands of shipped rules, \texttt{GenPredicateX.8} gives the following invalid inference:
+\[
+  \frac{a \notin \mathcal{P}(X) \cup \{y\}}
+       {\exists z\in a,\ z\notin X \land z\ne y}.
+\]
+The premise places $y$ at the type of $a$, whereas the conclusion compares it with an element of $a$.
+The schema therefore has no consistent B typing for arbitrary \(y\).
+Instantiating $y$ with the polymorphic empty set nevertheless gives individually well-typed formulas and an invalid inference.
+
+Indeed, let $a := \{\varnothing\}$ and $X := \mathcal{P}_1(\mathbb{Z})$, the set of nonempty subsets of $\mathbb{Z}$.
+Since $\varnothing \in a$ but $\varnothing \notin X$, we have $a \notin \mathcal{P}(X)$. Since $a \ne \varnothing$,
+the premise $a\notin\mathcal{P}(X)\cup\{\varnothing\}$ holds.
+The conclusion requires an element of $\{\varnothing\}$ distinct from $\varnothing$, which is impossible.
+
+The following script allows one to close any proof using this rule, independently of any WD obligation:
+\begin{lstlisting}[language=b, basicstyle=\small\ttfamily, numbers=none, mathescape=false, escapeinside={}]
+ah(not({{}}: POW(POW1(INTEGER)) \/ {{}})) & pr & dd &
+  ar(GenPredicateX.8,Fwd) & pr
+\end{lstlisting}
+
+In Lean, we refute this rule instance and prove that replacing \(\mathcal{P}(X) \cup\{y\}\) by $\mathcal{P}(X\cup\{y\})$ in the premise yields a valid rule.
+This is available in the artifact in the file \texttt{examples/Falsehood.lean}.
+
+Users can extend \barrel with their own lemmas, drawing on Mathlib to construct proofs that Lean's kernel checks.
+The supplied library and user extensions therefore require no separate trust in the correctness of their statements: each lemma is justified by its proof.
+
+\begin{example}[Definedness after a function update]
+Updating a total function at a point of its domain preserves totality when the new value belongs to its codomain:
+\begin{equation}
+  {f \in A \to B} \;\land\; {x \in A} \;\land\; {y \in B}
+  \quad\implies\quad
+  f \bovr \{x \mapsto y\} \,\in\, A \to B.
+  \label{eq:workflow-override}
+\end{equation}
+Atelier~B's related rule \texttt{InFunctionXY.22} establishes preservation of partial-function typing under overriding.
+It is a special case of \barrel's proved lemma \texttt{pfun\_of\_overload}; totality also requires a domain argument.
+The lemma \texttt{tfun\_\allowbreak override\_\allowbreak singleton} proves \cref{eq:workflow-override} for arbitrary carrier types using Mathlib's sets and relations.
+Combining it with the WD lemma for total-function application gives a theorem that can be used in any obligation involving such an update:
+\begin{lstlisting}[language=lean, basicstyle=\small\ttfamily, numbers=none]
+theorem update_wd {α β : Type}
+    {A : Set α} {B : Set β} {f : SetRel α β}
+    {x z : α} {y : β}
+    (hf : f ∈$$ A ⟶$$ B) (hx : x ∈$$ A)
+    (hy : y ∈$$ B) (hz : z ∈$$ A) :
+    app.WD (f <+ {(x, y)}) z :=
+  app.WD_of_mem_tfun (tfun_override_singleton hf hx hy) hz
+\end{lstlisting}
 \end{example}
 
-% \footnote{
-% 	The assertion $\exists x, x \in \mathbb{Z} \land x \notin \mathbb{Z}$---which is false in the B method---can be discharged in the interactive prover with the instantiation $x := \bmin{\varnothing}$ via the tactic \texttt{se} and a call to the automatic internal prover \texttt{pp}.}.
-This pitfall concerns the interactive layer (unchecked instantiation and rule application), not the PO generator itself.
-Nonetheless, this reflects that the interactive mode is not proof-producing and therefore relies on user discipline for sound instantiations.
-By contrast, \barrel lets users discharge the same obligations as ordinary Lean goals.
-In particular, Lean tactics such as \texttt{exists} can only accept type-correct instantiations, hence ill-typed terms are rejected by construction; and under \barrel's encoding, partial B operators require explicit well-definedness proofs, so ill-defined instantiations---like \texttt{min($\varnothing$)}---cannot even be formed without providing the corresponding evidence.
+In our Atelier~B scripts, intermediate claims are proved in the context of the current PO, and recurring arguments are repeated at their uses.
+Atelier~B also supports assertions and user rules, but applying a rule does not require a kernel-checked proof of its correctness.
+The Lean approach combines reuse with a check of the general lemma, using the same proof language and library as the obligations themselves.
 
-Beyond these soundness guarantees, Lean provides a significantly richer proof-engineering ecosystem.
-Once B obligations are expressed in Lean, users can leverage Mathlib's libraries and automation to simplify routine reasoning steps using normalization and algebraic tactics such as \texttt{ac\_rfl}, \texttt{ring} and related arithmetic tactics when needed.
-This becomes particularly valuable when developments go beyond the integer/set-theoretic core of B, for instance by introducing real-valued models.
+\subsection{Refinement with explicit proof dependencies}
+
+The WD parameters of encoded operators must also be supplied in expressions inherited from an abstract component.
+When that component has already been proved in Lean, \barrel can supply the evidence by applying its WD theorems.
+Lean checks these applications in the refinement's context, so reuse avoids a new proof obligation without omitting the definedness check.
+
+After \texttt{qed}, a component's WD theorems are available to subsequent imports, including across Lean modules.
+Where possible, \barrel removes unnecessary premises from their reusable statements, allowing later components to apply them with fewer hypotheses.
+If no available theorem applies, \barrel generates a new WD obligation.
+
+\begin{example}[Reusing definedness across refinements]
+The refinement \texttt{mm2} inherits an assertion from \texttt{mm1} containing $\mathtt{ff}(x)$, where \texttt{ff} assigns a tree to each node in \texttt{ND}.
+Definedness of this application needs only
+\[
+  \mathtt{ff} \in \mathtt{ND} \to (\mathtt{ND} \pfun \mathtt{ND})
+  \quad\land\quad x \in \mathtt{ND}
+  \quad\Longrightarrow\quad \mathtt{app.WD}\ \mathtt{ff}\ x.
+\]
+Atelier~B generates WD obligations for the assertion in \texttt{mm1} and does not generate them again in \texttt{mm2}.
+In \barrel, importing \texttt{MM1.lean} into \texttt{MM2.lean} makes the proved WD fact available when encoding the refinement.
+All 53 occurrences of the inherited application then share evidence obtained from \texttt{mm1}'s theorem, with no new WD obligation in \texttt{mm2}.
+The proof terms contain the application of the earlier theorem, which Lean checks using the hypotheses available in \texttt{mm2}.
+\end{example}
+
+Across the six components, Atelier~B generates 60 WD obligations from the B specification.
+\barrel instead extracts WD conditions while translating individual expressions and shares their proofs between occurrences.
+It generates 31 WD goals, all proved automatically, and avoids 7 further goals by reusing three previously proved theorems across components.
+These goal counts exclude repeated uses of the same evidence, such as the 53 applications in \texttt{mm2}; every encoded partial application still carries a WD proof.
+
+\subsection{Automation, interaction and trust}
+
+Atelier~B's automation, developed specifically for B over more than twenty years, leaves fewer obligations for interactive proof in this development.
+The two counterexamples nevertheless show that a successful prover status can conceal an invalid inference.
+In \barrel, Lean's kernel checks the resulting proof terms and the proofs of every lemma they use.
+
+Interactive proof can also help extend trustworthy automation in \barrel.
+Registering the totality lemma in \cref{eq:workflow-override} with the tactic for total-function membership lets the WD tactic combine it with domain membership, as in the explicit proof above.
+With these generic lemmas and extended premise search, \barrel automatically discharges all locally generated WD goals in the leader election development.
+Adding a tactic or lemma does not add a trusted inference rule: its use must produce evidence accepted by Lean's kernel.
+
+The proof environment also affects the effort needed when automation fails.
+Atelier~B displays goals, hypotheses and proof histories, but an output message like ``The Predicate Prover failed to prove the current goal'' does not distinguish missing premises from unsuccessful search.
+Lean lets the user isolate a claim with \texttt{have}; applying a theorem exposes its remaining premises as subgoals, and a failed \texttt{exact} reports the supplied and expected types.
+These diagnostics provide a concrete point at which to investigate the failed step, although matching and normalization can still require manual work.
+
+Using \barrel requires B users to learn Lean and the relevant Mathlib abstractions, which may be a barrier to adoption. In return, Lean checks the proofs produced by automation and the lemmas they use, including explicit WD evidence across components. The counterexamples above show why this protection matters even when a specialized prover offers stronger automation.

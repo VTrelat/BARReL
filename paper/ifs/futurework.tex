@@ -1,8 +1,8 @@
 \section{Discussion and Future Work}
 
-Considering core tooling only, \barrel consists of about 2{,}500 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/meta-programming layer---witnessing a relatively lightweight implementation.
+Considering core tooling only, \barrel consists of about 2{,}800 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/\allowbreak meta-programming layer---witnessing a relatively lightweight implementation.
 
-The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for about 1{,}700 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
+The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for about 1{,}500 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
 
 \begin{table}[t]
 	\caption{Implementation metrics of the artifacts containing \barrel.}
@@ -11,11 +11,11 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 	\begin{tabular}{l@{\kern5em}r}
 		\textbf{Component}    & \textbf{LoC}               \\
 		\hline
-		Core tooling          & \({\sim}\)2{,}500          \\
-		Lemmas and automation & \({\sim}\)1{,}700          \\
-		Examples and tests    & \({\sim}\)1{,}900          \\
+		Core tooling          & \({\sim}\)2{,}800          \\
+		Lemmas and automation & \({\sim}\)1{,}500          \\
+		Examples and tests    & \({\sim}\)2{,}700          \\
 		\hline
-		\textbf{Total}        & \({\sim}\)\textbf{6{,}100} \\
+		\textbf{Total}        & \({\sim}\)\textbf{7{,}000} \\
 	\end{tabular}
 \end{table}
 

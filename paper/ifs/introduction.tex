@@ -46,7 +46,7 @@ Our contributions are therefore threefold:
 \begin{itemize}
 	\item \barrel, an open-source lightweight and modular backend for B developments written in Lean~4;
 	\item a translation pipeline preserving B notations and proof obligations, properly handling partial operators via explicit well-definedness conditions;
-	\item an evaluation on a small refinement chain demonstrating an Atelier~B-style refinement workflow inside Lean, with most well-definedness side-conditions discharged automatically.
+	\item an analysis of checked interaction and modular proof reuse, illustrated by a complete B refinement development and two Atelier~B counterexamples involving unchecked instantiation and an incorrect shipped rule.
 \end{itemize}
 Finally, \barrel opens the door to using Lean as an independent backend for the B Method and suggests interesting extensions, such as an integrated proof obligation generator---which could even be verified---and even an embedded DSL for writing B developments directly in Lean.
 % We do not discuss semantics or soundness of the encoding in this paper.
@@ -55,6 +55,5 @@ The rest of this paper is organised as follows.
 We first recall the necessary background on the B method, proof obligations, and Lean.
 We then present the design and implementation of \barrel, detailing the encoding of B syntax, the interface with Atelier~B's proof obligation generator, and our treatment of partial operators and their well-definedness obligations.
 We also discuss basic automation features to reduce user effort in discharging common proof obligations.
-This is followed by a case study illustrating the end-to-end workflow of using \barrel on a representative B development.
-We then compare \barrel's workflow against Atelier~B's built-in interactive prover, highlighting notable differences in proof styles.
+We then compare the proof workflows of \barrel and Atelier~B, examining well-definedness during interaction, reusable mathematical arguments, and dependencies across refinements.
 We conclude with a discussion of future extensions, and position our work with respect to existing approaches to connecting B with modern interactive theorem provers.

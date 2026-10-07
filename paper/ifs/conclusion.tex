@@ -1,11 +1,15 @@
 \section{Conclusion}
 We presented \barrel, a Lean~4 backend for Atelier~B that turns industrial B artifacts into ordinary Lean goals over a natural set-theoretic encoding of the B language.
 Our central design choice is to make B's ubiquitous partiality explicit: partial operators are represented as total Lean functions parameterized by proofs of well-definedness which are reified as standard additional goals.
-This yields robust proof scripts that are protected against ill-typed or ill-defined instantiations, while remaining close to the structure of the obligations produced by Atelier~B.
+The requirement applies both to expressions translated from the specification and to terms introduced during interactive proof.
 
-We evaluated the approach on a three-level refinement chain for minimum search, showing generated Lean goals, many of which being discharged automatically by \barrel's lightweight automation, leaving refinement and invariant-preservation obligations to be proved interactively.
-From a trust perspective, \barrel reduces the trusted computing base by implementing the translation pipeline within Lean's metaprogramming framework as a natural, almost identical mapping from B constructs to Lean expressions relying only on Atelier~B for proof obligation generation.
-Future work includes reducing redundancy among well-definedness goals, e.g.\@ via subsumption, extending the covered fragment of B and the accompanying lemma library, and integrating a verified proof obligation generator within Lean itself.
+The comparison with Atelier~B exposes two ways to accept a contradictory assertion: an unchecked undefined witness and an incorrect shipped rule whose counterinstance uses only total operators.
+In \barrel, the former requires an impossible definedness proof; Lean refutes the latter rule instance using Mathlib.
+The leader election development illustrates how the same proof discipline supports reuse: mathematical lemmas isolate arguments from generated contexts, and inherited WD conditions are justified by explicit applications of earlier components' theorems.
+Automation can use these checked facts without becoming an additional trusted inference mechanism.
+
+Lean's kernel checks the resulting arguments, but the external PO generator and the faithfulness of the translation remain trusted.
+Future work includes extending the supported B fragment and lemma library, improving the interface to generated hypotheses, and establishing an end-to-end guarantee through a verified translation and proof obligation generator.
 
 \paragraph*{Artifacts availability.}
 A snapshot of \barrel is available at \url{https://anonymous.4open.science/r/BARReL}.

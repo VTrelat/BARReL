@@ -31,6 +31,12 @@
 \newcommand\psurj{\mathrel{\ooalign{\hfil$\mapstochar\mkern5mu$\hfil\cr$\twoheadrightarrow$\cr}}}
 \newcommand\tsurj{\twoheadrightarrow}
 \newcommand\ndres{\mathbin{\rlap{\hbox{$-$}}{\lhd}}}
+\newcommand\bovr{%
+  \mathbin{\triangleleft
+    \mkern-4mu
+    \raisebox{0.525ex}{\rule{0.35em}{0.04em}}%
+    \mkern-1.3mu}%
+}
 
 \newcommand\leanpf{\cdot\mkern-5mu\cdot\mkern-5mu\cdot}
 
@@ -151,3 +157,6 @@
 }
 
 \newcommand\inlineb[1]{\lstinline[language=b, basicstyle=\normalsize\ttfamily]|#1|}
+
+% Atelier B prover commands and formulas, typed inline as in the proof scripts: \inlineab!...!
+\newcommand\inlineab{\lstinline[language=b, breaklines=true, breakatwhitespace=true, mathescape=false, escapeinside={}, keywordstyle={}, keywordstyle={[2]}, basicstyle=\normalsize\ttfamily]}
