@@ -255,16 +255,3 @@ theorem interval.min_eq {lo hi : Int} (h : lo ≤$$ hi) :
 \end{lstlisting}
 
 The remaining obligations---typically invariant preservation and refinement simulation goals---are left as interactive proof tasks.
-
-\paragraph*{Trust boundary and guarantees.}
-\barrel should be understood as a \emph{proof-producing backend} for the obligations it emits:
-once a proof script succeeds, the corresponding theorem is checked by Lean's kernel.
-Concretely, the remaining trusted assumptions are:
-\begin{itemize}
-	\item Lean's kernel, and its standard meta-theory,
-	\item the correctness of the external PO generation step performed by Atelier~B (\texttt{bxml}/\texttt{pog}) at \barrel's import phase,
-	\item the faithfulness of \barrel's set-theoretic embedding of B constructs and proof obligations to the intended B semantics.
-\end{itemize}
-What \barrel \emph{does} guarantee by construction is that partial B operators cannot be used in generated Lean terms without supplying explicit WD evidence, and that any successfully discharged goal yields a kernel-checked Lean theorem---i.e.,\ a Lean (proof-)term having the right type---under that embedding.
-A fully independent chain would additionally require a verified PO generator, which we leave as future work.
-\looseness=-1

@@ -1,8 +1,21 @@
 \section{A Checked and Modular Proof Workflow}
 \label{sec:proof-safety}
 
-The encoding in \cref{sec:partial-operators} requires explicit WD evidence, and Lean's kernel checks each theorem application.
-We examine two complementary aspects of proof construction through examples in Atelier~B\footnote{Community Edition 24.04.2.}: the definedness of terms introduced during interaction and the validity of the inference rules applied.
+\barrel should be understood as a \emph{proof-producing backend} for the obligations it emits:
+once a proof script succeeds, the corresponding theorem is checked by Lean's kernel.
+Concretely, the remaining trusted assumptions are:
+\begin{itemize}
+	\item Lean's kernel, and its standard meta-theory,
+	\item the correctness of the external PO generation step performed by Atelier~B (\texttt{bxml}/\texttt{pog}) at \barrel's import phase,
+	\item the faithfulness of \barrel's set-theoretic embedding of B constructs and proof obligations to the intended B semantics.
+\end{itemize}
+What \barrel \emph{does} guarantee by construction is that
+\begin{enumerate}
+  \item partial B operators cannot be used in generated Lean terms without supplying explicit WD evidence;
+  \item any successfully discharged goal yields a kernel-checked Lean theorem---i.e.,\ a Lean (proof-)term having the right type---under that embedding.
+\end{enumerate}
+A fully independent chain would additionally require a verified PO generator, which we leave as future work.
+We examine the two complementary aspects of proof construction described above through examples in Atelier~B\footnote{Community Edition 24.04.2.}.
 
 \subsection{Well-definedness throughout interaction}
 \label{sec:lean-ip-comparison}
