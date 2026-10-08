@@ -48,12 +48,12 @@ Our contributions are threefold:
 \begin{itemize}
 	\item \barrel, an open-source, modular backend for B developments, written in Lean~4;
 	\item a translation pipeline preserving B notations and proof obligations, with explicit well-definedness conditions for partial operators;
-	\item an analysis of checked interaction and modular proof reuse, illustrated by a complete B refinement development and two Atelier~B examples concerning witness definedness and inference-rule validity.
+	\item an analysis of proof checking and modular reuse, combining two Atelier~B examples with a complete B refinement development.
 \end{itemize}
 Potential extensions include a verified proof obligation generator and an embedded DSL for writing B developments directly in Lean.
 % We do not discuss semantics or soundness of the encoding in this paper.
 
 The rest of this paper is organized as follows.
 After reviewing related work, we recall the necessary background on the B method and present the design and implementation of \barrel, including its treatment of partial operators and basic automation.
-We then examine witness definedness and inference-rule validity through two interactive proofs in Atelier~B (\cref{sec:proof-safety}), motivating the comparison of checked lemma reuse, refinement dependencies, and automation in the leader-election case study (\cref{sec:case-study}).
+We then examine the checks required during interactive proof (\cref{sec:proof-safety}), motivating the comparison of lemma reuse, refinement dependencies, and automation in the leader-election case study (\cref{sec:case-study}).
 We conclude with future extensions and the remaining trust assumptions.
