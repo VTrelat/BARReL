@@ -43,11 +43,11 @@ The rule \texttt{GenPredicateX.8} in Atelier~B's supplied database has the follo
 \]
 The premise places $y$ at the type of $a$, whereas the conclusion compares it with an element of $a$.
 The schema therefore has no consistent B typing for arbitrary \(y\).
-Yet, replacing \(y\) with the empty set \(\varnothing\) yields a well-typed formula---the two instances of the empty set will be of different types---that forms an invalid inference.
+Yet, replacing \(y\) with the empty set \(\varnothing\) results in a well-typed formula---the two instances of the empty set are of different types---that yields an invalid inference.
 %Instantiating $y$ with the polymorphic empty set nevertheless gives individually well-typed formulas and an invalid inference.
 %
 Indeed, let $a := \{\varnothing\}$ and $X := \mathcal{P}_1(\mathbb{Z})$, the set of nonempty subsets of $\mathbb{Z}$.
-Since $\varnothing \in a$ but $\varnothing \notin X$, we have $a \notin \mathcal{P}(X)$. Since $a \ne \varnothing$,
+Since ${\varnothing \in a}$ but $\varnothing \notin X$, we have $a \notin \mathcal{P}(X)$. Since $a \ne \varnothing$,
 the premise $a\notin\mathcal{P}(X)\cup\{\varnothing\}$ holds.
 The conclusion requires an element of $\{\varnothing\}$ distinct from $\varnothing$, which is impossible.
 \looseness=-1
