@@ -1,0 +1,65 @@
+\section{A Checked and Modular Proof Workflow}
+\label{sec:proof-safety}
+
+The encoding in \cref{sec:partial-operators} requires explicit WD evidence, and Lean's kernel checks each theorem application.
+We examine two complementary aspects of proof construction through examples in Atelier~B\footnote{Community Edition 24.04.2.}: the definedness of terms introduced during interaction and the validity of the inference rules applied.
+
+\subsection{Well-definedness throughout interaction}
+\label{sec:lean-ip-comparison}
+
+The WD obligations generated from a B specification concern the expressions occurring in that specification.
+Interactive proof can introduce further partial expressions, for instance when choosing an existential witness.
+Their definedness must be justified at that point.
+
+Atelier~B's reference manual states that the tactic \texttt{se}, which supplies an existential witness, does not protect against ill-typing or ill-definedness~\cite[\S4.44]{AtelierBInteractiveProver}.
+Consider the machine defined in \texttt{specs/DerivFalse.mch} containing the contradictory assertion \(\exists x \in \mathbb{Z}, x \notin \mathbb{Z}\).
+After an initial deduction step (\texttt{dd}), the command \inlineab!se(min({}))! selects the minimum of the empty set as witness.
+The displayed goal becomes
+\[
+  \bmin{\varnothing} \in \mathbb{Z}
+  \;\land\;
+  \bmin{\varnothing} \notin \mathbb{Z}.
+\]
+A call to \texttt{mp}, the mini-prover, closes it.
+In this example, the prover accepts a contradictory assertion after an undefined witness has been supplied interactively.
+
+In \barrel, forming \(\min S\) requires evidence that $S$ has a least element (\cref{lst:min-fn-app}).
+The witness \(\min\varnothing\) thus requires a proof of \(\mathtt{min.WD}\ \varnothing\), that is,
+\[
+  \exists x \in \varnothing,\ \forall y \in \varnothing,\ x \le y,
+\]
+which is unprovable.
+Admitting this WD condition triggers a Lean warning, and the \texttt{assert\_no\_sorry} check in \texttt{examples/DerivFalse.lean} fails on the resulting theorem.
+For operators encoded with WD parameters, definedness is therefore checked throughout proof construction, including steps the source PO generator could not anticipate.
+
+\subsection{Validity of inference rules}
+\label{sec:checked-rules}
+
+Inference-rule validity is a separate requirement from definedness.
+The rule \texttt{GenPredicateX.8} in Atelier~B's supplied database has the following schema:
+\[
+  \frac{a \notin \mathcal{P}(X) \cup \{y\}}
+       {\exists z\in a,\ z\notin X \land z\ne y}.
+\]
+The premise places $y$ at the type of $a$, whereas the conclusion compares it with an element of $a$.
+The schema therefore has no consistent B typing for arbitrary \(y\).
+Instantiating $y$ with the polymorphic empty set nevertheless gives individually well-typed formulas and an invalid inference.
+
+Indeed, let $a := \{\varnothing\}$ and $X := \mathcal{P}_1(\mathbb{Z})$, the set of nonempty subsets of $\mathbb{Z}$.
+Since $\varnothing \in a$ but $\varnothing \notin X$, we have $a \notin \mathcal{P}(X)$. Since $a \ne \varnothing$,
+the premise $a\notin\mathcal{P}(X)\cup\{\varnothing\}$ holds.
+The conclusion requires an element of $\{\varnothing\}$ distinct from $\varnothing$, which is impossible.
+\looseness=-1
+
+
+The following script derives this contradiction and closes the current goal using only total operators:
+\begin{lstlisting}[language=b, basicstyle=\small\ttfamily, numbers=none, mathescape=false, escapeinside={}]
+ah(not({{}}: POW(POW1(INTEGER)) \/ {{}})) & pr & dd &
+  ar(GenPredicateX.8,Fwd) & pr
+\end{lstlisting}
+
+In Lean, we refute this rule instance and prove that replacing \(\mathcal{P}(X) \cup\{y\}\) by $\mathcal{P}(X\cup\{y\})$ in the premise yields a valid rule.
+Both proofs are available in \texttt{examples/Falsehood.lean} in the artifacts.
+
+These counterexamples motivate two requirements for a proof workflow: terms introduced during interaction must carry the definedness evidence required by their operators, and reusable inference rules must themselves have checked proofs.
+The case study in \cref{sec:case-study} examines how these requirements interact with lemma reuse, refinement, and automation in a complete B development.

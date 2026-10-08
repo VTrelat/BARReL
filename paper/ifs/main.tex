@@ -10,18 +10,21 @@
 \usepackage{amsmath,amssymb}
 \usepackage{hyperref}
 \usepackage[capitalize]{cleveref}
-\usepackage[style=base,labelfont=bf,format=hang,labelsep=period]{caption}
+\usepackage[style=base,font=small,labelfont=bf,format=hang,labelsep=period]{caption}
 \usepackage{csquotes}
+\usepackage{microtype}
 % \usepackage{xcolor}
 % \usepackage{amssymb}
 
 \linenumbers
 
+\overfullrule=5pt
+
 \input{setup}
 
 \bibliographystyle{plainurl}% the mandatory bibstyle
 
-\title{\barrel: A modern backend for Atelier B in Lean}
+\title{\barrel: A Modern Backend for Atelier B in Lean}
 
 \author{Ghilain Bergeron\orcidID{0009-0008-2814-3480} \and Vincent Tr\'elat\orcidID{0009-0006-4143-3939}\thanks{ANR project BLaSST (ANR-21-CE25-0010).}}
 \institute{Universit\'e de Lorraine, CNRS, Inria, LORIA, Nancy, France}
@@ -41,7 +44,7 @@
 
 \begin{abstract}
 	\input{abstract}
-	\keywords{Lean~4 \and Atelier~B \and Meta-programming \and Interactive Theorem Proving}
+	\keywords{Lean~4 \and Atelier~B \and Metaprogramming \and Interactive Theorem Proving}
 \end{abstract}
 
 \input{introduction}
@@ -49,6 +52,8 @@
 \input{relatedwork}
 
 \input{background_contribution}
+
+\input{proof-safety}
 
 \input{casestudy}
 

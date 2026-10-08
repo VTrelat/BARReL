@@ -1,8 +1,10 @@
-\section{Discussion and Future Work}
+\section{Discussion and future work}
 
-Considering core tooling only, \barrel consists of about 2{,}800 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/\allowbreak meta-programming layer---witnessing a relatively lightweight implementation.
+The core tooling of \barrel consists of about 2{,}800 lines of code (LoC), excluding blank and comment lines and including the embedding of the B syntax, the parser, the encoder, and the discharger/\allowbreak metaprogramming layer.
 
-The artifacts also include the previously mentioned library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for about 1{,}500 LoC and contains supporting facts about sets, relations, functions, arithmetic and well-definedness, as well as the mentioned automation tactics.
+The artifacts also include the library of auxiliary equational and simplification lemmas: the B ``builtins'' library (\texttt{Barrel/Builtins/*}) accounts for about 1{,}500 LoC and contains supporting facts about sets, relations, functions, arithmetic, and well-definedness, together with the automation tactics.
+\looseness=-1
+
 
 \begin{table}[t]
 	\caption{Implementation metrics of the artifacts containing \barrel.}
@@ -19,10 +21,10 @@ The artifacts also include the previously mentioned library of auxiliary equatio
 	\end{tabular}
 \end{table}
 
-Finally, the artifacts also contain all examples from the paper and more that exercise \barrel's workflow.
+The artifacts contain all examples from the paper and additional tests of \barrel's workflow.
 These metrics are summarized in \cref{tab:implementation-metrics}.
 
-\paragraph*{Future work}
+\paragraph*{Future work.}
 
 We identify two main directions for future work:
 \begin{itemize}
@@ -101,27 +103,27 @@ We identify two main directions for future work:
 \subsection{Automation beyond WD obligations}\label{sec:future-auto}
 
 The current tactic layer of \barrel is intentionally narrow: it targets WD side conditions and leaves the remaining obligations---typically invariant preservation and refinement simulation---to interactive proof.
-In practice, these non-WD obligations also exhibit highly regular structures---such as routine set/relational algebra, standard refinement simulation patterns, and repeated use of the same invariants---suggesting that they also admit dedicated, domain-specific automation.
-Since \barrel operates entirely inside Lean, such automation is \emph{proof-producing}, meaning that such tactics synthesize proof terms that are checked by the kernel.
+In practice, these non-WD obligations also exhibit recurring structures---such as routine set/relational algebra, standard refinement simulation patterns, and repeated use of the same invariants---suggesting that they also admit dedicated, domain-specific automation.
+Since \barrel operates entirely inside Lean, this automation is \emph{proof-producing}: tactics synthesize proof terms that are checked by the kernel.
 The relevant design goal is to increase proof-search power while keeping proofs readable and predictable.
 
 A concrete plan for extending \barrel's automation layer includes:
 \begin{itemize}
-	\item  enriching the simplification and rewriting library for B-style set and relational algebra (domain/range laws, restriction/subtraction, relational image and composition) so that obligations normalize to ``Mathlib-shaped'' goals;
-	\item adding small, focused procedures for functional-relational reasoning (e.g.\@ determinism, domain/range inclusion, extensionality, and application lemmas);
-	\item providing lemmas for common PO families and delegation to standard Mathlib automation and reasoning.
+	\item enriching the simplification and rewriting library for B-style set and relational algebra (domain/range laws, restriction/subtraction, relational image, and composition) so that obligations normalize to ``Mathlib-shaped'' goals;
+	\item adding small, focused procedures for functional-relational reasoning (e.g.,\ determinism, domain/range inclusion, extensionality, and application lemmas);
+	\item providing lemmas for common PO families and supporting delegation to standard Mathlib tactics.
 \end{itemize}
 This would allow \barrel to discharge a larger fraction of proof obligations automatically, while keeping the overall architecture modular and maintainable.
-In the same vein towards modularity, one could also expect that \barrel provide only a generic interface for set/relational reasoning, allowing users to plug in their own implementations or strategies as needed.
+A modular design could also expose a generic interface for set and relational reasoning, allowing users to supply their own implementations or strategies.
 
-\subsection{Towards a fully verified backend}
+\subsection{Toward a fully verified backend}
 \label{sec:verified-backend}
 
-Although \barrel is a proof-producing backend for the obligations it emits, it currently still relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for parsing B machines and generating proof obligations.
+Although \barrel is a proof-producing backend for the obligations it emits, it currently relies on Atelier~B's \texttt{bxml} and \texttt{pog} binaries for parsing B machines and generating proof obligations.
 A natural next step is therefore to implement, \emph{in Lean}, a PO generator for the supported fragment that produces Lean propositions directly over \barrel's embedding---with correct handling of WD conditions---and to establish soundness guarantees stating that discharging these obligations entails invariant preservation and refinement correctness.
 First, this would eliminate the main external component of the trusted computing base, thereby yielding a more self-contained verification chain.
-Second, this paves the way to developing an embedded DSL for writing B developments directly in Lean.
-By reasoning on Lean terms directly, WD conditions can be directly inlined---and even automatically deduced---in the B developments.
+Second, this would support an embedded DSL for writing B developments directly in Lean.
+Working with Lean terms would allow WD conditions to be included directly in B developments and, where possible, inferred automatically.
 
-In the same direction, one could lean toward soundness of the translation connecting B obligations to their Lean counterparts.
+A further direction is to prove the soundness of the translation from B obligations to their Lean counterparts.
 While the current translation is intentionally syntax-directed and close to a one-to-one mapping into our embedding, making this correspondence explicit would further reduce the amount of trusted code in the backend, although this would require a significant formalization effort---including giving formal semantics to a fragment of Lean.

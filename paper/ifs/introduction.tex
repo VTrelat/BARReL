@@ -2,21 +2,23 @@
 
 The B method~\cite{Bmethod} and its associated toolsets, notably Atelier~B \cite{AtelierB}, have been used for decades in industrial developments where strong assurance arguments are required.
 The B method is a formal development methodology based on stepwise refinement of abstract high-level specifications into executable code, supported by a rich mathematical language rooted in set theory and first-order logic.
-B specifications are written as \emph{abstract machines} with sets, constants, variables, properties, invariants and operations; Atelier~B generates \emph{proof obligations} (POs) that guarantee, for example, invariant preservation and refinement correctness, and ships with automated and interactive provers tailored to this logic.
+B specifications are written as \emph{abstract machines} with sets, constants, variables, properties, invariants, and operations; Atelier~B generates \emph{proof obligations} (POs) whose discharge establishes, for example, invariant preservation and refinement correctness, and provides automated and interactive provers tailored to this logic.
 In many certified developments, these tools are trusted as part of the verification chain.
 
 In parallel, interactive theorem provers have seen rapid adoption, driven by their expressive type theories, powerful automation, and growing libraries of reusable mathematics and verification components.
-Lean~4~\cite{lean} is based on the calculus of inductive constructions with quotients, and features a powerful dependently typed system.
-In particular, it offers a small trusted kernel, a rich standard library, and a meta-programming framework that makes it attractive both as a programming language and a proof assistant.
+Lean~4~\cite{lean} is based on the calculus of inductive constructions with quotients and has a dependent type system.
+It offers a small trusted kernel, a standard library, and a metaprogramming framework that supports its use as both a programming language and a proof assistant.
 However, despite B’s long-standing industrial role, support for using modern interactive theorem provers as backends for Atelier~B remains very limited: some previous work targets Isabelle~\cite{IsabelleHOL} but is either no longer maintained~\cite{Schmalz2012RodinIsabelle} or provides specific support~\cite{Wolff2024EB_Isabelle} for Event-B~\cite{AbrialEventB} in Rodin~\cite{AbrialRodin}.
-There were also developments in Rocq~\cite{Coq12} targeting PVS~\cite{Bodeveix2002BtoPVS}, focusing primarily on formalizing the semantics of B rather than providing an integrated backend.
+Earlier work also studied a typed functional semantics of B and its translation to PVS~\cite{Bodeveix2002BtoPVS}.
 
-This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorem statements that must be later proved by the user.
+This paper presents \emph{\barrel} (B Automated tRanslation for Reasoning in Lean), a Lean~4 library that bridges Atelier~B and Lean by turning B proof obligations into Lean theorem statements to be proved by automation or interactively.
 Given a B machine (or an existing POG file), \barrel invokes Atelier~B to generate POs when needed and translates them into Lean theorems expressed over Mathlib~\cite{mathlib4}'s set-theoretic primitives, preserving the original structures and notations as closely as possible.
-\barrel also features its own generation of \emph{well-definedness} (WD) proof obligations, which capture the definedness side-conditions of B partial operators (e.g.\ minimum, function application, cardinality).
+\barrel also generates its own \emph{well-definedness} (WD) proof obligations, which capture the definedness side conditions of B partial operators (e.g.,\ minimum, function application, and cardinality).
 These are treated as standard Lean statements, so that definedness constraints can be proved once and then reused in subsequent interactive proofs.
-The library provides commands allowing a user to turn B developments into a sequence of Lean theorems corresponding to the POs of the developments;\@ users then discharge these goals interactively with standard tactic scripts, and the resulting theorems are added to the environment under names derived from the original POG tags.
+The library provides commands for importing B developments and proving their obligations with standard Lean tactic scripts; the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organized into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs. This high-level architecture is illustrated in \cref{fig:barrel-archi}.
+\looseness=-1
+
 
 \begin{figure}[t]
 	\centering
@@ -42,18 +44,16 @@ The translation pipeline is organized into clearly separated components: a light
 	\label{fig:barrel-archi}
 \end{figure}
 
-Our contributions are therefore threefold:
+Our contributions are threefold:
 \begin{itemize}
-	\item \barrel, an open-source lightweight and modular backend for B developments written in Lean~4;
-	\item a translation pipeline preserving B notations and proof obligations, properly handling partial operators via explicit well-definedness conditions;
-	\item an analysis of checked interaction and modular proof reuse, illustrated by a complete B refinement development and two Atelier~B counterexamples involving unchecked instantiation and an incorrect shipped rule.
+	\item \barrel, an open-source, modular backend for B developments, written in Lean~4;
+	\item a translation pipeline preserving B notations and proof obligations, with explicit well-definedness conditions for partial operators;
+	\item an analysis of checked interaction and modular proof reuse, illustrated by a complete B refinement development and two Atelier~B examples concerning witness definedness and inference-rule validity.
 \end{itemize}
-Finally, \barrel opens the door to using Lean as an independent backend for the B Method and suggests interesting extensions, such as an integrated proof obligation generator---which could even be verified---and even an embedded DSL for writing B developments directly in Lean.
+Potential extensions include a verified proof obligation generator and an embedded DSL for writing B developments directly in Lean.
 % We do not discuss semantics or soundness of the encoding in this paper.
 
-The rest of this paper is organised as follows.
-We first recall the necessary background on the B method, proof obligations, and Lean.
-We then present the design and implementation of \barrel, detailing the encoding of B syntax, the interface with Atelier~B's proof obligation generator, and our treatment of partial operators and their well-definedness obligations.
-We also discuss basic automation features to reduce user effort in discharging common proof obligations.
-We then compare the proof workflows of \barrel and Atelier~B, examining well-definedness during interaction, reusable mathematical arguments, and dependencies across refinements.
-We conclude with a discussion of future extensions, and position our work with respect to existing approaches to connecting B with modern interactive theorem provers.
+The rest of this paper is organized as follows.
+After reviewing related work, we recall the necessary background on the B method and present the design and implementation of \barrel, including its treatment of partial operators and basic automation.
+We then examine witness definedness and inference-rule validity through two interactive proofs in Atelier~B (\cref{sec:proof-safety}), motivating the comparison of checked lemma reuse, refinement dependencies, and automation in the leader-election case study (\cref{sec:case-study}).
+We conclude with future extensions and the remaining trust assumptions.
