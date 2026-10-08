@@ -145,9 +145,9 @@ Although it is unnecessary, we perform normalization of B terms solely for the p
 The normalized B formulas are then transcribed into Lean terms using Lean's facilities for meta-programming and elaboration.
 However, a lot of bookkeeping has to happen in order to encode partial B operators, since they rely on WD conditions that must be inserted on the fly.
 Instead of handling the bookkeeping ourselves, we let Lean handle it internally by generating meta-variables (containing their local contexts) in place of the WD conditions.
-A WD meta-variable is assigned an application of a theorem with the required type: either a suitable theorem already available for reuse, or a fresh obligation extracted from its local context.
-Matching occurrences share their WD evidence within an import.
-Once a component is completed, proved WD theorems can also be reused by subsequent imports, including across Lean modules; \cref{sec:proof-workflow} explains the smaller theorem interfaces that make this reuse possible across refinements.
+A WD meta-variable is assigned an application of a theorem with the required type: either a suitable theorem already available for reuse (via exact type matching or subsumption), or a fresh obligation extracted from its local context.
+Subsumption, here, allows deriving a fact from another \texttt{@[subsume]}-tagged theorem that has less hypotheses (i.e.\@ is more general), e.g.\@ deriving \(P \Rightarrow Q \Rightarrow R\) from \(P \Rightarrow R\) (or others with less hypotheses, such as \(Q \Rightarrow R\) or just \(R\)).
+Proved WD theorems can be reused within an import, but also, once the component is completed, by subsequent imports, including across Lean modules; \cref{sec:proof-workflow} explains the smaller theorem interfaces that make this reuse possible across refinements.
 %
 \begin{example}
 	%
@@ -158,8 +158,8 @@ Once a component is completed, proved WD theorems can also be reused by subseque
 	The first step of the pipeline is generating a Lean term while inserting meta-variables in place of WD conditions (where $h_1$, $h_2$ and $h_3$ are fresh identifiers):
 	\[
 		\begin{split}
-			 & P :=                                                                                                                                                                  \\
-			 & \quad \forall\, (S : \mathtt{Set}\, \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}) (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
+			 & P :=                                                                                                                                                                    \\
+			 & \quad \forall\, (S : \mathtt{Set}\, \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})\, (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
 			 & \qquad\qquad \mathtt{B.Builtins.min}\ S\ (\metavar{m_1}\ S\ h_1\ h_2) \le 0
 		\end{split}
 	\]
@@ -168,14 +168,14 @@ Once a component is completed, proved WD theorems can also be reused by subseque
 	%
 	A fresh theorem statement $min\_wd_1$ is then generated---and remains to be proved---from the type of $\metavar{m_1}$ universally quantified by its local context: \[
 		\begin{split}
-			 & \mathtt{theorem}\ min\_wd_1 :                                                                                                                                         \\
-			 & \quad \forall\, (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})  (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
+			 & \mathtt{theorem}\ min\_wd_1 :                                                                                                                                          \\
+			 & \quad \forall\, (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})\, (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
 			 & \qquad\quad \mathtt{B.Builtins.min.WD}\ S
 		\end{split}
 	\]
 	$\metavar{m_1}$ is finally assigned $min\_wd_1$, and substituted in $P$ to obtain the final goal to be proved by the user: \[
 		\begin{split}
-			\vdash \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z}) (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0),\ \\
+			\vdash \forall\, & (S : \mathtt{Set}\ \mathbb{Z})\, (h_1 : S \in \mathtt{B.Builtins.FIN_1}\ \mathbb{Z})\, (h_2 : \forall\, (x : \mathbb{Z})\, (h_3 : x \in S),\ x \le 0), \\
 			                 & \quad \mathtt{B.Builtins.min}\ S\ (min\_wd_1\ S\ h_1\ h_2) \le 0
 		\end{split}
 	\]
@@ -184,12 +184,8 @@ Once a component is completed, proved WD theorems can also be reused by subseque
 All these previous steps are performed by the \texttt{import <type> <name> from <folder>} command of \barrel.
 \texttt{<type>} may be one of \texttt{machine}, \texttt{system}, \texttt{refinement}, \texttt{implementation} or \texttt{pog} depending on whether the file to be imported is a machine, system, refinement, implementation or straight up a POG file, and \texttt{<name>} is the file name without the extension.
 In the case of POG files, the first step converting into the BXML format is skipped.
-<<<<<<< HEAD
 Each remaining goal can then be selected with \texttt{next obligation} or, by name, with \texttt{obligation <po>}.
 Both commands accept \texttt{from <term>} or \texttt{by <proof>} to prove WD conditions and reconstructed proof obligations.
-=======
-Then, each remaining proof obligation must be proven using the \texttt{next obligation (from <term> | by <proof>)} command (or the variant \texttt{obligation <name> (from <term> | by <proof>)}, which selects an obligation by name), which handles proving both WD conditions and reconstructed proof obligations.
->>>>>>> 01f3ec0 (mention the obligation <name> command)
 Finally, the import must be closed with \texttt{qed <name>}, which checks that all obligations have been discharged, and only then adds them to the global context as theorems.
 \texttt{qed} does not, however, check that the proofs of all obligations do not rely on the \texttt{sorryAx} axiom: this remains the job of the user to check, as is typical in any Lean development.
 
