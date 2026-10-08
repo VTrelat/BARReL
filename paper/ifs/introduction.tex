@@ -17,7 +17,7 @@ Given a B machine (or an existing POG file), \barrel invokes Atelier~B to genera
 These are treated as standard Lean statements, so that definedness constraints can be proved once and then reused in subsequent interactive proofs.
 The library provides commands for importing B developments and proving their obligations with standard Lean tactic scripts; the resulting theorems are added to the environment under names derived from the original POG tags.
 The translation pipeline is organized into clearly separated components: a lightweight embedding of B syntax, a POG file reader, an encoding layer mapping B constructs to Lean expressions, and a discharger that generates theorem declarations and connects them to user proofs. This high-level architecture is illustrated in \cref{fig:barrel-archi}.
-\looseness=-1
+
 
 
 \begin{figure}[t]

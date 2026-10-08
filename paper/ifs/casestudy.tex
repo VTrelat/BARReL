@@ -5,7 +5,7 @@
 The examples in \cref{sec:proof-safety} motivate examining the evidence supporting each proof step.
 In a complete development, the same checks must also support routine proof work: preserving invariants after updates, reusing facts across refinements, and extending automation.
 We compare how Atelier~B and \barrel support these tasks through reusable mathematical lemmas and explicit proof dependencies.
-\looseness=-1
+
 
 
 We use the six-component B development of the IEEE~1394 tree identify protocol by Abrial, Cansell, and M\'ery~\cite{AbrialCansellMery2003}, which refines a leader-election algorithm.\footnote{We thank Dominique M\'ery for giving us access to the B refinement chain and for the insightful discussions that helped us understand it.}
@@ -60,7 +60,7 @@ Refinement also creates dependencies between proofs of individual components: th
 This is the cross-import reuse introduced in \cref{sec:innner-workings}.
 When that component has already been proved in Lean, \barrel can supply the evidence by applying its WD theorems.
 Lean checks these applications in the refinement's context, so reuse avoids a new proof obligation without omitting the definedness check.
-\looseness=-1
+
 
 
 After \texttt{qed}, a component's WD theorems are available to subsequent imports, including across Lean modules.
@@ -82,7 +82,7 @@ In \barrel, importing \texttt{MM1.lean} into \texttt{MM2.lean} makes the proved 
 All 53 occurrences of the inherited application then share evidence obtained from \texttt{mm1}'s theorem, with no new WD obligation in \texttt{mm2}.
 The proof terms contain the application of the earlier theorem, which Lean checks using the hypotheses available in \texttt{mm2}.
 This reuse justifies the inherited expression; the assertion itself remains a separate proof obligation.
-\looseness=-1
+
 \end{example}
 
 Across the six components, Atelier~B generates 60 WD obligations from the B specification.

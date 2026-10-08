@@ -36,7 +36,7 @@ These deduced parent sets provide exactly the information needed to interpret B 
 \begin{example}
 	The expression $1 + \top$ is well-formed in ZFC set theory---and definitionally equal, under the encoding \(\bot \hookrightarrow 0\) and \(\top \hookrightarrow 1\), to the set $\mathbb{B}$ of Booleans, or the natural number $2$---but it is not a valid expression in B.
 	Indeed, $1$ has parent set $\mathbb{Z}$ and $\top$ has parent set $\mathbb{B}$, and $+$ expects both its arguments to have parent set $\mathbb{Z}$.
-\looseness=-1
+
 \end{example}
 
 \paragraph*{Foundations of B in Lean.}
@@ -73,7 +73,7 @@ scoped infixl:160 " ⩤$$ " =>$$ domSubtr
 %
 We then provide proofs, using Mathlib's infrastructure and theorems, of various laws and theorems of B: for any total function $f \in A \longrightarrow B$ its domain $\bdom{f}$ equals $A$; assuming that $a \le b$, the minimum of $\binterval{a}{b}$ is $a$; etc.
 Both the definitions and theorems are readily available to end users when importing \barrel in a Lean project, and serve as basic building blocks for proofs of B obligations translated by our tool.
-\looseness=-1
+
 
 
 \subsection{Encoding partial B operators}
@@ -82,7 +82,7 @@ A central challenge in this setting is the use of \emph{partial} B operators, me
 A typical example is the minimum operator $\bmin{S}$, which returns the smallest element of a set $S$ (of integers or reals) with respect to $\le$, if it exists, and is undefined otherwise.
 These partial operators are typically encoded using Hilbert's bounded choice operator $\epsilon\ x \in S.\ P$, which is left unspecified if no element of $S$ satisfies $P$.
 The \emph{WD condition} of the corresponding operator is precisely that $P$ is satisfied by at least one element of $S$.
-\looseness=-1
+
 
 
 Atelier~B generates separate WD obligations from a component's source clauses.
@@ -94,7 +94,7 @@ In \barrel, dependencies between WD goals and principal goals are represented by
 %
 First, we generate WD conditions to match the exact context in which they are inserted.
 Atelier~B's generated WD conditions may differ because they undergo simplification and because our encoding uses different definitions for some predicates and WD conditions.
-\looseness=-1
+
 
 
 \begin{remark}
@@ -217,7 +217,7 @@ These helper lemmas provide definitional equations and rewriting and simplificat
 We use Mathlib's facilities to tag helper lemmas with relevant categories---\texttt{wd\_min}, \texttt{wd\_max}, \texttt{wd\_app}, \texttt{wd\_card}, \texttt{wd\_mod}, \texttt{wd\_div}---and its set-theoretic results to discharge the corresponding goals.
 These tags also name the tactics run automatically by \barrel's automation layer; users may invoke them manually or extend them with their own lemmas.
 For function application, the WD tactic can use a total-function membership lemma tagged \texttt{@[tfun]} together with domain membership; \cref{ex:workflow-update} illustrates this extension on a function update in the case study.
-\looseness=-1
+
 
 
 
