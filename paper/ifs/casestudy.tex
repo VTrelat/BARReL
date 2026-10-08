@@ -47,7 +47,7 @@ In Lean, each use of the general lemma supplies its premises and is checked by t
 
 The totality result also provides the first premise of \texttt{app.WD\_of\_mem\_tfun}.
 Together with a proof that the argument belongs to the domain, it establishes the definedness of application to the updated function (\cref{lst:min-fn-app}).
-The \texttt{@[tfun]} annotation registers the lemma for total-function reasoning, so the WD tactic can perform this composition automatically using the mechanism described in \cref{par:automation}.
+The \texttt{@[tfun]} annotation registers the lemma for total function reasoning, so the WD tactic can perform this composition automatically using the mechanism described in \cref{par:automation}.
 
 \subsection{Refinement with explicit proof dependencies}
 \label{sec:refinement-dependencies}
@@ -55,13 +55,14 @@ The \texttt{@[tfun]} annotation registers the lemma for total-function reasoning
 The reuse in \cref{ex:workflow-update} concerns a general mathematical lemma.
 Refinement also creates dependencies between proofs of individual components: the WD parameters of encoded operators must be supplied in expressions inherited from an abstract component.
 This is the cross-import reuse introduced in \cref{sec:innner-workings}.
-When that component has already been proved in Lean, \barrel can supply the required proof arguments by applying its WD theorems.
+When that component has already been proved in Lean, \barrel can supply the required proof arguments by reusing its WD theorems.
 Lean checks these applications in the refinement's context, so reuse avoids a new proof obligation without omitting the definedness check.
 
 
 
-After \texttt{qed}, a component's WD theorems are available to subsequent imports, including across Lean modules.
-Where possible, \barrel removes unnecessary premises from their reusable statements, allowing later components to apply them with fewer hypotheses.
+
+After \texttt{qed}, a component's WD theorems are available to succeeding imports, including across Lean modules.
+While trying to discharge subsequent WD obligations, \barrel tries to reuse these theorems via subsumption, as explained in \cref{sec:innner-workings}.
 If no available theorem applies, \barrel generates a new WD obligation.
 
 \begin{example}[Reusing definedness across refinements]

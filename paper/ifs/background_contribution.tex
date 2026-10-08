@@ -154,7 +154,7 @@ The normalized B formulas are then transcribed into Lean terms using Lean's faci
 Encoding partial B operators requires tracking the WD conditions inserted during translation.
 We use Lean's metavariables, which retain their local contexts, to represent these conditions.
 A WD metavariable is assigned an application of a theorem with the required type: either a suitable theorem already available for reuse (via exact type matching or subsumption), or a fresh obligation extracted from its local context.
-Subsumption here allows deriving a fact from a \texttt{@[subsume]}-tagged theorem with fewer hypotheses (i.e.,\ a more general statement), e.g.,\ deriving \(P \Rightarrow Q \Rightarrow R\) from \(P \Rightarrow R\), \(Q \Rightarrow R\), or just \(R\).
+Subsumption, here, allows deriving a fact from a \texttt{@[subsume]}-tagged theorem with fewer hypotheses (i.e.,\ a more general statement), e.g.,\ deriving \(P \Rightarrow Q \Rightarrow R\) from \(P \Rightarrow R\), \(Q \Rightarrow R\), or just \(R\).
 Proved WD theorems can be reused within an import, but also, once the component is completed, by subsequent imports, including across Lean modules; \cref{sec:proof-workflow} explains the smaller theorem interfaces that make this reuse possible across refinements.
 %
 \begin{example}
