@@ -2,7 +2,7 @@
 \label{sec:proof-workflow}
 \label{sec:case-study}
 
-We compare the Atelier~B and \barrel proof workflows on the six-component B development of the IEEE~1394 tree identify protocol by Abrial, Cansell, and M\'ery~\cite{AbrialCansellMery2003}, which refines a leader-election algorithm.\footnote{We thank Dominique M\'ery for giving us access to the B refinement chain and for the insightful discussions that helped us understand it.}
+We compare the Atelier~B and \barrel proof workflows on the six-component B development of the IEEE~1394 tree identify protocol by Abrial, Cansell, and M\'ery~\cite{AbrialCansellMery2003}, which refines a leader-election algorithm.
 The artifacts contain the B sources in \texttt{specs/leader/} and both sets of proof scripts in \texttt{examples/leader/}, together with the counterexamples from \cref{sec:proof-safety}.
 We ran Atelier~B's Force~3 followed by its predicate prover (\texttt{pp}) on the generated obligations, then completed the remaining proofs interactively.
 
@@ -76,10 +76,8 @@ Definedness of this application needs only
   \quad\Longrightarrow\quad \mathtt{app.WD}\ \mathtt{ff}\ x.
 \]
 Atelier~B generates WD obligations for the assertion in \texttt{mm1} and does not generate them again in \texttt{mm2}.
-In \barrel, importing \texttt{MM1.lean} into \texttt{MM2.lean} makes the proved WD fact available when encoding the refinement.
-All 53 occurrences of the inherited application are then justified by applications of \texttt{mm1}'s theorem, with no new WD obligation in \texttt{mm2}.
-Lean checks each theorem application using the hypotheses available in \texttt{mm2}.
-This reuse justifies the inherited expression; the assertion itself remains a separate proof obligation.
+In \barrel, importing \texttt{MM1.lean} into \texttt{MM2.lean} makes the proved WD facts available when encoding the refinement.
+All 53 occurrences \texttt{mm2} of the WD above are then justified by applying \texttt{mm1}'s theorem, with no new WD obligation in \texttt{mm2}.
 
 \end{example}
 
@@ -101,7 +99,6 @@ Adding a tactic or lemma does not add a trusted inference rule: its use must pro
 
 The proof environment also affects the effort needed when automation fails.
 Atelier~B displays goals, hypotheses, and proof histories; the message ``The Predicate Prover failed to prove the current goal'' does not distinguish missing premises from unsuccessful search.
-Lean lets the user isolate a claim with \texttt{have}; applying a theorem exposes its remaining premises as subgoals, and a failed \texttt{exact} reports the supplied and expected types.
-These diagnostics provide a concrete point at which to investigate the failed step, although matching and normalization can still require manual work.
+Lean's editor integration helps users investigate such failures: a side panel shows the proof state alongside the script, while hover information and navigation to declarations give access to the relevant lemmas and definitions.
 
-Using \barrel requires B users to learn Lean and the relevant Mathlib abstractions, which may be a barrier to adoption. In return, Lean checks the proofs produced by automation and the lemmas they use, including WD proofs reused across components. The comparison therefore considers both the interactive effort required and the checks supporting the resulting proofs.
+Using \barrel requires B users to learn Lean and the relevant Mathlib abstractions, which may be a barrier to adoption. In return, Lean checks the proofs produced by automation and the lemmas they use, including WD proofs reused across components.
