@@ -58,7 +58,7 @@ ah(not({{}}: POW(POW1(INTEGER)) \/ {{}})) & pr & dd &
   ar(GenPredicateX.8,Fwd) & pr
 \end{lstlisting}
 
-In Lean, we refute this rule instance and prove that replacing \(\mathcal{P}(X) \cup\{y\}\) by $\mathcal{P}(X\cup\{y\})$ in the premise yields a valid rule.
+In Lean, we refute this rule instance and prove that replacing \(\mathcal{P}(X) \cup\{y\}\) with $\mathcal{P}(X\cup\{y\})$ in the premise yields a valid rule.
 Both proofs are available in \texttt{examples/Falsehood.lean} in the artifacts.
 
 These counterexamples motivate two requirements for a proof workflow: terms introduced during interaction must carry the definedness evidence required by their operators, and reusable inference rules must themselves have checked proofs.
